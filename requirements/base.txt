@@ -1,1 +1,4 @@
-# Application dependencies go here
+Django>=5.0,<6.0
+djangorestframework>=3.15,<4.0
+django-filter>=24.0,<26.0
+python-dotenv>=1.0,<2.0
