@@ -10,3 +10,11 @@ repos:
     rev: 24.10.0
     hooks:
       - id: black
+
+  - repo: local
+    hooks:
+      - id: django-check
+        name: Django system checks
+        entry: python manage.py check
+        language: system
+        pass_filenames: false
