@@ -1,0 +1,30 @@
+name: Tech debt
+description: Track refactors, cleanups, and maintenance work for TaskRoot
+title: "[Tech Debt]: "
+labels: ["tech debt"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs cleanup and why?
+      placeholder: Describe the debt.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / acceptance criteria
+      description: What does “done” look like?
+      placeholder: List specific outcomes.
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      placeholder: Links, context, related PRs/issues.
+    validations:
+      required: false

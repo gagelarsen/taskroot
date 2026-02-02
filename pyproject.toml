@@ -1,0 +1,26 @@
+[project]
+name = "taskroot"
+version = "0.1.0"
+description = "TaskRoot project tracking application"
+readme = "README.md"
+requires-python = ">=3.13"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+skip-string-normalization = false
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = ["E", "F", "I", "B"]
+ignore = []
+
+[tool.ruff.isort]
+combine-as-imports = true
+force-single-line = false
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra"
+testpaths = ["tests"]
