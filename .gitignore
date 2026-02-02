@@ -33,6 +33,7 @@ venv/
 ENV/
 env/
 .virtualenv/
+.env
 
 # Pytest
 .pytest_cache/
