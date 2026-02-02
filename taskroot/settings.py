@@ -24,18 +24,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-key")
 DEBUG = os.getenv("DEBUG", "true").lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-$bn4b87#m^qni#g(5ar#of#y=do&8n6i6&lf2zd^^e0#ugg4ww"
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-
 # Application definition
 
 INSTALLED_APPS = [
