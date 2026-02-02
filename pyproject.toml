@@ -21,6 +21,8 @@ combine-as-imports = true
 force-single-line = false
 
 [tool.pytest.ini_options]
-minversion = "7.0"
+minversion = "8.0"
 addopts = "-ra"
 testpaths = ["tests"]
+DJANGO_SETTINGS_MODULE = "taskroot.settings"
+python_files = ["test_*.py"]
