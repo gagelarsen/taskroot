@@ -58,3 +58,12 @@ pre-commit install
 ```
 Once installed, Ruff and Black will run on each commit.
 CI will still enforce the same checks even if you choose not to use pre-commit locally.
+
+## API (v1)
+
+The API is available under the `/api/v1/` prefix.
+
+### Health check
+
+```bash
+curl -s http://127.0.0.1:8000/api/v1/health/
