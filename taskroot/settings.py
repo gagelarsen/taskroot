@@ -148,5 +148,7 @@ REST_FRAMEWORK = {
     # Filtering: enable django-filter so future viewsets can add filtersets cleanly.
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
+        "core.api.v1.backends.CanonicalSearchFilter",
+        "core.api.v1.backends.CanonicalOrderingFilter",
     ],
 }
