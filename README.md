@@ -68,3 +68,47 @@ The API is available under the `/api/v1/` prefix.
 ```bash
 curl -s http://127.0.0.1:8000/api/v1/health/
 ```
+
+## Filtering & Query Parameters (canonical)
+
+All list endpoints support a stable, integration-friendly set of **canonical** query parameters.
+
+### Canonical rules
+- IDs use `*_id` (e.g. `contract_id`, `deliverable_id`, `staff_id`)
+- Date ranges use `<field>_from` / `<field>_to`
+- Booleans use `true|false`
+- Text search uses `q`
+- Ordering uses `order_by=<field>&order_dir=asc|desc`
+- **Django-style query params are not supported** (e.g. `field__gte`, `field__lte`)
+
+### Examples
+
+Deliverables for a contract:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/v1/deliverables/?contract_id=1"
+```
+
+Deliverables assigned to a staff member:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/v1/deliverables/?staff_id=1"
+```
+
+Lead-only deliverabes:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/v1/deliverables/?lead_only=true"
+```
+
+Unassigned tasks for a contract:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/v1/tasks/?contract_id=1&unassigned=true"
+```
+
+Order deliverables by due date ascending:
+
+```bash
+curl -s "http://127.0.0.1:8000/api/v1/deliverables/?order_by=due_date&order_dir=asc"
+```
