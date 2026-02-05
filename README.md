@@ -2,7 +2,24 @@
 
 TaskRoot is an open-source friendly project tracking application aimed at keeping work visible, organized, and actionable.
 It’s designed to be lightweight for in-house use while remaining easy for others to adopt and extend.
-This repository currently contains the tooling and CI foundation; application code will land in subsequent PRs.
+
+## Repository Structure
+
+```
+TaskRoot/
+├── backend/          # Django REST API
+│   ├── core/         # Main Django app
+│   ├── taskroot/     # Django project settings
+│   ├── tests/        # Test suite
+│   ├── requirements/ # Python dependencies
+│   ├── manage.py     # Django management script
+│   └── pyproject.toml # Python project config
+├── frontend/         # (Future) Frontend application
+└── .github/          # CI/CD workflows
+```
+
+The backend is a Django REST Framework API that provides all project tracking functionality.
+The frontend directory is reserved for future UI development.
 
 ## Local development
 
@@ -14,21 +31,27 @@ This repository currently contains the tooling and CI foundation; application co
 
 ```bash
 git clone <repo-url>
-cd taskroot
+cd TaskRoot
 
 python -m venv .venv
 source .venv/bin/activate
 ```
 
 ```bash
+cd backend
 pip install -r requirements/dev.txt
 cp .env.example .env
 ```
 
 ### Initialize the database
 ```bash
+cd backend
 python manage.py migrate
-Run the server
+```
+
+### Run the server
+```bash
+cd backend
 python manage.py runserver
 ```
 The API health endpoint should be available at:
@@ -37,11 +60,13 @@ http://127.0.0.1:8000/api/v1/health/
 ### Run tests
 
 ```bash
+cd backend
 pytest
 ```
 
 ### Lint and format
 ```bash
+cd backend
 ruff check .
 black --check .
 ```
@@ -80,6 +105,7 @@ All API endpoints (except `/api/v1/health/` and `/api/v1/auth/*`) require JWT au
 To create test users with different roles:
 
 ```bash
+cd backend
 python manage.py create_test_users
 ```
 
@@ -91,6 +117,7 @@ This creates three users:
 To reset and recreate test users:
 
 ```bash
+cd backend
 python manage.py create_test_users --reset
 ```
 

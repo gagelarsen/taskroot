@@ -1,10 +1,10 @@
 .PHONY: lint format test
 
 lint:
-	ruff .
+	cd backend && ruff .
 
 format:
-	black .
+	cd backend && black .
 
 test:
-	pytest
+	cd backend && pytest
