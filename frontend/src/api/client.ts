@@ -120,3 +120,64 @@ export const statusUpdatesApi = {
   },
 };
 
+// Tasks API
+interface TaskFilters {
+  deliverable_id?: number;
+  q?: string;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
+}
+
+export const tasksApi = {
+  list: async (params?: TaskFilters) => {
+    const response = await apiClient.get('/tasks/', { params });
+    // Handle paginated response
+    return response.data.results || response.data;
+  },
+  get: async (id: number) => {
+    const response = await apiClient.get(`/tasks/${id}/`);
+    return response.data;
+  },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/tasks/', data);
+    return response.data;
+  },
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/tasks/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/tasks/${id}/`);
+  },
+};
+
+// Deliverable Assignments API
+interface AssignmentFilters {
+  deliverable_id?: number;
+  staff_id?: number;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
+}
+
+export const assignmentsApi = {
+  list: async (params?: AssignmentFilters) => {
+    const response = await apiClient.get('/deliverable-assignments/', { params });
+    // Handle paginated response
+    return response.data.results || response.data;
+  },
+  get: async (id: number) => {
+    const response = await apiClient.get(`/deliverable-assignments/${id}/`);
+    return response.data;
+  },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/deliverable-assignments/', data);
+    return response.data;
+  },
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/deliverable-assignments/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/deliverable-assignments/${id}/`);
+  },
+};

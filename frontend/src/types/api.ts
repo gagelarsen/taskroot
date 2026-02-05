@@ -30,6 +30,29 @@ export interface Contract {
   is_over_expected: boolean;
 }
 
+// Forward declarations for circular references
+export interface DeliverableAssignment {
+  id: number;
+  deliverable: number;
+  staff: number;
+  staff_name: string;
+  expected_hours: string;
+  is_lead: boolean;
+  created_at: string;
+}
+
+export interface Task {
+  id: number;
+  deliverable: number;
+  assignee: number | null;
+  assignee_name: string | null;
+  title: string;
+  planned_hours: string;
+  status: 'todo' | 'in_progress' | 'done' | 'blocked';
+  created_at: string;
+  updated_at: string;
+}
+
 // Deliverable types
 export interface Deliverable {
   id: number;
@@ -40,7 +63,7 @@ export interface Deliverable {
   status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'blocked';
   created_at: string;
   updated_at: string;
-  
+
   // Rollup metrics
   expected_hours_total: string;
   actual_hours_total: string;
@@ -49,20 +72,26 @@ export interface Deliverable {
   expected_hours_per_week: string;
   actual_hours_per_week: string;
   variance_hours: string;
-  
+
   // Health flags
   is_over_expected: boolean;
   is_missing_estimate: boolean;
   is_missing_lead: boolean;
-  
+
   // Latest status update
   latest_status_update: DeliverableStatusUpdate | null;
+
+  // Nested related objects
+  assignments: DeliverableAssignment[];
+  tasks: Task[];
 }
 
 // Staff types
 export interface Staff {
   id: number;
-  user: number;
+  email: string;
+  first_name: string;
+  last_name: string;
   role: 'admin' | 'manager' | 'staff';
   status: 'active' | 'inactive';
   created_at: string;

@@ -181,6 +181,86 @@ export function DeliverableDetailPage() {
       </Stack>
 
       <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
+        Staff Assignments
+      </Typography>
+
+      <TableContainer component={Paper} sx={{ mb: 4 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Staff Member</TableCell>
+              <TableCell align="right">Expected Hours</TableCell>
+              <TableCell>Lead</TableCell>
+              <TableCell>Assigned At</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {deliverable.assignments && deliverable.assignments.length > 0 ? (
+              deliverable.assignments.map((assignment) => (
+                <TableRow key={assignment.id}>
+                  <TableCell>{assignment.staff_name}</TableCell>
+                  <TableCell align="right">{parseFloat(assignment.expected_hours).toFixed(1)}</TableCell>
+                  <TableCell>
+                    {assignment.is_lead ? (
+                      <Chip label="Lead" color="primary" size="small" />
+                    ) : (
+                      <Chip label="Member" size="small" />
+                    )}
+                  </TableCell>
+                  <TableCell>{new Date(assignment.created_at).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  <Typography color="text.secondary">No staff assigned</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
+        Tasks
+      </Typography>
+
+      <TableContainer component={Paper} sx={{ mb: 4 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Title</TableCell>
+              <TableCell>Assignee</TableCell>
+              <TableCell align="right">Planned Hours</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Updated At</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {deliverable.tasks && deliverable.tasks.length > 0 ? (
+              deliverable.tasks.map((task) => (
+                <TableRow key={task.id}>
+                  <TableCell>{task.title}</TableCell>
+                  <TableCell>{task.assignee_name || 'Unassigned'}</TableCell>
+                  <TableCell align="right">{parseFloat(task.planned_hours).toFixed(1)}</TableCell>
+                  <TableCell>
+                    <Chip label={task.status} size="small" />
+                  </TableCell>
+                  <TableCell>{new Date(task.updated_at).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} align="center">
+                  <Typography color="text.secondary">No tasks</Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
         Status Updates
       </Typography>
 
