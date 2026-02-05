@@ -16,7 +16,7 @@ class Contract(models.Model):
     client_name = models.CharField(max_length=255, default="")
     start_date = models.DateField()
     end_date = models.DateField()
-    budget_hours_total = models.DecimalField(
+    budget_hours = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0"))],
@@ -41,18 +41,18 @@ class Contract(models.Model):
 
     # Rollup metrics - computed fields (read-only)
 
-    def get_expected_hours_total(self) -> Decimal:
-        """Sum of all deliverables' expected hours."""
+    def get_assigned_budget_hours(self) -> Decimal:
+        """Sum of all deliverables' budget hours."""
         total = Decimal("0")
         for deliverable in self.deliverables.all():
-            total += deliverable.get_expected_hours_total()
+            total += deliverable.budget_hours
         return total
 
-    def get_actual_hours_total(self) -> Decimal:
-        """Sum of all deliverables' actual hours."""
+    def get_spent_hours(self) -> Decimal:
+        """Sum of all deliverables' spent hours (from time entries)."""
         total = Decimal("0")
         for deliverable in self.deliverables.all():
-            total += deliverable.get_actual_hours_total()
+            total += deliverable.get_spent_hours()
         return total
 
     def get_planned_weeks(self) -> int:
@@ -79,28 +79,32 @@ class Contract(models.Model):
         days = (actual_end - self.start_date).days + 1
         return max(1, ceil(days / 7))
 
-    def get_expected_hours_per_week(self) -> Decimal:
-        """Expected hours divided by planned weeks."""
+    def get_assigned_budget_hours_per_week(self) -> Decimal:
+        """Assigned budget hours divided by planned weeks."""
         planned_weeks = self.get_planned_weeks()
-        expected_total = self.get_expected_hours_total()
-        return expected_total / Decimal(str(planned_weeks))
+        assigned_budget = self.get_assigned_budget_hours()
+        return assigned_budget / Decimal(str(planned_weeks))
 
-    def get_actual_hours_per_week(self) -> Decimal:
-        """Actual hours divided by elapsed weeks."""
+    def get_spent_hours_per_week(self) -> Decimal:
+        """Spent hours divided by elapsed weeks."""
         elapsed_weeks = self.get_elapsed_weeks()
-        actual_total = self.get_actual_hours_total()
-        return actual_total / Decimal(str(elapsed_weeks))
+        spent_total = self.get_spent_hours()
+        return spent_total / Decimal(str(elapsed_weeks))
 
     def get_remaining_budget_hours(self) -> Decimal:
-        """Budget hours remaining (budget - actual)."""
-        return self.budget_hours_total - self.get_actual_hours_total()
+        """Budget hours remaining (budget - assigned budget hours)."""
+        return self.budget_hours - self.get_assigned_budget_hours()
+
+    def get_unspent_budget_hours(self) -> Decimal:
+        """Unspent budget hours (budget - spent hours)."""
+        return self.budget_hours - self.get_spent_hours()
 
     # Health flags
 
     def is_over_budget(self) -> bool:
-        """True if actual hours exceed budget."""
-        return self.get_actual_hours_total() > self.budget_hours_total
+        """True if spent hours exceed budget."""
+        return self.get_spent_hours() > self.budget_hours
 
-    def is_over_expected(self) -> bool:
-        """True if actual hours exceed expected hours."""
-        return self.get_actual_hours_total() > self.get_expected_hours_total()
+    def is_overassigned(self) -> bool:
+        """True if assigned budget hours exceed contract budget."""
+        return self.get_assigned_budget_hours() > self.budget_hours

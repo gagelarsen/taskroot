@@ -10,7 +10,7 @@ from .staff import Staff
 class DeliverableAssignment(models.Model):
     deliverable = models.ForeignKey(Deliverable, on_delete=models.CASCADE, related_name="assignments")
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name="deliverable_assignments")
-    expected_hours = models.DecimalField(
+    budget_hours = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0"))],

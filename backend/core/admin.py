@@ -20,9 +20,9 @@ class StaffAdmin(admin.ModelAdmin):
 
 @admin.register(Contract)
 class ContractAdmin(admin.ModelAdmin):
-    list_display = ("id", "start_date", "end_date", "budget_hours_total", "status")
+    list_display = ("id", "name", "start_date", "end_date", "budget_hours", "status")
     list_filter = ("status",)
-    search_fields = ("id",)
+    search_fields = ("id", "name", "client_name")
 
 
 class DeliverableAssignmentInline(admin.TabularInline):
@@ -60,7 +60,7 @@ class DeliverableAdmin(admin.ModelAdmin):
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "deliverable", "assignee", "planned_hours", "status")
+    list_display = ("id", "title", "deliverable", "assignee", "budget_hours", "status")
     list_filter = ("status",)
     search_fields = ("title",)
     autocomplete_fields = ("deliverable", "assignee")
@@ -68,7 +68,7 @@ class TaskAdmin(admin.ModelAdmin):
 
 @admin.register(DeliverableAssignment)
 class DeliverableAssignmentAdmin(admin.ModelAdmin):
-    list_display = ("id", "deliverable", "staff", "expected_hours", "is_lead")
+    list_display = ("id", "deliverable", "staff", "budget_hours", "is_lead")
     list_filter = ("is_lead",)
     autocomplete_fields = ("deliverable", "staff")
 

@@ -16,14 +16,14 @@ class Task(models.Model):
 
     deliverable = models.ForeignKey(Deliverable, on_delete=models.CASCADE, related_name="tasks")
     assignee = models.ForeignKey(Staff, null=True, blank=True, on_delete=models.SET_NULL, related_name="tasks")
-    planned_hours = models.DecimalField(
+    title = models.CharField(max_length=255)
+    budget_hours = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0"))],
         default=Decimal("0"),
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
-    title = models.CharField(max_length=255)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

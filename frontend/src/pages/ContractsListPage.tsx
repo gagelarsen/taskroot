@@ -59,7 +59,7 @@ export function ContractsListPage() {
     { value: 'start_date', label: 'Start Date' },
     { value: 'end_date', label: 'End Date' },
     { value: 'status', label: 'Status' },
-    { value: 'budget_hours_total', label: 'Budget' },
+    { value: 'budget_hours', label: 'Budget' },
   ];
 
   return (
@@ -99,8 +99,8 @@ export function ContractsListPage() {
                 <TableCell>End Date</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Budget Hours</TableCell>
-                <TableCell align="right">Expected/Week</TableCell>
-                <TableCell align="right">Actual/Week</TableCell>
+                <TableCell align="right">Assigned/Week</TableCell>
+                <TableCell align="right">Spent/Week</TableCell>
                 <TableCell align="right">Remaining</TableCell>
                 <TableCell>Flags</TableCell>
               </TableRow>
@@ -120,14 +120,14 @@ export function ContractsListPage() {
                   <TableCell>
                     <Chip label={contract.status} size="small" />
                   </TableCell>
-                  <TableCell align="right">{parseFloat(contract.budget_hours_total).toFixed(1)}</TableCell>
-                  <TableCell align="right">{parseFloat(contract.expected_hours_per_week).toFixed(1)}</TableCell>
-                  <TableCell align="right">{parseFloat(contract.actual_hours_per_week).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(contract.budget_hours).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(contract.assigned_budget_hours_per_week).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(contract.spent_hours_per_week).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.remaining_budget_hours).toFixed(1)}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                       {contract.is_over_budget && <StatusBadge type="over_budget" />}
-                      {contract.is_over_expected && <StatusBadge type="over_expected" />}
+                      {contract.is_overassigned && <StatusBadge type="overassigned" />}
                     </Box>
                   </TableCell>
                 </TableRow>

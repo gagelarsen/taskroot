@@ -11,23 +11,24 @@ export interface Contract {
   client_name: string;
   start_date: string;
   end_date: string;
-  budget_hours_total: string;
+  budget_hours: string;
   status: 'active' | 'completed' | 'on_hold';
   created_at: string;
   updated_at: string;
 
   // Rollup metrics
-  expected_hours_total: string;
-  actual_hours_total: string;
+  assigned_budget_hours: string;
+  spent_hours: string;
   planned_weeks: number;
   elapsed_weeks: number;
-  expected_hours_per_week: string;
-  actual_hours_per_week: string;
+  assigned_budget_hours_per_week: string;
+  spent_hours_per_week: string;
   remaining_budget_hours: string;
+  unspent_budget_hours: string;
 
   // Health flags
   is_over_budget: boolean;
-  is_over_expected: boolean;
+  is_overassigned: boolean;
 }
 
 // Forward declarations for circular references
@@ -36,7 +37,7 @@ export interface DeliverableAssignment {
   deliverable: number;
   staff: number;
   staff_name: string;
-  expected_hours: string;
+  budget_hours: string;
   is_lead: boolean;
   created_at: string;
 }
@@ -47,7 +48,7 @@ export interface Task {
   assignee: number | null;
   assignee_name: string | null;
   title: string;
-  planned_hours: string;
+  budget_hours: string;
   status: 'todo' | 'in_progress' | 'done' | 'blocked';
   created_at: string;
   updated_at: string;
@@ -58,6 +59,7 @@ export interface Deliverable {
   id: number;
   contract: number;
   name: string;
+  budget_hours: string;
   start_date: string | null;
   due_date: string | null;
   status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'blocked';
@@ -65,17 +67,20 @@ export interface Deliverable {
   updated_at: string;
 
   // Rollup metrics
-  expected_hours_total: string;
-  actual_hours_total: string;
+  assigned_budget_hours: string;
+  spent_hours: string;
   planned_weeks: number;
   elapsed_weeks: number;
-  expected_hours_per_week: string;
-  actual_hours_per_week: string;
+  assigned_budget_hours_per_week: string;
+  spent_hours_per_week: string;
+  remaining_budget_hours: string;
+  unspent_budget_hours: string;
   variance_hours: string;
 
   // Health flags
-  is_over_expected: boolean;
-  is_missing_estimate: boolean;
+  is_over_budget: boolean;
+  is_overassigned: boolean;
+  is_missing_budget: boolean;
   is_missing_lead: boolean;
 
   // Latest status update
@@ -126,7 +131,7 @@ export interface DeliverableAssignment {
   id: number;
   deliverable: number;
   staff: number;
-  expected_hours: string;
+  budget_hours: string;
   is_lead: boolean;
   created_at: string;
   updated_at: string;
@@ -143,7 +148,7 @@ export interface ContractFilters {
   order_by?: string;
   order_dir?: 'asc' | 'desc';
   over_budget?: boolean;
-  over_expected?: boolean;
+  overassigned?: boolean;
 }
 
 export interface DeliverableFilters {
@@ -159,9 +164,10 @@ export interface DeliverableFilters {
   q?: string;
   order_by?: string;
   order_dir?: 'asc' | 'desc';
-  over_expected?: boolean;
+  over_budget?: boolean;
+  overassigned?: boolean;
   missing_lead?: boolean;
-  missing_estimate?: boolean;
+  missing_budget?: boolean;
 }
 
 export interface TimeEntryFilters {
