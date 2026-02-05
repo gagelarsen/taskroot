@@ -12,7 +12,9 @@ import {
   CircularProgress,
   Alert,
   Chip,
+  Button,
 } from '@mui/material';
+import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { contractsApi } from '../api/client';
 import type { Contract, ContractFilters } from '../types/api';
@@ -64,9 +66,16 @@ export function ContractsListPage() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Contracts
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4">Contracts</Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => navigate('/contracts/new')}
+        >
+          Create Contract
+        </Button>
+      </Box>
 
       <FilterBar
         searchValue={filters.q || ''}

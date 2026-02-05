@@ -65,6 +65,20 @@ export const contractsApi = {
     const response = await apiClient.get(`/contracts/${id}/`);
     return response.data;
   },
+
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/contracts/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/contracts/${id}/`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/contracts/${id}/`);
+  },
 };
 
 // Deliverables API

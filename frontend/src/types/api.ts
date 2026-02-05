@@ -12,7 +12,7 @@ export interface Contract {
   start_date: string;
   end_date: string;
   budget_hours: string;
-  status: 'active' | 'completed' | 'on_hold';
+  status: 'draft' | 'active' | 'closed';
   created_at: string;
   updated_at: string;
 
