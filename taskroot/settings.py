@@ -139,9 +139,12 @@ REST_FRAMEWORK = {
     ],
     # Permissions/Auth: permissive for now (PR2), but centralized so we can tighten later (PR3/PR4).
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
+        "core.api.v1.permissions.HasStaffProfile",
     ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     # Pagination: makes list endpoints predictable as soon as we add them.
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
@@ -151,4 +154,14 @@ REST_FRAMEWORK = {
         "core.api.v1.backends.CanonicalSearchFilter",
         "core.api.v1.backends.CanonicalOrderingFilter",
     ],
+}
+
+# JWT Configuration
+# Use a separate signing key for JWT tokens (minimum 32 bytes for SHA256)
+SIMPLE_JWT = {
+    "SIGNING_KEY": os.getenv(
+        "JWT_SIGNING_KEY",
+        # Default dev key (32+ bytes) - MUST be changed in production
+        "dev-jwt-signing-key-min-32-bytes-for-sha256-security",
+    ),
 }

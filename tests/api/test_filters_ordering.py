@@ -38,7 +38,7 @@ def data():
 
     # Staff
     s1 = Staff.objects.create(
-        email="a@example.com", first_name="Alice", last_name="Able", status="active", role="member"
+        email="a@example.com", first_name="Alice", last_name="Able", status="active", role="staff"
     )
     s2 = Staff.objects.create(
         email="b@example.com", first_name="Bob", last_name="Baker", status="inactive", role="manager"

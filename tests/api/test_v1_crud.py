@@ -1,10 +1,26 @@
 import pytest
+from django.contrib.auth.models import User
 from rest_framework.test import APIClient
+
+from core.models import Staff
 
 
 @pytest.fixture()
-def api_client():
-    return APIClient()
+def admin_user(db):
+    """Create an admin user for CRUD tests."""
+    user = User.objects.create_user(username="admin", password="testpass123")
+    Staff.objects.create(
+        user=user, email="admin@example.com", first_name="Admin", last_name="User", role="admin", status="active"
+    )
+    return user
+
+
+@pytest.fixture()
+def api_client(admin_user):
+    """Return an authenticated API client with admin privileges."""
+    client = APIClient()
+    client.force_authenticate(user=admin_user)
+    return client
 
 
 @pytest.fixture()
@@ -14,7 +30,7 @@ def staff_payload():
         "first_name": "A",
         "last_name": "User",
         "status": "active",
-        "role": "member",
+        "role": "staff",
     }
 
 
