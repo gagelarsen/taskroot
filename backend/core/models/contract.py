@@ -12,6 +12,8 @@ class Contract(models.Model):
         ACTIVE = "active", "Active"
         CLOSED = "closed", "Closed"
 
+    name = models.CharField(max_length=255, default="")
+    client_name = models.CharField(max_length=255, default="")
     start_date = models.DateField()
     end_date = models.DateField()
     budget_hours_total = models.DecimalField(
@@ -33,6 +35,8 @@ class Contract(models.Model):
         ]
 
     def __str__(self) -> str:
+        if self.name:
+            return f"{self.name} (Contract #{self.pk})"
         return f"Contract #{self.pk} ({self.start_date} → {self.end_date})"
 
     # Rollup metrics - computed fields (read-only)

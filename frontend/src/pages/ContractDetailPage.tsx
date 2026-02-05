@@ -77,8 +77,13 @@ export function ContractDetailPage() {
       </Button>
 
       <Typography variant="h4" gutterBottom>
-        Contract #{contract.id}
+        {contract.name || `Contract #${contract.id}`}
       </Typography>
+      {contract.client_name && (
+        <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+          Client: {contract.client_name}
+        </Typography>
+      )}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 3 }}>
         <Card sx={{ flex: 1 }}>

@@ -107,10 +107,9 @@ class ContractViewSet(ModelViewSet):
     serializer_class = ContractSerializer
     filterset_class = ContractFilter
 
-    # If you add Contract.name later, update this to ["name"].
-    search_fields = ["id"]  # harmless placeholder; q won't be very useful without a text field
+    search_fields = ["name", "client_name"]
 
-    ordering_fields = ["start_date", "end_date", "id"]
+    ordering_fields = ["start_date", "end_date", "id", "name"]
 
     def get_queryset(self):
         return Contract.objects.all().order_by("-id")
