@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ContractsListPage } from './pages/ContractsListPage';
 import { ContractDetailPage } from './pages/ContractDetailPage';
 import { DeliverableDetailPage } from './pages/DeliverableDetailPage';
+import { TaskEditPage } from './pages/TaskEditPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('access_token');
@@ -55,6 +56,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <DeliverableDetailPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/tasks/:id"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <TaskEditPage />
                 </AppShell>
               </PrivateRoute>
             }

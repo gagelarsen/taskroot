@@ -17,7 +17,7 @@ import {
   Button,
   Stack,
 } from '@mui/material';
-import { ArrowBack } from '@mui/icons-material';
+import { ArrowBack, Add, Edit } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { deliverablesApi, timeEntriesApi, statusUpdatesApi } from '../api/client';
 import type { Deliverable, TimeEntry, DeliverableStatusUpdate } from '../types/api';
@@ -229,9 +229,16 @@ export function DeliverableDetailPage() {
         </Table>
       </TableContainer>
 
-      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
-        Tasks
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
+        <Typography variant="h5">Tasks</Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => navigate(`/tasks/new?deliverable=${deliverable.id}`)}
+        >
+          Create Task
+        </Button>
+      </Box>
 
       <TableContainer component={Paper} sx={{ mb: 4 }}>
         <Table>
@@ -242,12 +249,13 @@ export function DeliverableDetailPage() {
               <TableCell align="right">Budget Hours</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Updated At</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {deliverable.tasks && deliverable.tasks.length > 0 ? (
               deliverable.tasks.map((task) => (
-                <TableRow key={task.id}>
+                <TableRow key={task.id} hover>
                   <TableCell>{task.title}</TableCell>
                   <TableCell>{task.assignee_name || 'Unassigned'}</TableCell>
                   <TableCell align="right">{parseFloat(task.budget_hours).toFixed(1)}</TableCell>
@@ -255,11 +263,20 @@ export function DeliverableDetailPage() {
                     <Chip label={task.status} size="small" />
                   </TableCell>
                   <TableCell>{new Date(task.updated_at).toLocaleDateString()}</TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      startIcon={<Edit />}
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                    >
+                      Edit
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   <Typography color="text.secondary">No tasks</Typography>
                 </TableCell>
               </TableRow>
