@@ -87,17 +87,25 @@ export function DeliverableDetailPage() {
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Typography color="text.secondary" gutterBottom>
-              Expected Hours
+              Budget Hours
             </Typography>
-            <Typography variant="h5">{parseFloat(deliverable.expected_hours_total).toFixed(1)}</Typography>
+            <Typography variant="h5">{parseFloat(deliverable.budget_hours).toFixed(1)}</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Typography color="text.secondary" gutterBottom>
-              Actual Hours
+              Assigned Budget Hours
             </Typography>
-            <Typography variant="h5">{parseFloat(deliverable.actual_hours_total).toFixed(1)}</Typography>
+            <Typography variant="h5">{parseFloat(deliverable.assigned_budget_hours).toFixed(1)}</Typography>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Typography color="text.secondary" gutterBottom>
+              Spent Hours
+            </Typography>
+            <Typography variant="h5">{parseFloat(deliverable.spent_hours).toFixed(1)}</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
@@ -152,25 +160,25 @@ export function DeliverableDetailPage() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Box>
                 <Typography variant="caption" color="text.secondary">
-                  Expected Hours/Week
+                  Assigned Budget Hours/Week
                 </Typography>
-                <Typography>{parseFloat(deliverable.expected_hours_per_week).toFixed(1)}</Typography>
+                <Typography>{parseFloat(deliverable.assigned_budget_hours_per_week).toFixed(1)}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
-                  Actual Hours/Week
+                  Spent Hours/Week
                 </Typography>
-                <Typography>{parseFloat(deliverable.actual_hours_per_week).toFixed(1)}</Typography>
+                <Typography>{parseFloat(deliverable.spent_hours_per_week).toFixed(1)}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Health Flags
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                  {deliverable.is_over_expected && <StatusBadge type="over_expected" />}
+                  {deliverable.is_over_budget && <StatusBadge type="over_budget" />}
                   {deliverable.is_missing_lead && <StatusBadge type="missing_lead" />}
-                  {deliverable.is_missing_estimate && <StatusBadge type="missing_estimate" />}
-                  {!deliverable.is_over_expected && !deliverable.is_missing_lead && !deliverable.is_missing_estimate && (
+                  {deliverable.is_missing_budget && <StatusBadge type="missing_budget" />}
+                  {!deliverable.is_over_budget && !deliverable.is_missing_lead && !deliverable.is_missing_budget && (
                     <StatusBadge type="on_track" />
                   )}
                 </Box>
@@ -189,7 +197,7 @@ export function DeliverableDetailPage() {
           <TableHead>
             <TableRow>
               <TableCell>Staff Member</TableCell>
-              <TableCell align="right">Expected Hours</TableCell>
+              <TableCell align="right">Budget Hours</TableCell>
               <TableCell>Lead</TableCell>
               <TableCell>Assigned At</TableCell>
             </TableRow>
@@ -199,7 +207,7 @@ export function DeliverableDetailPage() {
               deliverable.assignments.map((assignment) => (
                 <TableRow key={assignment.id}>
                   <TableCell>{assignment.staff_name}</TableCell>
-                  <TableCell align="right">{parseFloat(assignment.expected_hours).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(assignment.budget_hours).toFixed(1)}</TableCell>
                   <TableCell>
                     {assignment.is_lead ? (
                       <Chip label="Lead" color="primary" size="small" />
@@ -231,7 +239,7 @@ export function DeliverableDetailPage() {
             <TableRow>
               <TableCell>Title</TableCell>
               <TableCell>Assignee</TableCell>
-              <TableCell align="right">Planned Hours</TableCell>
+              <TableCell align="right">Budget Hours</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Updated At</TableCell>
             </TableRow>
@@ -242,7 +250,7 @@ export function DeliverableDetailPage() {
                 <TableRow key={task.id}>
                   <TableCell>{task.title}</TableCell>
                   <TableCell>{task.assignee_name || 'Unassigned'}</TableCell>
-                  <TableCell align="right">{parseFloat(task.planned_hours).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(task.budget_hours).toFixed(1)}</TableCell>
                   <TableCell>
                     <Chip label={task.status} size="small" />
                   </TableCell>

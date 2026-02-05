@@ -7,7 +7,7 @@ import {
 } from '@mui/icons-material';
 
 interface StatusBadgeProps {
-  type: 'over_budget' | 'over_expected' | 'missing_lead' | 'missing_estimate' | 'unassigned' | 'on_track' | 'at_risk' | 'blocked' | 'completed';
+  type: 'over_budget' | 'overassigned' | 'missing_lead' | 'missing_budget' | 'unassigned' | 'on_track' | 'at_risk' | 'blocked' | 'completed';
   label?: string;
   size?: 'small' | 'medium';
 }
@@ -19,8 +19,8 @@ export function StatusBadge({ type, label, size = 'small' }: StatusBadgeProps) {
       color: 'error' as const,
       icon: <ErrorIcon />,
     },
-    over_expected: {
-      label: label || 'Over Expected',
+    overassigned: {
+      label: label || 'Overassigned',
       color: 'warning' as const,
       icon: <WarningIcon />,
     },
@@ -29,8 +29,8 @@ export function StatusBadge({ type, label, size = 'small' }: StatusBadgeProps) {
       color: 'warning' as const,
       icon: <WarningIcon />,
     },
-    missing_estimate: {
-      label: label || 'Missing Estimate',
+    missing_budget: {
+      label: label || 'Missing Budget',
       color: 'warning' as const,
       icon: <WarningIcon />,
     },

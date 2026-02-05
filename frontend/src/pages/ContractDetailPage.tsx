@@ -91,23 +91,23 @@ export function ContractDetailPage() {
             <Typography color="text.secondary" gutterBottom>
               Budget Hours
             </Typography>
-            <Typography variant="h5">{parseFloat(contract.budget_hours_total).toFixed(1)}</Typography>
+            <Typography variant="h5">{parseFloat(contract.budget_hours).toFixed(1)}</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Typography color="text.secondary" gutterBottom>
-              Expected Hours
+              Assigned Budget Hours
             </Typography>
-            <Typography variant="h5">{parseFloat(contract.expected_hours_total).toFixed(1)}</Typography>
+            <Typography variant="h5">{parseFloat(contract.assigned_budget_hours).toFixed(1)}</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Typography color="text.secondary" gutterBottom>
-              Actual Hours
+              Spent Hours
             </Typography>
-            <Typography variant="h5">{parseFloat(contract.actual_hours_total).toFixed(1)}</Typography>
+            <Typography variant="h5">{parseFloat(contract.spent_hours).toFixed(1)}</Typography>
           </CardContent>
         </Card>
         <Card sx={{ flex: 1 }}>
@@ -160,15 +160,15 @@ export function ContractDetailPage() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Box>
                 <Typography variant="caption" color="text.secondary">
-                  Expected Hours/Week
+                  Assigned Budget Hours/Week
                 </Typography>
-                <Typography>{parseFloat(contract.expected_hours_per_week).toFixed(1)}</Typography>
+                <Typography>{parseFloat(contract.assigned_budget_hours_per_week).toFixed(1)}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
-                  Actual Hours/Week
+                  Spent Hours/Week
                 </Typography>
-                <Typography>{parseFloat(contract.actual_hours_per_week).toFixed(1)}</Typography>
+                <Typography>{parseFloat(contract.spent_hours_per_week).toFixed(1)}</Typography>
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
@@ -176,8 +176,8 @@ export function ContractDetailPage() {
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
                   {contract.is_over_budget && <StatusBadge type="over_budget" />}
-                  {contract.is_over_expected && <StatusBadge type="over_expected" />}
-                  {!contract.is_over_budget && !contract.is_over_expected && (
+                  {contract.is_overassigned && <StatusBadge type="overassigned" />}
+                  {!contract.is_over_budget && !contract.is_overassigned && (
                     <StatusBadge type="on_track" />
                   )}
                 </Box>
@@ -198,8 +198,9 @@ export function ContractDetailPage() {
               <TableCell>Name</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Due Date</TableCell>
-              <TableCell align="right">Expected</TableCell>
-              <TableCell align="right">Actual</TableCell>
+              <TableCell align="right">Budget</TableCell>
+              <TableCell align="right">Assigned Budget</TableCell>
+              <TableCell align="right">Spent</TableCell>
               <TableCell align="right">Variance</TableCell>
               <TableCell>Latest Status</TableCell>
               <TableCell>Flags</TableCell>
@@ -218,8 +219,9 @@ export function ContractDetailPage() {
                   <Chip label={deliverable.status} size="small" />
                 </TableCell>
                 <TableCell>{deliverable.due_date || 'N/A'}</TableCell>
-                <TableCell align="right">{parseFloat(deliverable.expected_hours_total).toFixed(1)}</TableCell>
-                <TableCell align="right">{parseFloat(deliverable.actual_hours_total).toFixed(1)}</TableCell>
+                <TableCell align="right">{parseFloat(deliverable.budget_hours).toFixed(1)}</TableCell>
+                <TableCell align="right">{parseFloat(deliverable.assigned_budget_hours).toFixed(1)}</TableCell>
+                <TableCell align="right">{parseFloat(deliverable.spent_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.variance_hours).toFixed(1)}</TableCell>
                 <TableCell>
                   {deliverable.latest_status_update ? (
@@ -230,16 +232,16 @@ export function ContractDetailPage() {
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {deliverable.is_over_expected && <StatusBadge type="over_expected" />}
+                    {deliverable.is_over_budget && <StatusBadge type="over_budget" />}
                     {deliverable.is_missing_lead && <StatusBadge type="missing_lead" />}
-                    {deliverable.is_missing_estimate && <StatusBadge type="missing_estimate" />}
+                    {deliverable.is_missing_budget && <StatusBadge type="missing_budget" />}
                   </Box>
                 </TableCell>
               </TableRow>
             ))}
             {deliverables.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   No deliverables found
                 </TableCell>
               </TableRow>

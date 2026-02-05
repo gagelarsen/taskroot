@@ -31,17 +31,18 @@ class StaffSerializer(serializers.ModelSerializer):
 
 class ContractSerializer(serializers.ModelSerializer):
     # Computed rollup fields (read-only)
-    expected_hours_total = serializers.SerializerMethodField()
-    actual_hours_total = serializers.SerializerMethodField()
+    assigned_budget_hours = serializers.SerializerMethodField()
+    spent_hours = serializers.SerializerMethodField()
     planned_weeks = serializers.SerializerMethodField()
     elapsed_weeks = serializers.SerializerMethodField()
-    expected_hours_per_week = serializers.SerializerMethodField()
-    actual_hours_per_week = serializers.SerializerMethodField()
+    assigned_budget_hours_per_week = serializers.SerializerMethodField()
+    spent_hours_per_week = serializers.SerializerMethodField()
     remaining_budget_hours = serializers.SerializerMethodField()
+    unspent_budget_hours = serializers.SerializerMethodField()
 
     # Health flags (read-only)
     is_over_budget = serializers.SerializerMethodField()
-    is_over_expected = serializers.SerializerMethodField()
+    is_overassigned = serializers.SerializerMethodField()
 
     class Meta:
         model = Contract
@@ -51,45 +52,45 @@ class ContractSerializer(serializers.ModelSerializer):
             "client_name",
             "start_date",
             "end_date",
-            "budget_hours_total",
+            "budget_hours",
             "status",
             "created_at",
             "updated_at",
             # Computed fields
-            "expected_hours_total",
-            "actual_hours_total",
+            "assigned_budget_hours",
+            "spent_hours",
             "planned_weeks",
             "elapsed_weeks",
-            "expected_hours_per_week",
-            "actual_hours_per_week",
+            "assigned_budget_hours_per_week",
+            "spent_hours_per_week",
             "remaining_budget_hours",
+            "unspent_budget_hours",
             "is_over_budget",
-            "is_over_expected",
+            "is_overassigned",
         ]
         read_only_fields = [
             "id",
             "created_at",
             "updated_at",
-            "expected_hours_total",
-            "actual_hours_total",
+            "assigned_budget_hours",
+            "spent_hours",
             "planned_weeks",
             "elapsed_weeks",
-            "expected_hours_per_week",
-            "actual_hours_per_week",
+            "assigned_budget_hours_per_week",
+            "spent_hours_per_week",
             "remaining_budget_hours",
+            "unspent_budget_hours",
             "is_over_budget",
-            "is_over_expected",
+            "is_overassigned",
         ]
 
-    @extend_schema_field(
-        serializers.FloatField(read_only=True, help_text="Sum of expected hours from all deliverables")
-    )
-    def get_expected_hours_total(self, obj):
-        return obj.get_expected_hours_total()
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of budget hours from all deliverables"))
+    def get_assigned_budget_hours(self, obj):
+        return obj.get_assigned_budget_hours()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of actual hours from all deliverables"))
-    def get_actual_hours_total(self, obj):
-        return obj.get_actual_hours_total()
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of spent hours from all deliverables"))
+    def get_spent_hours(self, obj):
+        return obj.get_spent_hours()
 
     @extend_schema_field(
         serializers.IntegerField(read_only=True, help_text="Number of planned weeks for this contract")
@@ -103,25 +104,37 @@ class ContractSerializer(serializers.ModelSerializer):
     def get_elapsed_weeks(self, obj):
         return obj.get_elapsed_weeks()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Expected hours divided by planned weeks"))
-    def get_expected_hours_per_week(self, obj):
-        return obj.get_expected_hours_per_week()
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Assigned budget hours divided by planned weeks")
+    )
+    def get_assigned_budget_hours_per_week(self, obj):
+        return obj.get_assigned_budget_hours_per_week()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Actual hours divided by elapsed weeks"))
-    def get_actual_hours_per_week(self, obj):
-        return obj.get_actual_hours_per_week()
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Spent hours divided by elapsed weeks"))
+    def get_spent_hours_per_week(self, obj):
+        return obj.get_spent_hours_per_week()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Remaining budget hours (budget - actual)"))
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Remaining budget hours (budget - assigned budget hours)")
+    )
     def get_remaining_budget_hours(self, obj):
         return obj.get_remaining_budget_hours()
 
-    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if actual hours exceed budget"))
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Unspent budget hours (budget - spent hours)")
+    )
+    def get_unspent_budget_hours(self, obj):
+        return obj.get_unspent_budget_hours()
+
+    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if spent hours exceed budget"))
     def get_is_over_budget(self, obj):
         return obj.is_over_budget()
 
-    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if actual hours exceed expected"))
-    def get_is_over_expected(self, obj):
-        return obj.is_over_expected()
+    @extend_schema_field(
+        serializers.BooleanField(read_only=True, help_text="True if assigned budget hours exceed contract budget")
+    )
+    def get_is_overassigned(self, obj):
+        return obj.is_overassigned()
 
 
 class DeliverableAssignmentNestedSerializer(serializers.ModelSerializer):
@@ -131,7 +144,7 @@ class DeliverableAssignmentNestedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeliverableAssignment
-        fields = ["id", "staff", "staff_name", "expected_hours", "is_lead", "created_at"]
+        fields = ["id", "staff", "staff_name", "budget_hours", "is_lead", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def get_staff_name(self, obj):
@@ -145,7 +158,7 @@ class TaskNestedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ["id", "title", "assignee", "assignee_name", "planned_hours", "status", "created_at", "updated_at"]
+        fields = ["id", "title", "assignee", "assignee_name", "budget_hours", "status", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_assignee_name(self, obj):
@@ -156,17 +169,20 @@ class TaskNestedSerializer(serializers.ModelSerializer):
 
 class DeliverableSerializer(serializers.ModelSerializer):
     # Computed rollup fields (read-only)
-    expected_hours_total = serializers.SerializerMethodField()
-    actual_hours_total = serializers.SerializerMethodField()
+    assigned_budget_hours = serializers.SerializerMethodField()
+    spent_hours = serializers.SerializerMethodField()
     planned_weeks = serializers.SerializerMethodField()
     elapsed_weeks = serializers.SerializerMethodField()
-    expected_hours_per_week = serializers.SerializerMethodField()
-    actual_hours_per_week = serializers.SerializerMethodField()
+    assigned_budget_hours_per_week = serializers.SerializerMethodField()
+    spent_hours_per_week = serializers.SerializerMethodField()
+    remaining_budget_hours = serializers.SerializerMethodField()
+    unspent_budget_hours = serializers.SerializerMethodField()
     variance_hours = serializers.SerializerMethodField()
 
     # Health flags (read-only)
-    is_over_expected = serializers.SerializerMethodField()
-    is_missing_estimate = serializers.SerializerMethodField()
+    is_over_budget = serializers.SerializerMethodField()
+    is_overassigned = serializers.SerializerMethodField()
+    is_missing_budget = serializers.SerializerMethodField()
     is_missing_lead = serializers.SerializerMethodField()
 
     # Latest status update (read-only)
@@ -182,21 +198,25 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "id",
             "contract",  # writable FK id
             "name",
+            "budget_hours",
             "start_date",
             "due_date",
             "status",
             "created_at",
             "updated_at",
             # Computed fields
-            "expected_hours_total",
-            "actual_hours_total",
+            "assigned_budget_hours",
+            "spent_hours",
             "planned_weeks",
             "elapsed_weeks",
-            "expected_hours_per_week",
-            "actual_hours_per_week",
+            "assigned_budget_hours_per_week",
+            "spent_hours_per_week",
+            "remaining_budget_hours",
+            "unspent_budget_hours",
             "variance_hours",
-            "is_over_expected",
-            "is_missing_estimate",
+            "is_over_budget",
+            "is_overassigned",
+            "is_missing_budget",
             "is_missing_lead",
             "latest_status_update",
             # Nested related objects
@@ -207,28 +227,31 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
             "updated_at",
-            "expected_hours_total",
-            "actual_hours_total",
+            "assigned_budget_hours",
+            "spent_hours",
             "planned_weeks",
             "elapsed_weeks",
-            "expected_hours_per_week",
-            "actual_hours_per_week",
+            "assigned_budget_hours_per_week",
+            "spent_hours_per_week",
+            "remaining_budget_hours",
+            "unspent_budget_hours",
             "variance_hours",
-            "is_over_expected",
-            "is_missing_estimate",
+            "is_over_budget",
+            "is_overassigned",
+            "is_missing_budget",
             "is_missing_lead",
             "latest_status_update",
             "assignments",
             "tasks",
         ]
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of expected hours from all assignments"))
-    def get_expected_hours_total(self, obj):
-        return obj.get_expected_hours_total()
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of budget hours from all tasks"))
+    def get_assigned_budget_hours(self, obj):
+        return obj.get_assigned_budget_hours()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of actual hours from all time entries"))
-    def get_actual_hours_total(self, obj):
-        return obj.get_actual_hours_total()
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of spent hours from all time entries"))
+    def get_spent_hours(self, obj):
+        return obj.get_spent_hours()
 
     @extend_schema_field(
         serializers.IntegerField(read_only=True, help_text="Number of planned weeks for this deliverable")
@@ -242,29 +265,51 @@ class DeliverableSerializer(serializers.ModelSerializer):
     def get_elapsed_weeks(self, obj):
         return obj.get_elapsed_weeks()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Expected hours divided by planned weeks"))
-    def get_expected_hours_per_week(self, obj):
-        return obj.get_expected_hours_per_week()
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Assigned budget hours divided by planned weeks")
+    )
+    def get_assigned_budget_hours_per_week(self, obj):
+        return obj.get_assigned_budget_hours_per_week()
 
-    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Actual hours divided by elapsed weeks"))
-    def get_actual_hours_per_week(self, obj):
-        return obj.get_actual_hours_per_week()
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Spent hours divided by elapsed weeks"))
+    def get_spent_hours_per_week(self, obj):
+        return obj.get_spent_hours_per_week()
 
     @extend_schema_field(
-        serializers.FloatField(read_only=True, help_text="Variance between actual and expected (actual - expected)")
+        serializers.FloatField(read_only=True, help_text="Remaining budget hours (budget - assigned budget hours)")
+    )
+    def get_remaining_budget_hours(self, obj):
+        return obj.get_remaining_budget_hours()
+
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Unspent budget hours (budget - spent hours)")
+    )
+    def get_unspent_budget_hours(self, obj):
+        return obj.get_unspent_budget_hours()
+
+    @extend_schema_field(
+        serializers.FloatField(
+            read_only=True, help_text="Variance between spent and assigned budget hours (spent - assigned budget)"
+        )
     )
     def get_variance_hours(self, obj):
         return obj.get_variance_hours()
 
-    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if actual hours exceed expected"))
-    def get_is_over_expected(self, obj):
-        return obj.is_over_expected()
+    @extend_schema_field(
+        serializers.BooleanField(read_only=True, help_text="True if spent hours exceed deliverable budget")
+    )
+    def get_is_over_budget(self, obj):
+        return obj.is_over_budget()
 
     @extend_schema_field(
-        serializers.BooleanField(read_only=True, help_text="True if expected hours is 0 but has assignments")
+        serializers.BooleanField(read_only=True, help_text="True if assigned budget hours exceed deliverable budget")
     )
-    def get_is_missing_estimate(self, obj):
-        return obj.is_missing_estimate()
+    def get_is_overassigned(self, obj):
+        return obj.is_overassigned()
+
+    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if budget hours is 0 but has tasks"))
+    def get_is_missing_budget(self, obj):
+        return obj.is_missing_budget()
 
     @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if no assignment has is_lead=True"))
     def get_is_missing_lead(self, obj):
@@ -304,7 +349,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "deliverable",  # writable FK id
             "assignee",  # nullable FK id
             "title",
-            "planned_hours",
+            "budget_hours",
             "status",
             "created_at",
             "updated_at",
@@ -319,7 +364,7 @@ class DeliverableAssignmentSerializer(serializers.ModelSerializer):
             "id",
             "deliverable",  # writable FK id
             "staff",  # writable FK id
-            "expected_hours",
+            "budget_hours",
             "is_lead",
             "created_at",
         ]
