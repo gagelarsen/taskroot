@@ -29,6 +29,14 @@ class Deliverable(models.Model):
         indexes = [
             models.Index(fields=["contract"]),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(due_date__gte=models.F("start_date"))
+                | models.Q(due_date__isnull=True)
+                | models.Q(start_date__isnull=True),
+                name="deliverable_due_after_start",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.name or f"Deliverable #{self.pk}"

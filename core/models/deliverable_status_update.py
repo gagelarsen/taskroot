@@ -19,6 +19,7 @@ class DeliverableStatusUpdate(models.Model):
         Staff, null=True, blank=True, on_delete=models.SET_NULL, related_name="status_updates"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [

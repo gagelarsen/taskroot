@@ -24,6 +24,14 @@ class Contract(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_date__gte=models.F("start_date")),
+                name="contract_end_after_start",
+            ),
+        ]
+
     def __str__(self) -> str:
         return f"Contract #{self.pk} ({self.start_date} → {self.end_date})"
 

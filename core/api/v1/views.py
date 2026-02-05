@@ -1,6 +1,8 @@
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, extend_schema_view
+from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from core.api.v1.filters import (
@@ -449,7 +451,12 @@ class DeliverableAssignmentViewSet(ModelViewSet):
     ),
     create=extend_schema(
         summary="Create a time entry",
-        description="Create a new time entry. Staff can only create entries for themselves (staff field is auto-set).",
+        description=(
+            "Create a new time entry. Staff can only create entries for themselves (staff field is auto-set). "
+            "\n\n**Idempotency**: If external_source and external_id are provided, the API will check for an existing "
+            "entry with the same (external_source, external_id). If found, the existing entry is returned (200 OK) "
+            "instead of creating a duplicate. This ensures safe retries for integration systems."
+        ),
         examples=[
             OpenApiExample(
                 "Create time entry",
@@ -457,6 +464,19 @@ class DeliverableAssignmentViewSet(ModelViewSet):
                     "deliverable": 1,
                     "entry_date": "2024-01-15",
                     "hours": 8.0,
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Create time entry with idempotency key",
+                value={
+                    "deliverable": 1,
+                    "staff": 2,
+                    "entry_date": "2024-01-15",
+                    "hours": 8.0,
+                    "note": "Development work",
+                    "external_source": "jira",
+                    "external_id": "PROJ-123",
                 },
                 request_only=True,
             ),
@@ -486,6 +506,32 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
             .select_related("deliverable", "deliverable__contract", "staff")
             .order_by("-id")
         )
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new time entry with idempotency support.
+
+        If external_source and external_id are provided, check if an entry
+        with the same (external_source, external_id) already exists.
+        If found, return the existing entry (200 OK) instead of creating a duplicate.
+        """
+        # Check for idempotency key
+        external_source = request.data.get("external_source", "")
+        external_id = request.data.get("external_id", "")
+
+        if external_source and external_id:
+            # Try to find existing entry with same idempotency key
+            existing = DeliverableTimeEntry.objects.filter(
+                external_source=external_source, external_id=external_id
+            ).first()
+
+            if existing:
+                # Return existing entry (idempotent behavior)
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # No existing entry found, proceed with normal creation
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         role = get_staff_role(self.request)

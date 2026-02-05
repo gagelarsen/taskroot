@@ -18,15 +18,36 @@ class DeliverableTimeEntry(models.Model):
     )
     note = models.TextField(blank=True, default="")
 
-    external_source = models.CharField(max_length=100, blank=True, default="")
-    external_id = models.CharField(max_length=200, blank=True, default="")
+    # Idempotency fields for integration safety
+    # When external_source is set, (external_source, external_id) must be unique
+    external_source = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Source system identifier (e.g., 'jira', 'harvest', 'toggl')",
+    )
+    external_id = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="External system's unique identifier for this time entry",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["deliverable", "entry_date"]),
             models.Index(fields=["staff", "entry_date"]),
+            models.Index(fields=["external_source", "external_id"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["external_source", "external_id"],
+                condition=models.Q(external_source__gt=""),
+                name="unique_external_time_entry",
+            ),
         ]
 
     def __str__(self) -> str:

@@ -313,8 +313,9 @@ class DeliverableTimeEntrySerializer(serializers.ModelSerializer):
             "external_source",
             "external_id",
             "created_at",
+            "updated_at",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
     def validate_hours(self, value):
         # Ensure hours <= 0 becomes HTTP 400 consistently.
@@ -322,6 +323,26 @@ class DeliverableTimeEntrySerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Hours must be greater than 0.")
         return value
+
+    def validate(self, attrs):
+        """
+        Validate idempotency fields.
+        If external_source is provided, external_id must also be provided.
+        """
+        external_source = attrs.get("external_source", "")
+        external_id = attrs.get("external_id", "")
+
+        if external_source and not external_id:
+            raise serializers.ValidationError(
+                {"external_id": "external_id is required when external_source is provided."}
+            )
+
+        if external_id and not external_source:
+            raise serializers.ValidationError(
+                {"external_source": "external_source is required when external_id is provided."}
+            )
+
+        return attrs
 
 
 class DeliverableStatusUpdateSerializer(serializers.ModelSerializer):
@@ -335,8 +356,9 @@ class DeliverableStatusUpdateSerializer(serializers.ModelSerializer):
             "summary",
             "created_by",  # writable FK id (nullable if model allows)
             "created_at",
+            "updated_at",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
         validators = [
             # Ensures duplicate (deliverable, period_end) becomes HTTP 400 rather than DB 500
             UniqueTogetherValidator(
