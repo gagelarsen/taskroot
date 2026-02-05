@@ -14,20 +14,25 @@ TaskRoot/
 │   ├── requirements/ # Python dependencies
 │   ├── manage.py     # Django management script
 │   └── pyproject.toml # Python project config
-├── frontend/         # (Future) Frontend application
+├── frontend/         # React + TypeScript UI
+│   ├── src/          # Source code
+│   ├── public/       # Static assets
+│   └── package.json  # Node dependencies
 └── .github/          # CI/CD workflows
 ```
 
 The backend is a Django REST Framework API that provides all project tracking functionality.
-The frontend directory is reserved for future UI development.
+The frontend is a React + TypeScript application with Material-UI components.
 
 ## Local development
 
 ### Requirements
 - Python 3.13
 - pip
+- Node.js 18+ (for frontend)
+- npm or yarn (for frontend)
 
-### Setup
+### Backend Setup
 
 ```bash
 git clone <repo-url>
@@ -49,13 +54,30 @@ cd backend
 python manage.py migrate
 ```
 
-### Run the server
+### Run the backend server
 ```bash
 cd backend
 python manage.py runserver
 ```
 The API health endpoint should be available at:
 http://127.0.0.1:8000/api/v1/health/
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+```
+
+### Run the frontend dev server
+```bash
+cd frontend
+npm run dev
+```
+The frontend will be available at:
+http://localhost:5173
+
+**Note:** The frontend requires the backend API to be running on http://localhost:8000
 
 ### Run tests
 
