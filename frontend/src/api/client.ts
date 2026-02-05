@@ -79,6 +79,20 @@ export const deliverablesApi = {
     const response = await apiClient.get(`/deliverables/${id}/`);
     return response.data;
   },
+
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/deliverables/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/deliverables/${id}/`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/deliverables/${id}/`);
+  },
 };
 
 // Staff API
