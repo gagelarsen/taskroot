@@ -1,0 +1,2492 @@
+openapi: 3.0.3
+info:
+  title: TaskRoot API
+  version: v1
+  description: "\nTaskRoot is a project tracking API that manages contracts, deliverables,
+    tasks, and time tracking.\n\n## Key Features\n\n- **Hierarchical structure**:
+    Contracts → Deliverables → Tasks\n- **Deliverable-level time tracking**: Track
+    time entries at the deliverable level\n- **Expected vs Actual rollups**: Automatic
+    computation of expected hours (from assignments) vs actual hours (from time entries)\n-
+    **Per-week burn metrics**: Track expected and actual hours per week with consistent
+    weeks calculations\n- **Status history**: Track deliverable status updates over
+    time with period-based reporting\n- **Health indicators**: Automatic flags for
+    over-expected, over-budget, missing estimates, and missing leads\n- **Role-based
+    permissions**: Admin, Manager, and Staff roles with granular access control\n-
+    **JWT authentication**: Secure token-based authentication\n\n## API Conventions\n\nSee
+    the detailed API Conventions section below for information on filtering, ordering,
+    pagination, and error handling.\n    "
+  contact:
+    name: TaskRoot Team
+  license:
+    name: Proprietary
+paths:
+  /api/v1/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: Authenticate with username and password to receive access and refresh
+        tokens.
+      summary: Obtain JWT token pair
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPairRequest'
+            examples:
+              AdminLogin:
+                value:
+                  username: admin
+                  password: admin123
+                summary: Admin login
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+              examples:
+                TokenResponse:
+                  value:
+                    access: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    refresh: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  summary: Token response
+          description: ''
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: Use a refresh token to obtain a new access token.
+      summary: Refresh JWT access token
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+            examples:
+              RefreshRequest:
+                value:
+                  refresh: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                summary: Refresh request
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+              examples:
+                NewAccessToken:
+                  value:
+                    access: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  summary: New access token
+          description: ''
+  /api/v1/auth/token/verify/:
+    post:
+      operationId: auth_token_verify_create
+      description: Check if a token is valid and not expired.
+      summary: Verify JWT token
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+            examples:
+              VerifyRequest:
+                value:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                summary: Verify request
+        required: true
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/contracts/:
+    get:
+      operationId: contracts_list
+      description: List all contracts with optional filtering, ordering, and pagination.
+      summary: List contracts
+      parameters:
+      - in: query
+        name: end_date_from
+        schema:
+          type: string
+          format: date
+        description: Filter contracts ending on or after this date
+      - in: query
+        name: end_date_to
+        schema:
+          type: string
+          format: date
+        description: Filter contracts ending on or before this date
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - end_date
+          - id
+          - start_date
+        description: Field to order by (start_date, end_date, id)
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - in: query
+        name: over_budget
+        schema:
+          type: boolean
+        description: Filter contracts over budget (true/false)
+      - in: query
+        name: over_expected
+        schema:
+          type: boolean
+        description: Filter contracts over expected hours (true/false)
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: start_date_from
+        schema:
+          type: string
+          format: date
+        description: Filter contracts starting on or after this date
+      - in: query
+        name: start_date_to
+        schema:
+          type: string
+          format: date
+        description: Filter contracts starting on or before this date
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - contracts
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContractList'
+          description: ''
+    post:
+      operationId: contracts_create
+      description: Create a new contract. Requires manager or admin role.
+      summary: Create a contract
+      tags:
+      - contracts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractRequest'
+            examples:
+              CreateContract:
+                value:
+                  start_date: '2024-01-01'
+                  end_date: '2024-12-31'
+                  budget_hours_total: 1000.0
+                  status: active
+                summary: Create contract
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+          description: ''
+  /api/v1/contracts/{id}/:
+    get:
+      operationId: contracts_retrieve
+      description: Retrieve a single contract by ID with all rollup metrics.
+      summary: Get a contract
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this contract.
+        required: true
+      tags:
+      - contracts
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+          description: ''
+    put:
+      operationId: contracts_update
+      description: Update a contract. Requires manager or admin role.
+      summary: Update a contract
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this contract.
+        required: true
+      tags:
+      - contracts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+          description: ''
+    patch:
+      operationId: contracts_partial_update
+      description: Partially update a contract. Requires manager or admin role.
+      summary: Partially update a contract
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this contract.
+        required: true
+      tags:
+      - contracts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedContractRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+          description: ''
+    delete:
+      operationId: contracts_destroy
+      description: Delete a contract. Requires manager or admin role.
+      summary: Delete a contract
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this contract.
+        required: true
+      tags:
+      - contracts
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/deliverable-assignments/:
+    get:
+      operationId: deliverable_assignments_list
+      description: List all deliverable assignments with optional filtering, ordering,
+        and pagination.
+      summary: List deliverable assignments
+      parameters:
+      - in: query
+        name: contract_id
+        schema:
+          type: number
+      - in: query
+        name: deliverable_id
+        schema:
+          type: integer
+        description: Filter by deliverable ID
+      - in: query
+        name: is_lead
+        schema:
+          type: boolean
+        description: Filter by lead assignments (true/false)
+      - in: query
+        name: lead_only
+        schema:
+          type: string
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - id
+        description: Field to order by
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: staff_id
+        schema:
+          type: integer
+        description: Filter by staff ID
+      tags:
+      - deliverable-assignments
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeliverableAssignmentList'
+          description: ''
+    post:
+      operationId: deliverable_assignments_create
+      description: Assign a staff member to a deliverable. Requires manager or admin
+        role.
+      summary: Create a deliverable assignment
+      tags:
+      - deliverable-assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableAssignmentRequest'
+            examples:
+              CreateAssignmentWithLead:
+                value:
+                  deliverable: 1
+                  staff: 2
+                  expected_hours: 40.0
+                  is_lead: true
+                summary: Create assignment with lead
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableAssignment'
+          description: ''
+  /api/v1/deliverable-assignments/{id}/:
+    get:
+      operationId: deliverable_assignments_retrieve
+      description: Retrieve a single deliverable assignment by ID.
+      summary: Get a deliverable assignment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable assignment.
+        required: true
+      tags:
+      - deliverable-assignments
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableAssignment'
+          description: ''
+    put:
+      operationId: deliverable_assignments_update
+      description: Update a deliverable assignment. Requires manager or admin role.
+      summary: Update a deliverable assignment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable assignment.
+        required: true
+      tags:
+      - deliverable-assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableAssignmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableAssignment'
+          description: ''
+    patch:
+      operationId: deliverable_assignments_partial_update
+      description: Partially update a deliverable assignment. Requires manager or
+        admin role.
+      summary: Partially update a deliverable assignment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable assignment.
+        required: true
+      tags:
+      - deliverable-assignments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDeliverableAssignmentRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableAssignment'
+          description: ''
+    delete:
+      operationId: deliverable_assignments_destroy
+      description: Delete a deliverable assignment. Requires manager or admin role.
+      summary: Delete a deliverable assignment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable assignment.
+        required: true
+      tags:
+      - deliverable-assignments
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/deliverable-status-updates/:
+    get:
+      operationId: deliverable_status_updates_list
+      description: List all status updates with optional filtering, ordering, and
+        pagination.
+      summary: List deliverable status updates
+      parameters:
+      - in: query
+        name: contract_id
+        schema:
+          type: number
+      - in: query
+        name: deliverable_id
+        schema:
+          type: integer
+        description: Filter by deliverable ID
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - id
+          - period_end
+        description: Field to order by
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: period_end_from
+        schema:
+          type: string
+          format: date
+        description: Filter updates with period ending on or after this date
+      - in: query
+        name: period_end_to
+        schema:
+          type: string
+          format: date
+        description: Filter updates with period ending on or before this date
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - at_risk
+          - blocked
+          - complete
+          - on_track
+        description: Filter by status
+      tags:
+      - deliverable-status-updates
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeliverableStatusUpdateList'
+          description: ''
+    post:
+      operationId: deliverable_status_updates_create
+      description: Create a new status update for a deliverable. Requires manager
+        or admin role.
+      summary: Create a status update
+      tags:
+      - deliverable-status-updates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableStatusUpdateRequest'
+            examples:
+              CreateStatusUpdate:
+                value:
+                  deliverable: 1
+                  period_end: '2024-01-31'
+                  status: on_track
+                  summary: All tasks completed on schedule.
+                summary: Create status update
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableStatusUpdate'
+          description: ''
+  /api/v1/deliverable-status-updates/{id}/:
+    get:
+      operationId: deliverable_status_updates_retrieve
+      description: Retrieve a single status update by ID.
+      summary: Get a status update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable status update.
+        required: true
+      tags:
+      - deliverable-status-updates
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableStatusUpdate'
+          description: ''
+    put:
+      operationId: deliverable_status_updates_update
+      description: Update a status update. Requires manager or admin role.
+      summary: Update a status update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable status update.
+        required: true
+      tags:
+      - deliverable-status-updates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableStatusUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableStatusUpdate'
+          description: ''
+    patch:
+      operationId: deliverable_status_updates_partial_update
+      description: Partially update a status update. Requires manager or admin role.
+      summary: Partially update a status update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable status update.
+        required: true
+      tags:
+      - deliverable-status-updates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDeliverableStatusUpdateRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableStatusUpdate'
+          description: ''
+    delete:
+      operationId: deliverable_status_updates_destroy
+      description: Delete a status update. Requires manager or admin role.
+      summary: Delete a status update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable status update.
+        required: true
+      tags:
+      - deliverable-status-updates
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/deliverable-time-entries/:
+    get:
+      operationId: deliverable_time_entries_list
+      description: List all time entries with optional filtering, ordering, and pagination.
+      summary: List deliverable time entries
+      parameters:
+      - in: query
+        name: contract_id
+        schema:
+          type: number
+      - in: query
+        name: deliverable_id
+        schema:
+          type: integer
+        description: Filter by deliverable ID
+      - in: query
+        name: entry_date_from
+        schema:
+          type: string
+          format: date
+        description: Filter entries on or after this date
+      - in: query
+        name: entry_date_to
+        schema:
+          type: string
+          format: date
+        description: Filter entries on or before this date
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - entry_date
+          - id
+        description: Field to order by
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: staff_id
+        schema:
+          type: integer
+        description: Filter by staff ID
+      tags:
+      - deliverable-time-entries
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeliverableTimeEntryList'
+          description: ''
+    post:
+      operationId: deliverable_time_entries_create
+      description: Create a new time entry. Staff can only create entries for themselves
+        (staff field is auto-set).
+      summary: Create a time entry
+      tags:
+      - deliverable-time-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableTimeEntryRequest'
+            examples:
+              CreateTimeEntry:
+                value:
+                  deliverable: 1
+                  entry_date: '2024-01-15'
+                  hours: 8.0
+                summary: Create time entry
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableTimeEntry'
+          description: ''
+  /api/v1/deliverable-time-entries/{id}/:
+    get:
+      operationId: deliverable_time_entries_retrieve
+      description: Retrieve a single time entry by ID.
+      summary: Get a time entry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable time entry.
+        required: true
+      tags:
+      - deliverable-time-entries
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableTimeEntry'
+          description: ''
+    put:
+      operationId: deliverable_time_entries_update
+      description: Update a time entry. Staff can only update their own entries.
+      summary: Update a time entry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable time entry.
+        required: true
+      tags:
+      - deliverable-time-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableTimeEntryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableTimeEntry'
+          description: ''
+    patch:
+      operationId: deliverable_time_entries_partial_update
+      description: Partially update a time entry. Staff can only update their own
+        entries.
+      summary: Partially update a time entry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable time entry.
+        required: true
+      tags:
+      - deliverable-time-entries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDeliverableTimeEntryRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliverableTimeEntry'
+          description: ''
+    delete:
+      operationId: deliverable_time_entries_destroy
+      description: Delete a time entry. Staff can only delete their own entries.
+      summary: Delete a time entry
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable time entry.
+        required: true
+      tags:
+      - deliverable-time-entries
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/deliverables/:
+    get:
+      operationId: deliverables_list
+      description: List all deliverables with rollup metrics, optional filtering,
+        ordering, and pagination.
+      summary: List deliverables
+      parameters:
+      - in: query
+        name: contract_id
+        schema:
+          type: integer
+        description: Filter by contract ID
+      - in: query
+        name: due_date_from
+        schema:
+          type: string
+          format: date
+        description: Filter deliverables due on or after this date
+      - in: query
+        name: due_date_to
+        schema:
+          type: string
+          format: date
+        description: Filter deliverables due on or before this date
+      - in: query
+        name: has_assignments
+        schema:
+          type: string
+      - in: query
+        name: lead_only
+        schema:
+          type: boolean
+        description: Filter deliverables where staff is lead (requires staff_id)
+      - in: query
+        name: missing_estimate
+        schema:
+          type: boolean
+        description: Filter deliverables missing estimates (true/false)
+      - in: query
+        name: missing_lead
+        schema:
+          type: boolean
+        description: Filter deliverables missing a lead assignment (true/false)
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - due_date
+          - id
+          - start_date
+        description: Field to order by
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - in: query
+        name: over_expected
+        schema:
+          type: boolean
+        description: Filter deliverables over expected hours (true/false)
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search by deliverable name
+      - in: query
+        name: staff_id
+        schema:
+          type: integer
+        description: Filter deliverables assigned to this staff member
+      - in: query
+        name: start_date_from
+        schema:
+          type: string
+          format: date
+        description: Filter deliverables starting on or after this date
+      - in: query
+        name: start_date_to
+        schema:
+          type: string
+          format: date
+        description: Filter deliverables starting on or before this date
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - deliverables
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDeliverableList'
+          description: ''
+    post:
+      operationId: deliverables_create
+      description: Create a new deliverable. Requires manager or admin role.
+      summary: Create a deliverable
+      tags:
+      - deliverables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableRequest'
+            examples:
+              CreateDeliverable:
+                value:
+                  contract: 1
+                  name: API Development
+                  start_date: '2024-01-01'
+                  due_date: '2024-01-31'
+                  status: in_progress
+                summary: Create deliverable
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deliverable'
+          description: ''
+  /api/v1/deliverables/{id}/:
+    get:
+      operationId: deliverables_retrieve
+      description: Retrieve a single deliverable by ID with all rollup metrics.
+      summary: Get a deliverable
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable.
+        required: true
+      tags:
+      - deliverables
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deliverable'
+          description: ''
+    put:
+      operationId: deliverables_update
+      description: Update a deliverable. Requires manager or admin role.
+      summary: Update a deliverable
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable.
+        required: true
+      tags:
+      - deliverables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverableRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deliverable'
+          description: ''
+    patch:
+      operationId: deliverables_partial_update
+      description: Partially update a deliverable. Requires manager or admin role.
+      summary: Partially update a deliverable
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable.
+        required: true
+      tags:
+      - deliverables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDeliverableRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deliverable'
+          description: ''
+    delete:
+      operationId: deliverables_destroy
+      description: Delete a deliverable. Requires manager or admin role.
+      summary: Delete a deliverable
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this deliverable.
+        required: true
+      tags:
+      - deliverables
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: health_retrieve
+      description: Simple health check endpoint that returns OK status. No authentication
+        required.
+      summary: Health check
+      tags:
+      - health
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: ''
+  /api/v1/staff/:
+    get:
+      operationId: staff_list
+      description: List all staff members with optional search, ordering, and pagination.
+      summary: List staff members
+      parameters:
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - id
+        description: Field to order by
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search by email, first name, or last name
+      - in: query
+        name: role
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - staff
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStaffList'
+          description: ''
+    post:
+      operationId: staff_create
+      description: Create a new staff member. Requires admin role.
+      summary: Create a staff member
+      tags:
+      - staff
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffRequest'
+            examples:
+              CreateStaff:
+                value:
+                  email: john.doe@example.com
+                  first_name: John
+                  last_name: Doe
+                  status: active
+                  role: staff
+                summary: Create staff
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+  /api/v1/staff/{id}/:
+    get:
+      operationId: staff_retrieve
+      description: Retrieve a single staff member by ID.
+      summary: Get a staff member
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this staff.
+        required: true
+      tags:
+      - staff
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+    put:
+      operationId: staff_update
+      description: Update a staff member. Requires admin role.
+      summary: Update a staff member
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this staff.
+        required: true
+      tags:
+      - staff
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+    patch:
+      operationId: staff_partial_update
+      description: Partially update a staff member. Requires admin role.
+      summary: Partially update a staff member
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this staff.
+        required: true
+      tags:
+      - staff
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+    delete:
+      operationId: staff_destroy
+      description: Delete a staff member. Requires admin role.
+      summary: Delete a staff member
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this staff.
+        required: true
+      tags:
+      - staff
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/tasks/:
+    get:
+      operationId: tasks_list
+      description: List all tasks with optional filtering, ordering, and pagination.
+      summary: List tasks
+      parameters:
+      - in: query
+        name: assignee_id
+        schema:
+          type: integer
+        description: Filter by assignee staff ID
+      - in: query
+        name: contract_id
+        schema:
+          type: integer
+        description: Filter by contract ID
+      - in: query
+        name: deliverable_id
+        schema:
+          type: integer
+        description: Filter by deliverable ID
+      - in: query
+        name: due_date_from
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: due_date_to
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: order_by
+        schema:
+          type: string
+          enum:
+          - id
+        description: Field to order by
+      - in: query
+        name: order_dir
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+        description: Order direction
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search by task title
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: unassigned
+        schema:
+          type: boolean
+        description: Filter unassigned tasks (true/false)
+      tags:
+      - tasks
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTaskList'
+          description: ''
+    post:
+      operationId: tasks_create
+      description: Create a new task. Staff can only create tasks assigned to themselves
+        or unassigned.
+      summary: Create a task
+      tags:
+      - tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+            examples:
+              CreateUnassignedTask:
+                value:
+                  deliverable: 1
+                  title: Review API documentation
+                  assignee: null
+                summary: Create unassigned task
+              CreateAssignedTask:
+                value:
+                  deliverable: 1
+                  title: Implement authentication
+                  assignee: 2
+                summary: Create assigned task
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/tasks/{id}/:
+    get:
+      operationId: tasks_retrieve
+      description: Retrieve a single task by ID.
+      summary: Get a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this task.
+        required: true
+      tags:
+      - tasks
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    put:
+      operationId: tasks_update
+      description: Update a task. Staff can only update tasks assigned to themselves.
+      summary: Update a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this task.
+        required: true
+      tags:
+      - tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    patch:
+      operationId: tasks_partial_update
+      description: Partially update a task. Staff can only update tasks assigned to
+        themselves.
+      summary: Partially update a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this task.
+        required: true
+      tags:
+      - tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskRequest'
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    delete:
+      operationId: tasks_destroy
+      description: Delete a task. Staff can only delete tasks assigned to themselves.
+      summary: Delete a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this task.
+        required: true
+      tags:
+      - tasks
+      security:
+      - jwtAuth: []
+      - bearerAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Contract:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        budget_hours_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/ContractStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expected_hours_total:
+          type: number
+          format: double
+          readOnly: true
+          description: Sum of expected hours from all deliverables
+        actual_hours_total:
+          type: number
+          format: double
+          readOnly: true
+          description: Sum of actual hours from all deliverables
+        planned_weeks:
+          type: integer
+          readOnly: true
+          description: Number of planned weeks for this contract
+        elapsed_weeks:
+          type: integer
+          readOnly: true
+          description: Number of elapsed weeks from start to today
+        expected_hours_per_week:
+          type: number
+          format: double
+          readOnly: true
+          description: Expected hours divided by planned weeks
+        actual_hours_per_week:
+          type: number
+          format: double
+          readOnly: true
+          description: Actual hours divided by elapsed weeks
+        remaining_budget_hours:
+          type: number
+          format: double
+          readOnly: true
+          description: Remaining budget hours (budget - actual)
+        is_over_budget:
+          type: boolean
+          readOnly: true
+          description: True if actual hours exceed budget
+        is_over_expected:
+          type: boolean
+          readOnly: true
+          description: True if actual hours exceed expected
+      required:
+      - actual_hours_per_week
+      - actual_hours_total
+      - budget_hours_total
+      - created_at
+      - elapsed_weeks
+      - end_date
+      - expected_hours_per_week
+      - expected_hours_total
+      - id
+      - is_over_budget
+      - is_over_expected
+      - planned_weeks
+      - remaining_budget_hours
+      - start_date
+      - updated_at
+    ContractRequest:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        budget_hours_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/ContractStatusEnum'
+      required:
+      - budget_hours_total
+      - end_date
+      - start_date
+    ContractStatusEnum:
+      enum:
+      - draft
+      - active
+      - closed
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `active` - Active
+        * `closed` - Closed
+    Deliverable:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        contract:
+          type: integer
+        name:
+          type: string
+          maxLength: 255
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DeliverableStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expected_hours_total:
+          type: number
+          format: double
+          readOnly: true
+          description: Sum of expected hours from all assignments
+        actual_hours_total:
+          type: number
+          format: double
+          readOnly: true
+          description: Sum of actual hours from all time entries
+        planned_weeks:
+          type: integer
+          readOnly: true
+          description: Number of planned weeks for this deliverable
+        elapsed_weeks:
+          type: integer
+          readOnly: true
+          description: Number of elapsed weeks from start to today
+        expected_hours_per_week:
+          type: number
+          format: double
+          readOnly: true
+          description: Expected hours divided by planned weeks
+        actual_hours_per_week:
+          type: number
+          format: double
+          readOnly: true
+          description: Actual hours divided by elapsed weeks
+        variance_hours:
+          type: number
+          format: double
+          readOnly: true
+          description: Variance between actual and expected (actual - expected)
+        is_over_expected:
+          type: boolean
+          readOnly: true
+          description: True if actual hours exceed expected
+        is_missing_estimate:
+          type: boolean
+          readOnly: true
+          description: True if expected hours is 0 but has assignments
+        is_missing_lead:
+          type: boolean
+          readOnly: true
+          description: True if no assignment has is_lead=True
+        latest_status_update:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+          nullable: true
+          description: Most recent status update by period_end
+      required:
+      - actual_hours_per_week
+      - actual_hours_total
+      - contract
+      - created_at
+      - elapsed_weeks
+      - expected_hours_per_week
+      - expected_hours_total
+      - id
+      - is_missing_estimate
+      - is_missing_lead
+      - is_over_expected
+      - latest_status_update
+      - planned_weeks
+      - updated_at
+      - variance_hours
+    DeliverableAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        deliverable:
+          type: integer
+        staff:
+          type: integer
+        expected_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_lead:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - deliverable
+      - id
+      - staff
+    DeliverableAssignmentRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        staff:
+          type: integer
+        expected_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_lead:
+          type: boolean
+      required:
+      - deliverable
+      - staff
+    DeliverableRequest:
+      type: object
+      properties:
+        contract:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DeliverableStatusEnum'
+      required:
+      - contract
+    DeliverableStatusEnum:
+      enum:
+      - planned
+      - in_progress
+      - complete
+      - blocked
+      type: string
+      description: |-
+        * `planned` - Planned
+        * `in_progress` - In progress
+        * `complete` - Complete
+        * `blocked` - Blocked
+    DeliverableStatusUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        deliverable:
+          type: integer
+        period_end:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DeliverableStatusUpdateStatusEnum'
+        summary:
+          type: string
+        created_by:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - deliverable
+      - id
+      - period_end
+      - status
+    DeliverableStatusUpdateRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        period_end:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DeliverableStatusUpdateStatusEnum'
+        summary:
+          type: string
+        created_by:
+          type: integer
+          nullable: true
+      required:
+      - deliverable
+      - period_end
+      - status
+    DeliverableStatusUpdateStatusEnum:
+      enum:
+      - on_track
+      - at_risk
+      - off_track
+      type: string
+      description: |-
+        * `on_track` - On track
+        * `at_risk` - At risk
+        * `off_track` - Off track
+    DeliverableTimeEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        deliverable:
+          type: integer
+        staff:
+          type: integer
+        entry_date:
+          type: string
+          format: date
+        hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        note:
+          type: string
+        external_source:
+          type: string
+          maxLength: 100
+        external_id:
+          type: string
+          maxLength: 200
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - deliverable
+      - entry_date
+      - hours
+      - id
+    DeliverableTimeEntryRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        staff:
+          type: integer
+        entry_date:
+          type: string
+          format: date
+        hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        note:
+          type: string
+        external_source:
+          type: string
+          maxLength: 100
+        external_id:
+          type: string
+          maxLength: 200
+      required:
+      - deliverable
+      - entry_date
+      - hours
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          default: ok
+    PaginatedContractList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contract'
+    PaginatedDeliverableAssignmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliverableAssignment'
+    PaginatedDeliverableList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deliverable'
+    PaginatedDeliverableStatusUpdateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliverableStatusUpdate'
+    PaginatedDeliverableTimeEntryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliverableTimeEntry'
+    PaginatedStaffList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Staff'
+    PaginatedTaskList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+    PatchedContractRequest:
+      type: object
+      properties:
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        budget_hours_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/ContractStatusEnum'
+    PatchedDeliverableAssignmentRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        staff:
+          type: integer
+        expected_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_lead:
+          type: boolean
+    PatchedDeliverableRequest:
+      type: object
+      properties:
+        contract:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DeliverableStatusEnum'
+    PatchedDeliverableStatusUpdateRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        period_end:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/DeliverableStatusUpdateStatusEnum'
+        summary:
+          type: string
+        created_by:
+          type: integer
+          nullable: true
+    PatchedDeliverableTimeEntryRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        staff:
+          type: integer
+        entry_date:
+          type: string
+          format: date
+        hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        note:
+          type: string
+        external_source:
+          type: string
+          maxLength: 100
+        external_id:
+          type: string
+          maxLength: 200
+    PatchedStaffRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        status:
+          $ref: '#/components/schemas/StaffStatusEnum'
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+    PatchedTaskRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        assignee:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        planned_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+    RoleEnum:
+      enum:
+      - staff
+      - manager
+      - admin
+      type: string
+      description: |-
+        * `staff` - Staff
+        * `manager` - Manager
+        * `admin` - Admin
+    Staff:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        status:
+          $ref: '#/components/schemas/StaffStatusEnum'
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - first_name
+      - id
+      - last_name
+      - updated_at
+    StaffRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        status:
+          $ref: '#/components/schemas/StaffStatusEnum'
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+      required:
+      - email
+      - first_name
+      - last_name
+    StaffStatusEnum:
+      enum:
+      - active
+      - inactive
+      type: string
+      description: |-
+        * `active` - Active
+        * `inactive` - Inactive
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        deliverable:
+          type: integer
+        assignee:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          maxLength: 255
+        planned_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - deliverable
+      - id
+      - title
+      - updated_at
+    TaskRequest:
+      type: object
+      properties:
+        deliverable:
+          type: integer
+        assignee:
+          type: integer
+          nullable: true
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        planned_hours:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+      required:
+      - deliverable
+      - title
+    TaskStatusEnum:
+      enum:
+      - todo
+      - in_progress
+      - done
+      - blocked
+      type: string
+      description: |-
+        * `todo` - To do
+        * `in_progress` - In progress
+        * `done` - Done
+        * `blocked` - Blocked
+    TokenObtainPair:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TokenVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - token
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/v1/auth/token/
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+servers:
+- url: http://127.0.0.1:8000
+  description: Local development server
+tags:
+- name: auth
+  description: JWT authentication endpoints
+- name: staff
+  description: Staff member management
+- name: contracts
+  description: Contract management
+- name: deliverables
+  description: Deliverable management with rollup metrics
+- name: tasks
+  description: Task management
+- name: deliverable-assignments
+  description: Deliverable assignment management
+- name: deliverable-time-entries
+  description: Time entry tracking
+- name: deliverable-status-updates
+  description: Status update history
+- name: health
+  description: Health check endpoint

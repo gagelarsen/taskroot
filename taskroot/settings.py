@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "django_filters",
+    "drf_spectacular",
     # Local
     "core",
 ]
@@ -154,6 +155,8 @@ REST_FRAMEWORK = {
         "core.api.v1.backends.CanonicalSearchFilter",
         "core.api.v1.backends.CanonicalOrderingFilter",
     ],
+    # Schema generation
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 # JWT Configuration
@@ -164,4 +167,62 @@ SIMPLE_JWT = {
         # Default dev key (32+ bytes) - MUST be changed in production
         "dev-jwt-signing-key-min-32-bytes-for-sha256-security",
     ),
+}
+
+# API Documentation with drf-spectacular
+SPECTACULAR_SETTINGS = {
+    "TITLE": "TaskRoot API",
+    "VERSION": "v1",
+    "DESCRIPTION": """
+TaskRoot is a project tracking API that manages contracts, deliverables, tasks, and time tracking.
+
+## Key Features
+
+- **Hierarchical structure**: Contracts → Deliverables → Tasks
+- **Deliverable-level time tracking**: Track time entries at the deliverable level
+- **Expected vs Actual rollups**: Automatic computation of expected hours vs actual hours
+- **Per-week burn metrics**: Track expected and actual hours per week with consistent weeks calculations
+- **Status history**: Track deliverable status updates over time with period-based reporting
+- **Health indicators**: Automatic flags for over-expected, over-budget, missing estimates, and missing leads
+- **Role-based permissions**: Admin, Manager, and Staff roles with granular access control
+- **JWT authentication**: Secure token-based authentication
+
+## API Conventions
+
+See the detailed API Conventions section below for information on filtering, ordering, pagination, and error handling.
+    """,
+    "CONTACT": {
+        "name": "TaskRoot Team",
+    },
+    "LICENSE": {
+        "name": "Proprietary",
+    },
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+    "SERVERS": [
+        {"url": "http://127.0.0.1:8000", "description": "Local development server"},
+    ],
+    "SECURITY": [{"bearerAuth": []}],
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "JWT token obtained from /api/v1/auth/token/",
+            }
+        }
+    },
+    "TAGS": [
+        {"name": "auth", "description": "JWT authentication endpoints"},
+        {"name": "staff", "description": "Staff member management"},
+        {"name": "contracts", "description": "Contract management"},
+        {"name": "deliverables", "description": "Deliverable management with rollup metrics"},
+        {"name": "tasks", "description": "Task management"},
+        {"name": "deliverable-assignments", "description": "Deliverable assignment management"},
+        {"name": "deliverable-time-entries", "description": "Time entry tracking"},
+        {"name": "deliverable-status-updates", "description": "Status update history"},
+        {"name": "health", "description": "Health check endpoint"},
+    ],
 }
