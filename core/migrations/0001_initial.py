@@ -55,8 +55,8 @@ class Migration(migrations.Migration):
                 (
                     "role",
                     models.CharField(
-                        choices=[("member", "Member"), ("manager", "Manager"), ("admin", "Admin")],
-                        default="member",
+                        choices=[("staff", "Staff"), ("manager", "Manager"), ("admin", "Admin")],
+                        default="staff",
                         max_length=20,
                     ),
                 ),

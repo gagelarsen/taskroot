@@ -107,12 +107,19 @@ class DeliverableAssignmentSerializer(serializers.ModelSerializer):
 
 
 class DeliverableTimeEntrySerializer(serializers.ModelSerializer):
+    # Make staff optional - perform_create will set it for staff role
+    staff = serializers.PrimaryKeyRelatedField(
+        queryset=Staff.objects.all(),
+        required=False,
+        allow_null=False,
+    )
+
     class Meta:
         model = DeliverableTimeEntry
         fields = [
             "id",
             "deliverable",  # writable FK id
-            "staff",  # writable FK id
+            "staff",  # writable FK id (optional, set by perform_create for staff role)
             "entry_date",
             "hours",
             "note",
