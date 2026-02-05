@@ -50,3 +50,87 @@ def test_unique_status_update_by_deliverable_period_end():
                 status=DeliverableStatusUpdate.Status.AT_RISK,
                 created_by=staff,
             )
+
+
+@pytest.mark.django_db
+def test_contract_end_date_must_be_after_start_date():
+    """Contract end_date must be >= start_date."""
+    # Valid contract
+    contract = Contract.objects.create(
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 12, 31),
+        budget_hours_total=Decimal("1000.0"),
+    )
+    assert contract.id is not None
+
+    # Invalid contract (end before start)
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Contract.objects.create(
+                start_date=date(2026, 12, 31),
+                end_date=date(2026, 1, 1),  # Before start
+                budget_hours_total=Decimal("1000.0"),
+            )
+
+
+@pytest.mark.django_db
+def test_deliverable_due_date_must_be_after_start_date():
+    """Deliverable due_date must be >= start_date when both are set."""
+    contract = Contract.objects.create(
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 12, 31),
+        budget_hours_total=Decimal("1000.0"),
+    )
+
+    # Valid deliverable
+    deliverable = Deliverable.objects.create(
+        contract=contract,
+        name="Valid",
+        start_date=date(2026, 1, 1),
+        due_date=date(2026, 6, 30),
+    )
+    assert deliverable.id is not None
+
+    # Invalid deliverable (due before start)
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Deliverable.objects.create(
+                contract=contract,
+                name="Invalid",
+                start_date=date(2026, 6, 30),
+                due_date=date(2026, 1, 1),  # Before start
+            )
+
+
+@pytest.mark.django_db
+def test_time_entry_unique_external_key():
+    """Time entries with same (external_source, external_id) should be unique."""
+    staff = Staff.objects.create(email="c@example.com", first_name="C", last_name="User")
+    contract = Contract.objects.create(
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 12, 31),
+        budget_hours_total=Decimal("1000.0"),
+    )
+    deliverable = Deliverable.objects.create(contract=contract, name="Test")
+
+    # First entry with external key
+    DeliverableTimeEntry.objects.create(
+        deliverable=deliverable,
+        staff=staff,
+        entry_date=date(2026, 1, 15),
+        hours=Decimal("8.0"),
+        external_source="jira",
+        external_id="PROJ-123",
+    )
+
+    # Duplicate external key should fail
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            DeliverableTimeEntry.objects.create(
+                deliverable=deliverable,
+                staff=staff,
+                entry_date=date(2026, 1, 16),  # Different date
+                hours=Decimal("6.0"),  # Different hours
+                external_source="jira",
+                external_id="PROJ-123",  # Same external key
+            )

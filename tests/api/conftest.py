@@ -72,3 +72,55 @@ def contract(db):
 def deliverable(db, contract):
     """Create a test deliverable."""
     return Deliverable.objects.create(contract=contract, name="Test Deliverable", status="planned")
+
+
+@pytest.fixture
+def admin_user(db):
+    """Create a Django user for admin role."""
+    return User.objects.create_user(username="admin_user", password="testpass123")
+
+
+@pytest.fixture
+def admin_profile(db, admin_user):
+    """Create a Staff profile with 'admin' role linked to admin_user."""
+    return Staff.objects.create(
+        user=admin_user,
+        email="admin@example.com",
+        first_name="Admin",
+        last_name="User",
+        role="admin",
+        status="active",
+    )
+
+
+@pytest.fixture
+def other_staff_user(db):
+    """Create another Django user for staff role."""
+    return User.objects.create_user(username="other_staff_user", password="testpass123")
+
+
+@pytest.fixture
+def other_staff_user_profile(db, other_staff_user):
+    """Create another Staff profile with 'staff' role linked to other_staff_user."""
+    return Staff.objects.create(
+        user=other_staff_user,
+        email="other_staff@example.com",
+        first_name="Other",
+        last_name="Staff",
+        role="staff",
+        status="active",
+    )
+
+
+@pytest.fixture
+def user_without_staff(db):
+    """Create a user without staff profile."""
+    return User.objects.create_user(username="no_staff_user", password="testpass123")
+
+
+@pytest.fixture
+def request_factory():
+    """Create an APIRequestFactory for testing."""
+    from rest_framework.test import APIRequestFactory
+
+    return APIRequestFactory()

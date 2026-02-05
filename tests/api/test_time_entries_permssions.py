@@ -62,3 +62,20 @@ def test_staff_cannot_delete_others_time_entry(auth_client, staff_user, other_st
 
     r = client.delete(f"/api/v1/deliverable-time-entries/{entry.id}/")
     assert r.status_code == 403
+
+
+@pytest.mark.django_db
+def test_staff_can_list_time_entries(auth_client, staff_user, staff_profile, deliverable):
+    """Test that staff can list time entries (line 558)."""
+    # Create a time entry
+    DeliverableTimeEntry.objects.create(
+        deliverable=deliverable,
+        staff=staff_profile,
+        hours=1,
+        entry_date="2026-02-01",
+    )
+    client = auth_client(staff_user)
+
+    # Staff should be able to list time entries
+    r = client.get("/api/v1/deliverable-time-entries/")
+    assert r.status_code == 200
