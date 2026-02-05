@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ContractsListPage } from './pages/ContractsListPage';
 import { ContractDetailPage } from './pages/ContractDetailPage';
 import { DeliverableDetailPage } from './pages/DeliverableDetailPage';
+import { DeliverableEditPage } from './pages/DeliverableEditPage';
 import { TaskEditPage } from './pages/TaskEditPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <ContractDetailPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/deliverables/:id/edit"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <DeliverableEditPage />
                 </AppShell>
               </PrivateRoute>
             }

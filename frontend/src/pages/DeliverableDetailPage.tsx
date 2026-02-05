@@ -75,9 +75,18 @@ export function DeliverableDetailPage() {
 
   return (
     <Box>
-      <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        Back
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)}>
+          Back
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<Edit />}
+          onClick={() => navigate(`/deliverables/${deliverable.id}/edit`)}
+        >
+          Edit Deliverable
+        </Button>
+      </Box>
 
       <Typography variant="h4" gutterBottom>
         {deliverable.name}

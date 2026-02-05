@@ -17,7 +17,7 @@ import {
   Button,
   Stack,
 } from '@mui/material';
-import { ArrowBack } from '@mui/icons-material';
+import { ArrowBack, Add } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { contractsApi, deliverablesApi } from '../api/client';
 import type { Contract, Deliverable } from '../types/api';
@@ -187,9 +187,16 @@ export function ContractDetailPage() {
         </Card>
       </Stack>
 
-      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
-        Deliverables
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
+        <Typography variant="h5">Deliverables</Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => navigate(`/deliverables/new?contract=${contract.id}`)}
+        >
+          Create Deliverable
+        </Button>
+      </Box>
 
       <TableContainer component={Paper}>
         <Table>
