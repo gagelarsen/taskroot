@@ -57,7 +57,8 @@ export const authApi = {
 export const contractsApi = {
   list: async (params?: ContractFilters) => {
     const response = await apiClient.get('/contracts/', { params });
-    return response.data;
+    // Handle paginated response - DRF returns { results: [...], count, next, previous }
+    return response.data.results || response.data;
   },
 
   get: async (id: number) => {
@@ -70,7 +71,8 @@ export const contractsApi = {
 export const deliverablesApi = {
   list: async (params?: DeliverableFilters) => {
     const response = await apiClient.get('/deliverables/', { params });
-    return response.data;
+    // Handle paginated response
+    return response.data.results || response.data;
   },
 
   get: async (id: number) => {
@@ -89,7 +91,8 @@ interface StaffFilters {
 export const staffApi = {
   list: async (params?: StaffFilters) => {
     const response = await apiClient.get('/staff/', { params });
-    return response.data;
+    // Handle paginated response
+    return response.data.results || response.data;
   },
 };
 
@@ -97,7 +100,8 @@ export const staffApi = {
 export const timeEntriesApi = {
   list: async (params?: TimeEntryFilters) => {
     const response = await apiClient.get('/deliverable-time-entries/', { params });
-    return response.data;
+    // Handle paginated response
+    return response.data.results || response.data;
   },
 };
 
@@ -111,7 +115,8 @@ interface StatusUpdateFilters {
 export const statusUpdatesApi = {
   list: async (params?: StatusUpdateFilters) => {
     const response = await apiClient.get('/deliverable-status-updates/', { params });
-    return response.data;
+    // Handle paginated response
+    return response.data.results || response.data;
   },
 };
 
