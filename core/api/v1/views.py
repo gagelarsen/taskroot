@@ -328,28 +328,18 @@ class TaskViewSet(ModelViewSet):
         return Task.objects.all().select_related("deliverable", "deliverable__contract", "assignee").order_by("-id")
 
     def perform_create(self, serializer):
-        role = get_staff_role(self.request)
-
-        if role == "staff":
-            staff = self.request.user.staff
-            assignee = serializer.validated_data.get("assignee", None)
-
-            # allow null or self only
-            if assignee is not None and assignee.id != staff.id:
-                raise PermissionDenied("Staff can only create tasks for themselves or unassigned.")
+        # Permission check is handled by CanCreateTaskAsStaff
+        # No additional logic needed here
         serializer.save()
 
     def perform_update(self, serializer):
         role = get_staff_role(self.request)
 
         if role == "staff":
-            staff = self.request.user.staff
-            # must already be assigned to them
-            if self.get_object().assignee_id != staff.id:
-                raise PermissionDenied("Staff can only update tasks assigned to themselves.")
-
-            # prevent reassignment away from self
+            # CanEditTaskAsStaff already checked that task is assigned to them
+            # But we need to prevent reassignment away from self
             if "assignee" in serializer.validated_data:
+                staff = self.request.user.staff
                 assignee = serializer.validated_data.get("assignee", None)
                 if assignee is not None and assignee.id != staff.id:
                     raise PermissionDenied("Staff cannot reassign tasks to other staff.")
@@ -363,15 +353,13 @@ class TaskViewSet(ModelViewSet):
         if role == "staff":
             if action in ("list", "retrieve"):
                 return [ReadOnlyForStaffOtherwiseManagerAdmin()]
-            if action == "create":
+            elif action == "create":
                 return [CanCreateTaskAsStaff()]
-            if action in ("update", "partial_update", "destroy"):
+            elif action in ("update", "partial_update", "destroy"):
                 # object-level enforcement for update/destroy
                 return [CanEditTaskAsStaff()]
-            # fallback
-            return [ReadOnlyForStaffOtherwiseManagerAdmin()]
 
-        # Managers/Admins: keep your existing policy (likely full CRUD)
+        # Managers/Admins and all other cases
         return [ReadOnlyForStaffOtherwiseManagerAdmin()]
 
 
@@ -548,25 +536,17 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
         role = get_staff_role(self.request)
 
         if role == "staff":
-            staff = self.request.user.staff
-            obj = self.get_object()
-            if obj.staff_id != staff.id:
-                raise PermissionDenied("Staff can only edit their own time entries.")
-
+            # IsOwnTimeEntryOrPrivileged already checked ownership
             # Force staff to remain self even if payload tries to spoof
+            staff = self.request.user.staff
             serializer.save(staff=staff)
             return
 
         serializer.save()
 
     def perform_destroy(self, instance):
-        role = get_staff_role(self.request)
-
-        if role == "staff":
-            staff = self.request.user.staff
-            if instance.staff_id != staff.id:
-                raise PermissionDenied("Staff can only delete their own time entries.")
-
+        # IsOwnTimeEntryOrPrivileged already checked ownership
+        # No additional logic needed here
         instance.delete()
 
     def get_permissions(self):
@@ -576,16 +556,16 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
         if role == "staff":
             if action in ("list", "retrieve"):
                 return [ReadOnlyForStaffOtherwiseManagerAdmin()]
-            if action == "create":
+            elif action == "create":
                 # Staff can create; perform_create forces staff=self
                 from core.api.v1.permissions import CanCreateTimeEntryAsStaff
 
                 return [CanCreateTimeEntryAsStaff()]
-            if action in ("update", "partial_update", "destroy"):
+            elif action in ("update", "partial_update", "destroy"):
                 # object-level ownership check
                 return [IsOwnTimeEntryOrPrivileged()]
-            return [ReadOnlyForStaffOtherwiseManagerAdmin()]
 
+        # Managers/Admins and all other cases
         return [ReadOnlyForStaffOtherwiseManagerAdmin()]
 
 

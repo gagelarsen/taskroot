@@ -108,8 +108,7 @@ class DeliverableFilter(django_filters.FilterSet):
 
     def filter_staff_id(self, queryset, name, value):
         # Deliverables where the given staff member is assigned
-        if value in (None, ""):
-            return queryset
+        # NumberFilter ensures value is valid or method isn't called
         return queryset.filter(assignments__staff_id=value).distinct()
 
     def filter_lead_only(self, queryset, name, value):

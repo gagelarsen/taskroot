@@ -317,13 +317,6 @@ class DeliverableTimeEntrySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def validate_hours(self, value):
-        # Ensure hours <= 0 becomes HTTP 400 consistently.
-        # (Even if the model has validators, this guarantees the API behavior.)
-        if value <= 0:
-            raise serializers.ValidationError("Hours must be greater than 0.")
-        return value
-
     def validate(self, attrs):
         """
         Validate idempotency fields.

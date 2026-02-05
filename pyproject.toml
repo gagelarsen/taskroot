@@ -22,7 +22,34 @@ force-single-line = false
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra"
+addopts = "-ra --cov=core --cov=taskroot --cov-report=term-missing --cov-report=html"
 testpaths = ["tests"]
 DJANGO_SETTINGS_MODULE = "taskroot.settings"
 python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["core", "taskroot"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "*/management/commands/*",
+    "*/asgi.py",
+    "*/wsgi.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+precision = 2
+show_missing = true

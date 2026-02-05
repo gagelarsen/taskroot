@@ -48,12 +48,9 @@ class CanCreateTaskAsStaff(BasePermission):
     message = "Staff can only create tasks assigned to themselves or unassigned."
 
     def has_permission(self, request, view):
-        if request.method != "POST":
-            return True
-
-        staff = getattr(request.user, "staff", None)
-        if not staff:
-            return False  # HasStaffProfile should already catch this, but safe.
+        # This permission is only used for POST requests (create action)
+        # Staff profile existence is guaranteed by view-level permissions
+        staff = request.user.staff
 
         # Check for 'assignee' field (serializer field name), not 'assignee_id'
         # Handle both missing field and explicit null
