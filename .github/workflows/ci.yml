@@ -9,6 +9,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     strategy:
       fail-fast: false
@@ -25,8 +28,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: |
-            requirements/dev.txt
-            requirements/base.txt
+            backend/requirements/dev.txt
+            backend/requirements/base.txt
 
       - name: Install dependencies
         run: |
@@ -42,6 +45,9 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     strategy:
       fail-fast: false
@@ -58,8 +64,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: |
-            requirements/dev.txt
-            requirements/base.txt
+            backend/requirements/dev.txt
+            backend/requirements/base.txt
 
       - name: Install dependencies
         run: |

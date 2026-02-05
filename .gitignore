@@ -66,3 +66,11 @@ staticfiles/
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend (placeholder for future use)
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/build/
+frontend/.nuxt/
+frontend/.output/
