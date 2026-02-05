@@ -208,3 +208,159 @@ Order deliverables by due date ascending:
 curl -H "Authorization: Bearer $TOKEN" \
   "http://127.0.0.1:8000/api/v1/deliverables/?order_by=due_date&order_dir=asc"
 ```
+
+## Rollups & Burn Metrics
+
+TaskRoot automatically computes rollup metrics for contracts and deliverables to help track progress and identify issues.
+
+### Metrics Overview
+
+#### Expected vs Actual Hours
+
+- **Expected hours**: Sum of all assignment `expected_hours` for a deliverable (or all deliverables for a contract)
+- **Actual hours**: Sum of all time entry `hours` for a deliverable (or all deliverables for a contract)
+- **Variance**: `actual_hours - expected_hours` (positive means over, negative means under)
+
+#### Per-Week Metrics
+
+All per-week metrics use consistent weeks calculations:
+
+- **Planned weeks**: `max(1, ceil((end_date - start_date + 1) / 7))`
+  - For deliverables: uses deliverable dates if present, else falls back to contract dates
+  - For contracts: uses contract `start_date` and `end_date`
+  - Minimum is always 1 week
+
+- **Elapsed weeks**: `max(1, ceil((min(today, end_date) - start_date + 1) / 7))`
+  - Counts weeks from start to today, capped at the planned end date
+  - If the project hasn't started yet, returns 1
+  - Minimum is always 1 week
+
+- **Expected hours per week**: `expected_hours_total / planned_weeks`
+- **Actual hours per week**: `actual_hours_total / elapsed_weeks`
+
+#### Health Flags
+
+**Deliverable-level:**
+- `is_over_expected`: True if actual hours exceed expected hours
+- `is_missing_estimate`: True if expected hours is 0 but has assignments
+- `is_missing_lead`: True if no assignment has `is_lead=True`
+
+**Contract-level:**
+- `is_over_budget`: True if actual hours exceed budget
+- `is_over_expected`: True if actual hours exceed expected hours
+
+### API Response Examples
+
+#### Deliverable with Rollups
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/deliverables/1/"
+```
+
+Response:
+```json
+{
+  "id": 1,
+  "contract": 1,
+  "name": "API Development",
+  "start_date": "2024-01-01",
+  "due_date": "2024-01-28",
+  "status": "in_progress",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-15T12:00:00Z",
+
+  "expected_hours_total": 80.0,
+  "actual_hours_total": 45.5,
+  "planned_weeks": 4,
+  "elapsed_weeks": 2,
+  "expected_hours_per_week": 20.0,
+  "actual_hours_per_week": 22.75,
+  "variance_hours": -34.5,
+
+  "is_over_expected": false,
+  "is_missing_estimate": false,
+  "is_missing_lead": false,
+
+  "latest_status_update": {
+    "id": 5,
+    "period_end": "2024-01-14",
+    "status": "on_track",
+    "summary": "Making good progress on core features",
+    "created_by": 2,
+    "created_at": "2024-01-14T17:00:00Z"
+  }
+}
+```
+
+#### Contract with Rollups
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/contracts/1/"
+```
+
+Response:
+```json
+{
+  "id": 1,
+  "start_date": "2024-01-01",
+  "end_date": "2024-03-31",
+  "budget_hours_total": 1000.0,
+  "status": "active",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-15T12:00:00Z",
+
+  "expected_hours_total": 850.0,
+  "actual_hours_total": 245.5,
+  "planned_weeks": 13,
+  "elapsed_weeks": 2,
+  "expected_hours_per_week": 65.38,
+  "actual_hours_per_week": 122.75,
+  "remaining_budget_hours": 754.5,
+
+  "is_over_budget": false,
+  "is_over_expected": false
+}
+```
+
+### Health Query Filters
+
+You can filter deliverables and contracts by health indicators:
+
+**Deliverables over expected:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/deliverables/?over_expected=true"
+```
+
+**Deliverables missing a lead:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/deliverables/?missing_lead=true"
+```
+
+**Deliverables missing estimates:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/deliverables/?missing_estimate=true"
+```
+
+**Contracts over budget:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/contracts/?over_budget=true"
+```
+
+**Contracts over expected:**
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://127.0.0.1:8000/api/v1/contracts/?over_expected=true"
+```
+
+### Notes
+
+- All rollup metrics are **computed on-the-fly** (not stored in the database)
+- Metrics are **read-only** and cannot be set via the API
+- The API uses efficient queries to avoid N+1 problems where possible
+- Per-week calculations are consistent across deliverables and contracts

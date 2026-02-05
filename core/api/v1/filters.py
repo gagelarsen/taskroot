@@ -31,9 +31,41 @@ class ContractFilter(django_filters.FilterSet):
     end_date_from = django_filters.DateFilter(field_name="end_date", lookup_expr="gte")
     end_date_to = django_filters.DateFilter(field_name="end_date", lookup_expr="lte")
 
+    # Health filters
+    over_budget = django_filters.CharFilter(method="filter_over_budget")
+    over_expected = django_filters.CharFilter(method="filter_over_expected")
+
     class Meta:
         model = Contract
-        fields = ["status", "start_date_from", "start_date_to", "end_date_from", "end_date_to"]
+        fields = [
+            "status",
+            "start_date_from",
+            "start_date_to",
+            "end_date_from",
+            "end_date_to",
+            "over_budget",
+            "over_expected",
+        ]
+
+    def filter_over_budget(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+        # Filter in Python since this is a computed field
+        if b:
+            return queryset.filter(pk__in=[c.pk for c in queryset if c.is_over_budget()])
+        else:
+            return queryset.filter(pk__in=[c.pk for c in queryset if not c.is_over_budget()])
+
+    def filter_over_expected(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+        # Filter in Python since this is a computed field
+        if b:
+            return queryset.filter(pk__in=[c.pk for c in queryset if c.is_over_expected()])
+        else:
+            return queryset.filter(pk__in=[c.pk for c in queryset if not c.is_over_expected()])
 
 
 class DeliverableFilter(django_filters.FilterSet):
@@ -52,6 +84,11 @@ class DeliverableFilter(django_filters.FilterSet):
     lead_only = django_filters.CharFilter(method="filter_lead_only")
     has_assignments = django_filters.CharFilter(method="filter_has_assignments")
 
+    # Health filters
+    over_expected = django_filters.CharFilter(method="filter_over_expected")
+    missing_lead = django_filters.CharFilter(method="filter_missing_lead")
+    missing_estimate = django_filters.CharFilter(method="filter_missing_estimate")
+
     class Meta:
         model = Deliverable
         fields = [
@@ -64,6 +101,9 @@ class DeliverableFilter(django_filters.FilterSet):
             "staff_id",
             "lead_only",
             "has_assignments",
+            "over_expected",
+            "missing_lead",
+            "missing_estimate",
         ]
 
     def filter_staff_id(self, queryset, name, value):
@@ -90,6 +130,36 @@ class DeliverableFilter(django_filters.FilterSet):
         assign_qs = DeliverableAssignment.objects.filter(deliverable_id=OuterRef("pk"))
         annotated = queryset.annotate(_has_assignments=Exists(assign_qs))
         return annotated.filter(_has_assignments=b)
+
+    def filter_over_expected(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+        # Filter in Python since this is a computed field
+        if b:
+            return queryset.filter(pk__in=[d.pk for d in queryset if d.is_over_expected()])
+        else:
+            return queryset.filter(pk__in=[d.pk for d in queryset if not d.is_over_expected()])
+
+    def filter_missing_lead(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+        # Filter in Python since this is a computed field
+        if b:
+            return queryset.filter(pk__in=[d.pk for d in queryset if d.is_missing_lead()])
+        else:
+            return queryset.filter(pk__in=[d.pk for d in queryset if not d.is_missing_lead()])
+
+    def filter_missing_estimate(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+        # Filter in Python since this is a computed field
+        if b:
+            return queryset.filter(pk__in=[d.pk for d in queryset if d.is_missing_estimate()])
+        else:
+            return queryset.filter(pk__in=[d.pk for d in queryset if not d.is_missing_estimate()])
 
 
 class TaskFilter(django_filters.FilterSet):

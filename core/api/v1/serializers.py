@@ -29,6 +29,19 @@ class StaffSerializer(serializers.ModelSerializer):
 
 
 class ContractSerializer(serializers.ModelSerializer):
+    # Computed rollup fields (read-only)
+    expected_hours_total = serializers.SerializerMethodField()
+    actual_hours_total = serializers.SerializerMethodField()
+    planned_weeks = serializers.SerializerMethodField()
+    elapsed_weeks = serializers.SerializerMethodField()
+    expected_hours_per_week = serializers.SerializerMethodField()
+    actual_hours_per_week = serializers.SerializerMethodField()
+    remaining_budget_hours = serializers.SerializerMethodField()
+
+    # Health flags (read-only)
+    is_over_budget = serializers.SerializerMethodField()
+    is_over_expected = serializers.SerializerMethodField()
+
     class Meta:
         model = Contract
         fields = [
@@ -39,11 +52,78 @@ class ContractSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "updated_at",
+            # Computed fields
+            "expected_hours_total",
+            "actual_hours_total",
+            "planned_weeks",
+            "elapsed_weeks",
+            "expected_hours_per_week",
+            "actual_hours_per_week",
+            "remaining_budget_hours",
+            "is_over_budget",
+            "is_over_expected",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "expected_hours_total",
+            "actual_hours_total",
+            "planned_weeks",
+            "elapsed_weeks",
+            "expected_hours_per_week",
+            "actual_hours_per_week",
+            "remaining_budget_hours",
+            "is_over_budget",
+            "is_over_expected",
+        ]
+
+    def get_expected_hours_total(self, obj):
+        return obj.get_expected_hours_total()
+
+    def get_actual_hours_total(self, obj):
+        return obj.get_actual_hours_total()
+
+    def get_planned_weeks(self, obj):
+        return obj.get_planned_weeks()
+
+    def get_elapsed_weeks(self, obj):
+        return obj.get_elapsed_weeks()
+
+    def get_expected_hours_per_week(self, obj):
+        return obj.get_expected_hours_per_week()
+
+    def get_actual_hours_per_week(self, obj):
+        return obj.get_actual_hours_per_week()
+
+    def get_remaining_budget_hours(self, obj):
+        return obj.get_remaining_budget_hours()
+
+    def get_is_over_budget(self, obj):
+        return obj.is_over_budget()
+
+    def get_is_over_expected(self, obj):
+        return obj.is_over_expected()
 
 
 class DeliverableSerializer(serializers.ModelSerializer):
+    # Computed rollup fields (read-only)
+    expected_hours_total = serializers.SerializerMethodField()
+    actual_hours_total = serializers.SerializerMethodField()
+    planned_weeks = serializers.SerializerMethodField()
+    elapsed_weeks = serializers.SerializerMethodField()
+    expected_hours_per_week = serializers.SerializerMethodField()
+    actual_hours_per_week = serializers.SerializerMethodField()
+    variance_hours = serializers.SerializerMethodField()
+
+    # Health flags (read-only)
+    is_over_expected = serializers.SerializerMethodField()
+    is_missing_estimate = serializers.SerializerMethodField()
+    is_missing_lead = serializers.SerializerMethodField()
+
+    # Latest status update (read-only)
+    latest_status_update = serializers.SerializerMethodField()
+
     class Meta:
         model = Deliverable
         fields = [
@@ -55,8 +135,78 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "updated_at",
+            # Computed fields
+            "expected_hours_total",
+            "actual_hours_total",
+            "planned_weeks",
+            "elapsed_weeks",
+            "expected_hours_per_week",
+            "actual_hours_per_week",
+            "variance_hours",
+            "is_over_expected",
+            "is_missing_estimate",
+            "is_missing_lead",
+            "latest_status_update",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "expected_hours_total",
+            "actual_hours_total",
+            "planned_weeks",
+            "elapsed_weeks",
+            "expected_hours_per_week",
+            "actual_hours_per_week",
+            "variance_hours",
+            "is_over_expected",
+            "is_missing_estimate",
+            "is_missing_lead",
+            "latest_status_update",
+        ]
+
+    def get_expected_hours_total(self, obj):
+        return obj.get_expected_hours_total()
+
+    def get_actual_hours_total(self, obj):
+        return obj.get_actual_hours_total()
+
+    def get_planned_weeks(self, obj):
+        return obj.get_planned_weeks()
+
+    def get_elapsed_weeks(self, obj):
+        return obj.get_elapsed_weeks()
+
+    def get_expected_hours_per_week(self, obj):
+        return obj.get_expected_hours_per_week()
+
+    def get_actual_hours_per_week(self, obj):
+        return obj.get_actual_hours_per_week()
+
+    def get_variance_hours(self, obj):
+        return obj.get_variance_hours()
+
+    def get_is_over_expected(self, obj):
+        return obj.is_over_expected()
+
+    def get_is_missing_estimate(self, obj):
+        return obj.is_missing_estimate()
+
+    def get_is_missing_lead(self, obj):
+        return obj.is_missing_lead()
+
+    def get_latest_status_update(self, obj):
+        latest = obj.get_latest_status_update()
+        if latest:
+            return {
+                "id": latest.id,
+                "period_end": latest.period_end,
+                "status": latest.status,
+                "summary": latest.summary,
+                "created_by": latest.created_by_id,
+                "created_at": latest.created_at,
+            }
+        return None
 
 
 class TaskSerializer(serializers.ModelSerializer):
