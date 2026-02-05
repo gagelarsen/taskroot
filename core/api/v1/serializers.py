@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
@@ -78,30 +79,45 @@ class ContractSerializer(serializers.ModelSerializer):
             "is_over_expected",
         ]
 
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Sum of expected hours from all deliverables")
+    )
     def get_expected_hours_total(self, obj):
         return obj.get_expected_hours_total()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of actual hours from all deliverables"))
     def get_actual_hours_total(self, obj):
         return obj.get_actual_hours_total()
 
+    @extend_schema_field(
+        serializers.IntegerField(read_only=True, help_text="Number of planned weeks for this contract")
+    )
     def get_planned_weeks(self, obj):
         return obj.get_planned_weeks()
 
+    @extend_schema_field(
+        serializers.IntegerField(read_only=True, help_text="Number of elapsed weeks from start to today")
+    )
     def get_elapsed_weeks(self, obj):
         return obj.get_elapsed_weeks()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Expected hours divided by planned weeks"))
     def get_expected_hours_per_week(self, obj):
         return obj.get_expected_hours_per_week()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Actual hours divided by elapsed weeks"))
     def get_actual_hours_per_week(self, obj):
         return obj.get_actual_hours_per_week()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Remaining budget hours (budget - actual)"))
     def get_remaining_budget_hours(self, obj):
         return obj.get_remaining_budget_hours()
 
+    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if actual hours exceed budget"))
     def get_is_over_budget(self, obj):
         return obj.is_over_budget()
 
+    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if actual hours exceed expected"))
     def get_is_over_expected(self, obj):
         return obj.is_over_expected()
 
@@ -165,36 +181,57 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "latest_status_update",
         ]
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of expected hours from all assignments"))
     def get_expected_hours_total(self, obj):
         return obj.get_expected_hours_total()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of actual hours from all time entries"))
     def get_actual_hours_total(self, obj):
         return obj.get_actual_hours_total()
 
+    @extend_schema_field(
+        serializers.IntegerField(read_only=True, help_text="Number of planned weeks for this deliverable")
+    )
     def get_planned_weeks(self, obj):
         return obj.get_planned_weeks()
 
+    @extend_schema_field(
+        serializers.IntegerField(read_only=True, help_text="Number of elapsed weeks from start to today")
+    )
     def get_elapsed_weeks(self, obj):
         return obj.get_elapsed_weeks()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Expected hours divided by planned weeks"))
     def get_expected_hours_per_week(self, obj):
         return obj.get_expected_hours_per_week()
 
+    @extend_schema_field(serializers.FloatField(read_only=True, help_text="Actual hours divided by elapsed weeks"))
     def get_actual_hours_per_week(self, obj):
         return obj.get_actual_hours_per_week()
 
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Variance between actual and expected (actual - expected)")
+    )
     def get_variance_hours(self, obj):
         return obj.get_variance_hours()
 
+    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if actual hours exceed expected"))
     def get_is_over_expected(self, obj):
         return obj.is_over_expected()
 
+    @extend_schema_field(
+        serializers.BooleanField(read_only=True, help_text="True if expected hours is 0 but has assignments")
+    )
     def get_is_missing_estimate(self, obj):
         return obj.is_missing_estimate()
 
+    @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if no assignment has is_lead=True"))
     def get_is_missing_lead(self, obj):
         return obj.is_missing_lead()
 
+    @extend_schema_field(
+        serializers.DictField(read_only=True, allow_null=True, help_text="Most recent status update by period_end")
+    )
     def get_latest_status_update(self, obj):
         latest = obj.get_latest_status_update()
         if latest:
