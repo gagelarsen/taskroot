@@ -7,13 +7,15 @@ export interface LoginResponse {
 // Contract types
 export interface Contract {
   id: number;
+  name: string;
+  client_name: string;
   start_date: string;
   end_date: string;
   budget_hours_total: string;
   status: 'active' | 'completed' | 'on_hold';
   created_at: string;
   updated_at: string;
-  
+
   // Rollup metrics
   expected_hours_total: string;
   actual_hours_total: string;
@@ -22,7 +24,7 @@ export interface Contract {
   expected_hours_per_week: string;
   actual_hours_per_week: string;
   remaining_budget_hours: string;
-  
+
   // Health flags
   is_over_budget: boolean;
   is_over_expected: boolean;

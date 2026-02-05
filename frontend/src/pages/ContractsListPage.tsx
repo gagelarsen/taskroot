@@ -93,7 +93,8 @@ export function ContractsListPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>ID</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Client</TableCell>
                 <TableCell>Start Date</TableCell>
                 <TableCell>End Date</TableCell>
                 <TableCell>Status</TableCell>
@@ -112,7 +113,8 @@ export function ContractsListPage() {
                   onClick={() => handleRowClick(contract.id)}
                   sx={{ cursor: 'pointer' }}
                 >
-                  <TableCell>{contract.id}</TableCell>
+                  <TableCell>{contract.name || `Contract #${contract.id}`}</TableCell>
+                  <TableCell>{contract.client_name}</TableCell>
                   <TableCell>{contract.start_date}</TableCell>
                   <TableCell>{contract.end_date}</TableCell>
                   <TableCell>
