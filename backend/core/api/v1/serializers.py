@@ -124,6 +124,36 @@ class ContractSerializer(serializers.ModelSerializer):
         return obj.is_over_expected()
 
 
+class DeliverableAssignmentNestedSerializer(serializers.ModelSerializer):
+    """Nested serializer for assignments with staff details."""
+
+    staff_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DeliverableAssignment
+        fields = ["id", "staff", "staff_name", "expected_hours", "is_lead", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def get_staff_name(self, obj):
+        return f"{obj.staff.first_name} {obj.staff.last_name}"
+
+
+class TaskNestedSerializer(serializers.ModelSerializer):
+    """Nested serializer for tasks with assignee details."""
+
+    assignee_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = ["id", "title", "assignee", "assignee_name", "planned_hours", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_assignee_name(self, obj):
+        if obj.assignee:
+            return f"{obj.assignee.first_name} {obj.assignee.last_name}"
+        return None
+
+
 class DeliverableSerializer(serializers.ModelSerializer):
     # Computed rollup fields (read-only)
     expected_hours_total = serializers.SerializerMethodField()
@@ -141,6 +171,10 @@ class DeliverableSerializer(serializers.ModelSerializer):
 
     # Latest status update (read-only)
     latest_status_update = serializers.SerializerMethodField()
+
+    # Nested related objects (read-only)
+    assignments = DeliverableAssignmentNestedSerializer(many=True, read_only=True)
+    tasks = TaskNestedSerializer(many=True, read_only=True)
 
     class Meta:
         model = Deliverable
@@ -165,6 +199,9 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "is_missing_estimate",
             "is_missing_lead",
             "latest_status_update",
+            # Nested related objects
+            "assignments",
+            "tasks",
         ]
         read_only_fields = [
             "id",
@@ -181,6 +218,8 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "is_missing_estimate",
             "is_missing_lead",
             "latest_status_update",
+            "assignments",
+            "tasks",
         ]
 
     @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of expected hours from all assignments"))
