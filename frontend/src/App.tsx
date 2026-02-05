@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { ContractsListPage } from './pages/ContractsListPage';
 import { ContractDetailPage } from './pages/ContractDetailPage';
+import { ContractEditPage } from './pages/ContractEditPage';
 import { DeliverableDetailPage } from './pages/DeliverableDetailPage';
 import { DeliverableEditPage } from './pages/DeliverableEditPage';
 import { TaskEditPage } from './pages/TaskEditPage';
@@ -37,6 +38,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <ContractsListPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/contracts/:id/edit"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <ContractEditPage />
                 </AppShell>
               </PrivateRoute>
             }

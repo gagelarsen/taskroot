@@ -17,7 +17,7 @@ import {
   Button,
   Stack,
 } from '@mui/material';
-import { ArrowBack, Add } from '@mui/icons-material';
+import { ArrowBack, Add, Edit } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { contractsApi, deliverablesApi } from '../api/client';
 import type { Contract, Deliverable } from '../types/api';
@@ -72,9 +72,18 @@ export function ContractDetailPage() {
 
   return (
     <Box>
-      <Button startIcon={<ArrowBack />} onClick={() => navigate('/contracts')} sx={{ mb: 2 }}>
-        Back to Contracts
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate('/contracts')}>
+          Back to Contracts
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<Edit />}
+          onClick={() => navigate(`/contracts/${contract.id}/edit`)}
+        >
+          Edit Contract
+        </Button>
+      </Box>
 
       <Typography variant="h4" gutterBottom>
         {contract.name || `Contract #${contract.id}`}
