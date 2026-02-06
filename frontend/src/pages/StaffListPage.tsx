@@ -15,11 +15,13 @@ import {
   Button,
   TextField,
   MenuItem,
+  LinearProgress,
+  Tooltip,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Add, Warning, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { staffApi } from '../api/client';
-import type { Staff } from '../types/api';
+import { staffApi, assignmentsApi, deliverablesApi } from '../api/client';
+import type { Staff, DeliverableAssignment, Deliverable } from '../types/api';
 import { AxiosError } from 'axios';
 
 interface StaffFilters {
@@ -30,8 +32,15 @@ interface StaffFilters {
   order_dir?: 'asc' | 'desc';
 }
 
+interface StaffWithMetrics extends Staff {
+  assignedHoursPerWeek: number;
+  utilizationPercent: number;
+  isOverallocated: boolean;
+  isUnderallocated: boolean;
+}
+
 export function StaffListPage() {
-  const [staff, setStaff] = useState<Staff[]>([]);
+  const [staff, setStaff] = useState<StaffWithMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState<StaffFilters>({
@@ -44,8 +53,61 @@ export function StaffListPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await staffApi.list(filters);
-      setStaff(data);
+      const [staffData, assignmentsData, deliverablesData] = await Promise.all([
+        staffApi.list(filters),
+        assignmentsApi.list({}),
+        deliverablesApi.list({}),
+      ]);
+
+      // Create a map of deliverable ID to deliverable for quick lookup
+      const deliverableMap = new Map<number, Deliverable>();
+      deliverablesData.forEach((d: Deliverable) => {
+        deliverableMap.set(d.id, d);
+      });
+
+      // Calculate metrics for each staff member
+      const staffWithMetrics: StaffWithMetrics[] = staffData.map((staffMember: Staff) => {
+        // Get all assignments for this staff member
+        const staffAssignments = assignmentsData.filter(
+          (a: DeliverableAssignment) => a.staff === staffMember.id
+        );
+
+        // Filter to only active deliverables (not completed)
+        const activeAssignments = staffAssignments.filter((a: DeliverableAssignment) => {
+          const deliverable = deliverableMap.get(a.deliverable);
+          return deliverable && deliverable.status !== 'completed';
+        });
+
+        // Calculate average hours per week
+        let totalWeightedHours = 0;
+
+        activeAssignments.forEach((assignment: DeliverableAssignment) => {
+          const deliverable = deliverableMap.get(assignment.deliverable);
+          if (deliverable && deliverable.planned_weeks && deliverable.planned_weeks > 0) {
+            const assignmentHours = parseFloat(assignment.budget_hours);
+            const hoursPerWeek = assignmentHours / deliverable.planned_weeks;
+            totalWeightedHours += hoursPerWeek;
+          }
+        });
+
+        const assignedHoursPerWeek = totalWeightedHours;
+        const expectedHoursPerWeek = typeof staffMember.expected_hours_per_week === 'string'
+          ? parseFloat(staffMember.expected_hours_per_week)
+          : staffMember.expected_hours_per_week;
+        const utilizationPercent = expectedHoursPerWeek > 0
+          ? (assignedHoursPerWeek / expectedHoursPerWeek) * 100
+          : 0;
+
+        return {
+          ...staffMember,
+          assignedHoursPerWeek,
+          utilizationPercent,
+          isOverallocated: assignedHoursPerWeek > expectedHoursPerWeek,
+          isUnderallocated: assignedHoursPerWeek < expectedHoursPerWeek * 0.7,
+        };
+      });
+
+      setStaff(staffWithMetrics);
     } catch (err) {
       if (err instanceof AxiosError) {
         setError(err.response?.data?.detail || 'Failed to load staff');
@@ -82,6 +144,16 @@ export function StaffListPage() {
         return 'info';
       default:
         return 'default';
+    }
+  };
+
+  const getHealthIcon = (member: StaffWithMetrics) => {
+    if (member.isOverallocated) {
+      return <ErrorIcon color="error" fontSize="small" />;
+    } else if (member.isUnderallocated) {
+      return <Warning color="warning" fontSize="small" />;
+    } else {
+      return <CheckCircle color="success" fontSize="small" />;
     }
   };
 
@@ -152,18 +224,21 @@ export function StaffListPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell width={40}></TableCell>
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell align="right">Expected Hours/Week</TableCell>
+                <TableCell align="right">Expected hrs/wk</TableCell>
+                <TableCell align="right">Assigned hrs/wk</TableCell>
+                <TableCell align="center" width={200}>Utilization</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {staff.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={9} align="center">
                     No staff members found
                   </TableCell>
                 </TableRow>
@@ -175,6 +250,19 @@ export function StaffListPage() {
                     sx={{ cursor: 'pointer' }}
                     onClick={() => navigate(`/staff/${member.id}`)}
                   >
+                    <TableCell>
+                      <Tooltip
+                        title={
+                          member.isOverallocated
+                            ? 'Over-allocated'
+                            : member.isUnderallocated
+                            ? 'Under-utilized'
+                            : 'Healthy'
+                        }
+                      >
+                        {getHealthIcon(member)}
+                      </Tooltip>
+                    </TableCell>
                     <TableCell>
                       {member.first_name} {member.last_name}
                     </TableCell>
@@ -193,7 +281,29 @@ export function StaffListPage() {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell align="right">{member.expected_hours_per_week}</TableCell>
+                    <TableCell align="right">{parseFloat(member.expected_hours_per_week).toFixed(1)}</TableCell>
+                    <TableCell align="right">{member.assignedHoursPerWeek.toFixed(1)}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min(member.utilizationPercent, 100)}
+                            color={
+                              member.isOverallocated
+                                ? 'error'
+                                : member.isUnderallocated
+                                ? 'warning'
+                                : 'success'
+                            }
+                            sx={{ height: 6, borderRadius: 1 }}
+                          />
+                        </Box>
+                        <Typography variant="body2" sx={{ minWidth: 45 }}>
+                          {member.utilizationPercent.toFixed(0)}%
+                        </Typography>
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       <Button
                         size="small"
