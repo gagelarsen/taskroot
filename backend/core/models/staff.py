@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 
@@ -25,6 +27,12 @@ class Staff(models.Model):
     last_name = models.CharField(max_length=150)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STAFF)
+    expected_hours_per_week = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("40.00"),
+        help_text="Expected number of hours this staff member works per week",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
