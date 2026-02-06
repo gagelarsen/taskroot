@@ -42,10 +42,10 @@ class Contract(models.Model):
     # Rollup metrics - computed fields (read-only)
 
     def get_assigned_budget_hours(self) -> Decimal:
-        """Sum of all deliverables' budget hours."""
+        """Sum of all deliverables' assigned budget hours (from assignments)."""
         total = Decimal("0")
         for deliverable in self.deliverables.all():
-            total += deliverable.budget_hours
+            total += deliverable.get_assigned_budget_hours()
         return total
 
     def get_spent_hours(self) -> Decimal:
@@ -92,12 +92,16 @@ class Contract(models.Model):
         return spent_total / Decimal(str(elapsed_weeks))
 
     def get_remaining_budget_hours(self) -> Decimal:
-        """Budget hours remaining (budget - assigned budget hours)."""
-        return self.budget_hours - self.get_assigned_budget_hours()
+        """Budget hours remaining (budget - spent hours)."""
+        return self.budget_hours - self.get_spent_hours()
 
     def get_unspent_budget_hours(self) -> Decimal:
-        """Unspent budget hours (budget - spent hours)."""
-        return self.budget_hours - self.get_spent_hours()
+        """Unspent budget hours (budget - spent hours). Alias for get_remaining_budget_hours()."""
+        return self.get_remaining_budget_hours()
+
+    def get_unassigned_budget_hours(self) -> Decimal:
+        """Unassigned budget hours (budget - assigned budget hours)."""
+        return self.budget_hours - self.get_assigned_budget_hours()
 
     # Health flags
 
@@ -108,3 +112,7 @@ class Contract(models.Model):
     def is_overassigned(self) -> bool:
         """True if assigned budget hours exceed contract budget."""
         return self.get_assigned_budget_hours() > self.budget_hours
+
+    def is_over_expected(self) -> bool:
+        """True if spent hours exceed assigned budget hours (from assignments)."""
+        return self.get_spent_hours() > self.get_assigned_budget_hours()

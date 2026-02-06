@@ -14,7 +14,7 @@ def test_time_entry_hours_must_be_positive():
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
-        budget_hours_total=Decimal("10.0"),
+        budget_hours=Decimal("10.0"),
         status=Contract.Status.ACTIVE,
     )
     deliverable = Deliverable.objects.create(contract=contract, name="D1")
@@ -30,7 +30,7 @@ def test_unique_status_update_by_deliverable_period_end():
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
-        budget_hours_total=Decimal("10.0"),
+        budget_hours=Decimal("10.0"),
         status=Contract.Status.ACTIVE,
     )
     deliverable = Deliverable.objects.create(contract=contract, name="D1")
@@ -59,7 +59,7 @@ def test_contract_end_date_must_be_after_start_date():
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
-        budget_hours_total=Decimal("1000.0"),
+        budget_hours=Decimal("1000.0"),
     )
     assert contract.id is not None
 
@@ -69,7 +69,7 @@ def test_contract_end_date_must_be_after_start_date():
             Contract.objects.create(
                 start_date=date(2026, 12, 31),
                 end_date=date(2026, 1, 1),  # Before start
-                budget_hours_total=Decimal("1000.0"),
+                budget_hours=Decimal("1000.0"),
             )
 
 
@@ -79,7 +79,7 @@ def test_deliverable_due_date_must_be_after_start_date():
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
-        budget_hours_total=Decimal("1000.0"),
+        budget_hours=Decimal("1000.0"),
     )
 
     # Valid deliverable
@@ -109,7 +109,7 @@ def test_time_entry_unique_external_key():
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
-        budget_hours_total=Decimal("1000.0"),
+        budget_hours=Decimal("1000.0"),
     )
     deliverable = Deliverable.objects.create(contract=contract, name="Test")
 

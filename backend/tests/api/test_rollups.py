@@ -41,7 +41,7 @@ def contract(db):
     return Contract.objects.create(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 3, 31),  # 90 days = ~13 weeks
-        budget_hours_total=Decimal("1000.00"),
+        budget_hours=Decimal("1000.00"),
         status=Contract.Status.ACTIVE,
     )
 
@@ -76,13 +76,13 @@ def staff_member(db):
 class TestDeliverableRollups:
     """Test deliverable-level rollup metrics."""
 
-    def test_expected_hours_total_sums_assignments(self, deliverable, staff_member):
-        """Expected hours should sum all assignment expected_hours."""
+    def test_assigned_budget_hours_sums_assignments(self, deliverable, staff_member):
+        """Expected hours should sum all assignment budget_hours."""
         # Create assignments
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),
             is_lead=True,
         )
 
@@ -99,17 +99,17 @@ class TestDeliverableRollups:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff2,
-            expected_hours=Decimal("60.00"),
+            budget_hours=Decimal("60.00"),
             is_lead=False,
         )
 
-        assert deliverable.get_expected_hours_total() == Decimal("100.00")
+        assert deliverable.get_assigned_budget_hours() == Decimal("100.00")
 
-    def test_expected_hours_total_zero_when_no_assignments(self, deliverable):
+    def test_assigned_budget_hours_zero_when_no_assignments(self, deliverable):
         """Expected hours should be 0 when no assignments exist."""
-        assert deliverable.get_expected_hours_total() == Decimal("0")
+        assert deliverable.get_assigned_budget_hours() == Decimal("0")
 
-    def test_actual_hours_total_sums_time_entries(self, deliverable, staff_member):
+    def test_spent_hours_sums_time_entries(self, deliverable, staff_member):
         """Actual hours should sum all time entry hours."""
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
@@ -124,18 +124,18 @@ class TestDeliverableRollups:
             hours=Decimal("7.50"),
         )
 
-        assert deliverable.get_actual_hours_total() == Decimal("15.50")
+        assert deliverable.get_spent_hours() == Decimal("15.50")
 
-    def test_actual_hours_total_zero_when_no_entries(self, deliverable):
+    def test_spent_hours_zero_when_no_entries(self, deliverable):
         """Actual hours should be 0 when no time entries exist."""
-        assert deliverable.get_actual_hours_total() == Decimal("0")
+        assert deliverable.get_spent_hours() == Decimal("0")
 
     def test_variance_hours_computed_correctly(self, deliverable, staff_member):
         """Variance should be actual - expected."""
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),
             is_lead=True,
         )
         DeliverableTimeEntry.objects.create(
@@ -147,12 +147,12 @@ class TestDeliverableRollups:
 
         assert deliverable.get_variance_hours() == Decimal("10.00")
 
-    def test_is_over_expected_flag(self, deliverable, staff_member):
-        """is_over_expected should be True when actual > expected."""
+    def test_is_overassigned_flag(self, deliverable, staff_member):
+        """is_over_expected should be True when spent > assigned budget."""
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),
             is_lead=True,
         )
 
@@ -169,20 +169,20 @@ class TestDeliverableRollups:
 
         assert deliverable.is_over_expected() is True
 
-    def test_is_missing_estimate_flag(self, deliverable, staff_member):
-        """is_missing_estimate should be True when expected == 0 but has assignments."""
+    def test_is_missing_budget_flag(self, deliverable, staff_member):
+        """is_missing_budget should be True when expected == 0 but has assignments."""
         # No assignments yet
-        assert deliverable.is_missing_estimate() is False
+        assert deliverable.is_missing_budget() is False
 
         # Create assignment with 0 expected hours
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("0"),
+            budget_hours=Decimal("0"),
             is_lead=True,
         )
 
-        assert deliverable.is_missing_estimate() is True
+        assert deliverable.is_missing_budget() is True
 
     def test_is_missing_lead_flag(self, deliverable, staff_member):
         """is_missing_lead should be True when no assignment has is_lead=True."""
@@ -193,7 +193,7 @@ class TestDeliverableRollups:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),
             is_lead=False,
         )
 
@@ -273,20 +273,20 @@ class TestWeeksCalculations:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("80.00"),
+            budget_hours=Decimal("80.00"),
             is_lead=True,
         )
 
         # deliverable has 4 planned weeks
         # 80 / 4 = 20 hours per week
-        assert deliverable.get_expected_hours_per_week() == Decimal("20.00")
+        assert deliverable.get_assigned_budget_hours_per_week() == Decimal("20.00")
 
 
 @pytest.mark.django_db
 class TestContractRollups:
     """Test contract-level rollup metrics."""
 
-    def test_expected_hours_total_rolls_up_deliverables(self, contract, staff_member):
+    def test_assigned_budget_hours_rolls_up_deliverables(self, contract, staff_member):
         """Contract expected hours should sum all deliverable expected hours."""
         # Create two deliverables
         d1 = Deliverable.objects.create(
@@ -304,19 +304,19 @@ class TestContractRollups:
         DeliverableAssignment.objects.create(
             deliverable=d1,
             staff=staff_member,
-            expected_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),
             is_lead=True,
         )
         DeliverableAssignment.objects.create(
             deliverable=d2,
             staff=staff_member,
-            expected_hours=Decimal("60.00"),
+            budget_hours=Decimal("60.00"),
             is_lead=True,
         )
 
-        assert contract.get_expected_hours_total() == Decimal("100.00")
+        assert contract.get_assigned_budget_hours() == Decimal("100.00")
 
-    def test_actual_hours_total_rolls_up_deliverables(self, contract, staff_member):
+    def test_spent_hours_rolls_up_deliverables(self, contract, staff_member):
         """Contract actual hours should sum all deliverable actual hours."""
         d1 = Deliverable.objects.create(
             contract=contract,
@@ -343,7 +343,7 @@ class TestContractRollups:
             hours=Decimal("35.00"),
         )
 
-        assert contract.get_actual_hours_total() == Decimal("60.00")
+        assert contract.get_spent_hours() == Decimal("60.00")
 
     def test_remaining_budget_hours(self, contract, staff_member):
         """Remaining budget should be budget - actual."""
@@ -442,7 +442,7 @@ class TestRollupsInAPI:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),
             is_lead=True,
         )
         DeliverableTimeEntry.objects.create(
@@ -460,22 +460,22 @@ class TestRollupsInAPI:
         data = response.json()
 
         # Check rollup fields are present
-        assert "expected_hours_total" in data
-        assert "actual_hours_total" in data
+        assert "assigned_budget_hours" in data
+        assert "spent_hours" in data
         assert "planned_weeks" in data
         assert "elapsed_weeks" in data
-        assert "expected_hours_per_week" in data
-        assert "actual_hours_per_week" in data
+        assert "assigned_budget_hours_per_week" in data
+        assert "spent_hours_per_week" in data
         assert "variance_hours" in data
-        assert "is_over_expected" in data
-        assert "is_missing_estimate" in data
+        assert "is_overassigned" in data
+        assert "is_missing_budget" in data
         assert "is_missing_lead" in data
         assert "latest_status_update" in data
 
         # Check values (API returns floats, not strings)
-        assert data["expected_hours_total"] == 40.0
-        assert data["actual_hours_total"] == 10.0
-        assert data["is_over_expected"] is False
+        assert data["assigned_budget_hours"] == 40.0
+        assert data["spent_hours"] == 10.0
+        assert data["is_overassigned"] is False
         assert data["is_missing_lead"] is False
 
     def test_contract_api_includes_rollup_fields(self, admin_user, admin_profile, contract, staff_member):
@@ -491,7 +491,7 @@ class TestRollupsInAPI:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            expected_hours=Decimal("100.00"),
+            budget_hours=Decimal("100.00"),
             is_lead=True,
         )
         DeliverableTimeEntry.objects.create(
@@ -509,19 +509,19 @@ class TestRollupsInAPI:
         data = response.json()
 
         # Check rollup fields are present
-        assert "expected_hours_total" in data
-        assert "actual_hours_total" in data
+        assert "assigned_budget_hours" in data
+        assert "spent_hours" in data
         assert "planned_weeks" in data
         assert "elapsed_weeks" in data
-        assert "expected_hours_per_week" in data
-        assert "actual_hours_per_week" in data
+        assert "assigned_budget_hours_per_week" in data
+        assert "spent_hours_per_week" in data
         assert "remaining_budget_hours" in data
         assert "is_over_budget" in data
-        assert "is_over_expected" in data
+        assert "is_overassigned" in data
 
         # Check values (API returns floats, not strings)
-        assert data["expected_hours_total"] == 100.0
-        assert data["actual_hours_total"] == 50.0
+        assert data["assigned_budget_hours"] == 100.0
+        assert data["spent_hours"] == 50.0
         assert data["remaining_budget_hours"] == 950.0
         assert data["is_over_budget"] is False
 
@@ -538,7 +538,7 @@ class TestRollupsInAPI:
         DeliverableAssignment.objects.create(
             deliverable=d1,
             staff=staff_member,
-            expected_hours=Decimal("10.00"),
+            budget_hours=Decimal("10.00"),
             is_lead=True,
         )
         DeliverableTimeEntry.objects.create(
@@ -557,7 +557,7 @@ class TestRollupsInAPI:
         DeliverableAssignment.objects.create(
             deliverable=d2,
             staff=staff_member,
-            expected_hours=Decimal("50.00"),
+            budget_hours=Decimal("50.00"),
             is_lead=True,
         )
         DeliverableTimeEntry.objects.create(

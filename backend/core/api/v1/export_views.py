@@ -221,7 +221,7 @@ class ContractBurnCSVExport(APIView):
         # Calculate and write data rows
         cumulative_expected = Decimal("0")
         cumulative_actual = Decimal("0")
-        expected_per_bucket = contract.get_expected_hours_total() / len(buckets) if buckets else Decimal("0")
+        expected_per_bucket = contract.get_assigned_budget_hours() / len(buckets) if buckets else Decimal("0")
 
         for bucket_end in buckets:
             bucket_start = bucket_end - timedelta(days=6)

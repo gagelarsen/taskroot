@@ -107,7 +107,7 @@ class ContractReportViewSet(ViewSet):
         for bucket_end in buckets:
             # Calculate expected hours for this bucket
             # For simplicity, distribute expected hours evenly across weeks
-            expected_for_bucket = contract.get_expected_hours_total() / len(buckets)
+            expected_for_bucket = contract.get_assigned_budget_hours() / len(buckets)
 
             # Calculate actual hours for this bucket
             # Sum all time entries with entry_date <= bucket_end and > previous bucket
@@ -122,7 +122,7 @@ class ContractReportViewSet(ViewSet):
             bucket_data.append(
                 {
                     "bucket": bucket_end,
-                    "expected_hours": expected_for_bucket,
+                    "budget_hours": expected_for_bucket,
                     "actual_hours": actual_for_bucket,
                     "cumulative_expected": cumulative_expected,
                     "cumulative_actual": cumulative_actual,
@@ -133,10 +133,10 @@ class ContractReportViewSet(ViewSet):
             "contract_id": contract.id,
             "start_date": contract.start_date,
             "end_date": contract.end_date,
-            "budget_hours_total": contract.budget_hours_total,
-            "expected_hours_total": contract.get_expected_hours_total(),
-            "actual_hours_total": contract.get_actual_hours_total(),
-            "remaining_budget_hours": contract.get_remaining_budget_hours(),
+            "budget_hours": contract.budget_hours,
+            "assigned_budget_hours": contract.get_assigned_budget_hours(),
+            "spent_hours": contract.get_spent_hours(),
+            "remaining_budget_hours": contract.get_unspent_budget_hours(),
             "is_over_budget": contract.is_over_budget(),
             "is_over_expected": contract.is_over_expected(),
             "buckets": bucket_data,
@@ -171,8 +171,8 @@ class ContractReportViewSet(ViewSet):
                     "id": deliverable.id,
                     "name": deliverable.name,
                     "status": deliverable.status,
-                    "expected_hours_total": deliverable.get_expected_hours_total(),
-                    "actual_hours_total": deliverable.get_actual_hours_total(),
+                    "assigned_budget_hours": deliverable.get_assigned_budget_hours(),
+                    "spent_hours": deliverable.get_spent_hours(),
                     "variance_hours": deliverable.get_variance_hours(),
                     "latest_status": latest_status_update.summary if latest_status_update else None,
                 }
@@ -240,7 +240,7 @@ class DeliverableReportViewSet(ViewSet):
 
         for bucket_end in buckets:
             # Distribute expected hours evenly across weeks
-            expected_for_bucket = deliverable.get_expected_hours_total() / len(buckets)
+            expected_for_bucket = deliverable.get_assigned_budget_hours() / len(buckets)
 
             # Calculate actual hours for this bucket
             bucket_start = bucket_end - timedelta(days=6)
@@ -254,7 +254,7 @@ class DeliverableReportViewSet(ViewSet):
             bucket_data.append(
                 {
                     "bucket": bucket_end,
-                    "expected_hours": expected_for_bucket,
+                    "budget_hours": expected_for_bucket,
                     "actual_hours": actual_for_bucket,
                     "cumulative_expected": cumulative_expected,
                     "cumulative_actual": cumulative_actual,
@@ -266,8 +266,8 @@ class DeliverableReportViewSet(ViewSet):
             "name": deliverable.name,
             "start_date": deliverable.start_date,
             "due_date": deliverable.due_date,
-            "expected_hours_total": deliverable.get_expected_hours_total(),
-            "actual_hours_total": deliverable.get_actual_hours_total(),
+            "assigned_budget_hours": deliverable.get_assigned_budget_hours(),
+            "spent_hours": deliverable.get_spent_hours(),
             "variance_hours": deliverable.get_variance_hours(),
             "is_over_expected": deliverable.is_over_expected(),
             "buckets": bucket_data,

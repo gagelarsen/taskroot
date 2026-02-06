@@ -36,7 +36,7 @@ def contract(db):
     return Contract.objects.create(
         start_date="2024-01-01",
         end_date="2024-12-31",
-        budget_hours_total=1000,
+        budget_hours=1000,
         status="active",
     )
 

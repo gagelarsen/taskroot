@@ -156,9 +156,9 @@ class DeliverableFilter(django_filters.FilterSet):
             return queryset
         # Filter in Python since this is a computed field
         if b:
-            return queryset.filter(pk__in=[d.pk for d in queryset if d.is_missing_estimate()])
+            return queryset.filter(pk__in=[d.pk for d in queryset if d.is_missing_budget()])
         else:
-            return queryset.filter(pk__in=[d.pk for d in queryset if not d.is_missing_estimate()])
+            return queryset.filter(pk__in=[d.pk for d in queryset if not d.is_missing_budget()])
 
 
 class TaskFilter(django_filters.FilterSet):

@@ -29,7 +29,7 @@ class TestContractMethods:
         contract = Contract.objects.create(
             start_date=future_start,
             end_date=future_end,
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
 
         # Should return 1 (not started yet)
@@ -44,7 +44,7 @@ class TestContractMethods:
         contract = Contract.objects.create(
             start_date=past_start,
             end_date=future_end,
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
 
         # Should return at least 3 weeks (2 weeks + current week)
@@ -59,7 +59,7 @@ class TestContractMethods:
         contract = Contract.objects.create(
             start_date=past_start,
             end_date=past_end,
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
 
         # Should use end_date instead of today
