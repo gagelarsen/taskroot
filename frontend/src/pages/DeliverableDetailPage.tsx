@@ -22,6 +22,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { deliverablesApi, timeEntriesApi, statusUpdatesApi } from '../api/client';
 import type { Deliverable, TimeEntry, DeliverableStatusUpdate } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
+import { TargetDateBadge } from '../components/TargetDateBadge';
 import { AxiosError } from 'axios';
 
 export function DeliverableDetailPage() {
@@ -149,7 +150,10 @@ export function DeliverableDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Target Completion Date
                   </Typography>
-                  <Typography>{deliverable.target_completion_date || 'Not set'}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography>{deliverable.target_completion_date || 'Not set'}</Typography>
+                    <TargetDateBadge targetDate={deliverable.target_completion_date} />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">

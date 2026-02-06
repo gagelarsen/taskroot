@@ -22,6 +22,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { contractsApi, deliverablesApi } from '../api/client';
 import type { Contract, Deliverable } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
+import { TargetDateBadge } from '../components/TargetDateBadge';
 import { AxiosError } from 'axios';
 
 export function ContractDetailPage() {
@@ -234,7 +235,12 @@ export function ContractDetailPage() {
                 <TableCell>
                   <Chip label={deliverable.status} size="small" />
                 </TableCell>
-                <TableCell>{deliverable.target_completion_date || 'Not set'}</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>{deliverable.target_completion_date || 'Not set'}</span>
+                    <TargetDateBadge targetDate={deliverable.target_completion_date} />
+                  </Box>
+                </TableCell>
                 <TableCell align="right">{parseFloat(deliverable.budget_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.assigned_budget_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.spent_hours).toFixed(1)}</TableCell>
