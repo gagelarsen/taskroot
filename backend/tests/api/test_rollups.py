@@ -127,38 +127,52 @@ class TestDeliverableRollups:
         assert deliverable.get_spent_hours() == Decimal("0")
 
     def test_variance_hours_computed_correctly(self, deliverable, staff_member):
-        """Variance should be actual - expected."""
+        """
+        Variance should be spent_hours_per_week - assigned_budget_hours_per_week.
+        Positive = spending more hours/week than assigned.
+        Negative = spending fewer hours/week than assigned.
+        """
+        # Assign 40 hours per week
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            budget_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),  # 40 hours per week
             is_lead=True,
         )
+        # Log 130 hours total (10 hours/week over 13 weeks)
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
             entry_date=date(2024, 1, 5),
-            hours=Decimal("50.00"),
+            hours=Decimal("650.00"),  # 650 hours total
         )
 
+        # Contract is Jan 1 - Mar 31 (13 weeks)
+        # Since contract is in the past, elapsed weeks = 13 (full contract)
+        # spent_hours_per_week = 650 / 13 = 50.00
+        # assigned_budget_hours_per_week = 40.00
+        # variance = 50.00 - 40.00 = 10.00
         assert deliverable.get_variance_hours() == Decimal("10.00")
 
     def test_is_overassigned_flag(self, deliverable, staff_member):
-        """is_over_expected should be True when spent > assigned budget."""
+        """is_over_expected should be True when spent_hours_per_week > assigned_budget_hours_per_week."""
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            budget_hours=Decimal("40.00"),
+            budget_hours=Decimal("40.00"),  # 40 hours per week
             is_lead=True,
         )
 
         # Not over expected yet
         assert deliverable.is_over_expected() is False
 
-        # Add time entries to go over
+        # Add time entries to go over the assigned rate
+        # Contract is Jan 1 - Mar 31, 2024 (13 weeks, in the past)
+        # To exceed 40 hrs/week, we need > 40 hrs/week
+        # Let's log 650 hours total = 50 hrs/week over 13 weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
             entry_date=date(2024, 1, 5),
-            hours=Decimal("50.00"),
+            hours=Decimal("650.00"),  # 650 / 13 = 50 hrs/week > 40 hrs/week
         )
 
         assert deliverable.is_over_expected() is True
@@ -607,10 +621,11 @@ class TestRollupsInAPI:
         assert data["is_over_budget"] is False
 
     def test_health_filters_work(self, admin_user, admin_profile, contract, staff_member):
-        """Health query filters should work correctly."""
+        """Health query filters should work correctly (per-week rate comparison)."""
         from rest_framework.test import APIClient
 
         # Create deliverable that is over expected
+        # Contract is Jan 1 - Mar 31, 2024 (13 weeks, in the past)
         d1 = Deliverable.objects.create(
             contract=contract,
             name="Over Expected",
@@ -619,13 +634,14 @@ class TestRollupsInAPI:
         DeliverableAssignment.objects.create(
             deliverable=d1,
             staff=staff_member,
-            budget_hours=Decimal("10.00"),
+            budget_hours=Decimal("10.00"),  # 10 hours per week
             is_lead=True,
         )
+        # To exceed 10 hrs/week over 13 weeks, we need > 130 hours total
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
             entry_date=date(2024, 1, 5),
-            hours=Decimal("20.00"),
+            hours=Decimal("195.00"),  # 195 / 13 = 15 hrs/week > 10 hrs/week
         )
 
         # Create deliverable that is not over expected
@@ -637,9 +653,10 @@ class TestRollupsInAPI:
         DeliverableAssignment.objects.create(
             deliverable=d2,
             staff=staff_member,
-            budget_hours=Decimal("50.00"),
+            budget_hours=Decimal("50.00"),  # 50 hours per week
             is_lead=True,
         )
+        # 10 hours total / 13 weeks = 0.77 hrs/week < 50 hrs/week
         DeliverableTimeEntry.objects.create(
             deliverable=d2,
             entry_date=date(2024, 1, 5),

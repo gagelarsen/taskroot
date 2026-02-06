@@ -121,22 +121,25 @@ class TestContractFilters:
         assert len(response.data["results"]) == 1
 
     def test_contract_filter_over_expected_true(self, auth_client, contract, deliverable, staff):
-        """Test filtering contracts that are over expected hours."""
+        """Test filtering contracts that are over expected hours (per-week rate)."""
         from core.models import DeliverableAssignment, DeliverableTimeEntry
 
         # Create assignment with expected hours
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            budget_hours=Decimal("100.0"),
+            budget_hours=Decimal("100.0"),  # 100 hours per week
             is_lead=True,
         )
 
-        # Create time entries that exceed expected
+        # Create time entries that exceed expected rate
+        # Contract is Jan 1 - Dec 31, 2024 (52 weeks, in the past)
+        # To exceed 100 hrs/week, we need > 100 hrs/week
+        # Let's log 6240 hours total = 120 hrs/week over 52 weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
             entry_date=date(2024, 1, 15),
-            hours=Decimal("150.0"),  # Exceeds 100 expected
+            hours=Decimal("6240.0"),  # 6240 / 52 = 120 hrs/week > 100 hrs/week
         )
 
         response = auth_client.get("/api/v1/contracts/?over_expected=true")
@@ -205,22 +208,25 @@ class TestDeliverableFilters:
         assert len(response.data["results"]) == 1
 
     def test_deliverable_filter_over_expected_true(self, auth_client, contract, deliverable, staff):
-        """Test filtering deliverables over expected hours."""
+        """Test filtering deliverables over expected hours (per-week rate)."""
         from core.models import DeliverableTimeEntry
 
         # Add assignment with expected hours
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            budget_hours=Decimal("50.0"),
+            budget_hours=Decimal("50.0"),  # 50 hours per week
             is_lead=True,
         )
 
-        # Add time entries exceeding expected
+        # Add time entries exceeding expected rate
+        # Contract is Jan 1 - Dec 31, 2024 (52 weeks, in the past)
+        # To exceed 50 hrs/week, we need > 50 hrs/week
+        # Let's log 3120 hours total = 60 hrs/week over 52 weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
             entry_date=date(2024, 1, 15),
-            hours=Decimal("75.0"),
+            hours=Decimal("3120.0"),  # 3120 / 52 = 60 hrs/week > 50 hrs/week
         )
 
         response = auth_client.get("/api/v1/deliverables/?over_expected=true")

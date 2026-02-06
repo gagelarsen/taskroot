@@ -290,7 +290,9 @@ class DeliverableSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(
         serializers.FloatField(
-            read_only=True, help_text="Variance between spent and assigned budget hours (spent - assigned budget)"
+            read_only=True,
+            help_text="Variance in hours per week (spent_hours_per_week - assigned_budget_hours_per_week)."
+            " Positive = over pace, negative = under pace",
         )
     )
     def get_variance_hours(self, obj):
