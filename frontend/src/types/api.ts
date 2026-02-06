@@ -99,6 +99,7 @@ export interface Staff {
   last_name: string;
   role: 'admin' | 'manager' | 'staff';
   status: 'active' | 'inactive';
+  expected_hours_per_week: number;
   created_at: string;
   updated_at: string;
 }

@@ -23,6 +23,7 @@ class StaffSerializer(serializers.ModelSerializer):
             "last_name",
             "status",
             "role",
+            "expected_hours_per_week",
             "created_at",
             "updated_at",
         ]
