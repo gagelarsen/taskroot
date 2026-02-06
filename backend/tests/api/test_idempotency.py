@@ -148,7 +148,6 @@ class TestTimeEntryIdempotency:
         """Providing external_source without external_id returns 400."""
         payload = {
             "deliverable": deliverable.id,
-            "staff": staff.id,
             "entry_date": "2024-01-15",
             "hours": 8.0,
             "external_source": "jira",
@@ -163,7 +162,6 @@ class TestTimeEntryIdempotency:
         """Providing external_id without external_source returns 400."""
         payload = {
             "deliverable": deliverable.id,
-            "staff": staff.id,
             "entry_date": "2024-01-15",
             "hours": 8.0,
             "external_id": "PROJ-123",

@@ -34,7 +34,6 @@ class DeliverableAssignmentInline(admin.TabularInline):
 class DeliverableTimeEntryInline(admin.TabularInline):
     model = DeliverableTimeEntry
     extra = 0
-    autocomplete_fields = ("staff",)
 
 
 class DeliverableStatusUpdateInline(admin.TabularInline):
@@ -75,8 +74,8 @@ class DeliverableAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(DeliverableTimeEntry)
 class DeliverableTimeEntryAdmin(admin.ModelAdmin):
-    list_display = ("id", "deliverable", "staff", "entry_date", "hours")
-    autocomplete_fields = ("deliverable", "staff")
+    list_display = ("id", "deliverable", "entry_date", "hours")
+    autocomplete_fields = ("deliverable",)
     list_filter = ("entry_date",)
 
 

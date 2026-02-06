@@ -65,9 +65,9 @@ def data():
     t3 = Task.objects.create(deliverable=d3, assignee=None, title="Gamma task", budget_hours="1.0", status="blocked")
 
     # Time entries
-    DeliverableTimeEntry.objects.create(deliverable=d1, staff=s1, entry_date="2026-02-01", hours="1.0")
-    DeliverableTimeEntry.objects.create(deliverable=d1, staff=s1, entry_date="2026-02-15", hours="2.0")
-    DeliverableTimeEntry.objects.create(deliverable=d2, staff=s1, entry_date="2026-02-20", hours="1.0")
+    DeliverableTimeEntry.objects.create(deliverable=d1, entry_date="2026-02-01", hours="1.0")
+    DeliverableTimeEntry.objects.create(deliverable=d1, entry_date="2026-02-15", hours="2.0")
+    DeliverableTimeEntry.objects.create(deliverable=d2, entry_date="2026-02-20", hours="1.0")
 
     # Status updates
     DeliverableStatusUpdate.objects.create(deliverable=d1, period_end="2026-02-01", status="on_track", summary="ok")

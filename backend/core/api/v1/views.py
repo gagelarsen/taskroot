@@ -488,11 +488,7 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
     ordering_fields = ["entry_date", "id"]
 
     def get_queryset(self):
-        return (
-            DeliverableTimeEntry.objects.all()
-            .select_related("deliverable", "deliverable__contract", "staff")
-            .order_by("-id")
-        )
+        return DeliverableTimeEntry.objects.all().select_related("deliverable", "deliverable__contract").order_by("-id")
 
     def create(self, request, *args, **kwargs):
         """
@@ -521,26 +517,11 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        role = get_staff_role(self.request)
-
-        if role == "staff":
-            staff = self.request.user.staff
-            # Force staff to self regardless of payload
-            serializer.save(staff=staff)
-            return
-
+        # Time entries no longer track staff, so just save normally
         serializer.save()
 
     def perform_update(self, serializer):
-        role = get_staff_role(self.request)
-
-        if role == "staff":
-            # IsOwnTimeEntryOrPrivileged already checked ownership
-            # Force staff to remain self even if payload tries to spoof
-            staff = self.request.user.staff
-            serializer.save(staff=staff)
-            return
-
+        # Time entries no longer track staff, so just save normally
         serializer.save()
 
     def perform_destroy(self, instance):

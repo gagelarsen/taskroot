@@ -108,7 +108,6 @@ class TestContractFilters:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff,
             entry_date=date(2024, 1, 15),
             hours=Decimal("1500.0"),  # Exceeds 1000 budget
         )
@@ -138,7 +137,6 @@ class TestContractFilters:
         # Create time entries that exceed expected
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff,
             entry_date=date(2024, 1, 15),
             hours=Decimal("150.0"),  # Exceeds 100 expected
         )
@@ -223,7 +221,6 @@ class TestDeliverableFilters:
         # Add time entries exceeding expected
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff,
             entry_date=date(2024, 1, 15),
             hours=Decimal("75.0"),
         )

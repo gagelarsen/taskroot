@@ -47,7 +47,6 @@ class TestContractBurnReport:
         # Add some time entries
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=admin_profile,
             entry_date=date(2024, 1, 5),
             hours=Decimal("25.00"),
         )
@@ -127,7 +126,6 @@ class TestContractDeliverablesReport:
         # Add time entry to d1
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
-            staff=admin_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("30.00"),
         )
@@ -187,7 +185,6 @@ class TestDeliverableBurnReport:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=admin_profile,
             entry_date=date(2024, 1, 10),
             hours=Decimal("40.00"),
         )
@@ -268,7 +265,7 @@ class TestStaffTimeReport:
     """Test staff time report endpoint."""
 
     def test_staff_time_report_basic(self, admin_user, admin_profile, staff_profile):
-        """Test staff time report groups by week."""
+        """Test staff time report returns empty results (time entries no longer track staff)."""
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
@@ -285,19 +282,16 @@ class TestStaffTimeReport:
         # Add time entries across different weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 2),  # Week 1
             hours=Decimal("10.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 3),  # Week 1
             hours=Decimal("15.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 9),  # Week 2
             hours=Decimal("20.00"),
         )
@@ -311,11 +305,8 @@ class TestStaffTimeReport:
 
         assert data["staff_id"] == staff_profile.id
         assert "buckets" in data
-        assert len(data["buckets"]) == 2  # Two weeks
-
-        # Check first week total
-        week1 = data["buckets"][0]
-        assert week1["total_hours"] == Decimal("25.00")  # 10 + 15
+        # Time entries no longer track staff, so buckets should be empty
+        assert len(data["buckets"]) == 0
 
 
 @pytest.mark.django_db
@@ -340,13 +331,11 @@ class TestCSVExports:
         # Create time entries
         _ = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 5),
             hours=Decimal("10.00"),
         )
         _ = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=admin_profile,
             entry_date=date(2024, 1, 10),
             hours=Decimal("15.00"),
         )
@@ -366,13 +355,9 @@ class TestCSVExports:
         assert len(lines) >= 3  # Header + 2 entries
         assert "Entry Date" in lines[0]
         assert "Hours" in lines[0]
-
-        # Test with staff filter
-        response = client.get(f"/api/v1/exports/time-entries.csv?staff_id={staff_profile.id}")
-        assert response.status_code == 200
-        content = response.content.decode("utf-8")
-        lines = content.strip().split("\n")
-        assert len(lines) == 2  # Header + 1 entry (only staff_profile's entry)
+        # Staff columns should not be in the CSV anymore
+        assert "Staff ID" not in lines[0]
+        assert "Staff Name" not in lines[0]
 
     def test_contract_burn_csv_export(self, admin_user, admin_profile):
         """Test contract burn CSV export."""
@@ -398,7 +383,6 @@ class TestCSVExports:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=admin_profile,
             entry_date=date(2024, 1, 5),
             hours=Decimal("25.00"),
         )
@@ -448,7 +432,6 @@ class TestCSVExports:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=admin_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("10.00"),
         )
@@ -575,7 +558,7 @@ class TestReportingErrorCases:
         assert response.status_code == 404
 
     def test_staff_time_report_with_filters(self, admin_user, admin_profile, staff_profile):
-        """Test staff time report with contract_id filter."""
+        """Test staff time report with contract_id filter (returns empty since time entries don't track staff)."""
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
@@ -591,7 +574,6 @@ class TestReportingErrorCases:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 5),
             hours=Decimal("10.00"),
         )
@@ -599,10 +581,10 @@ class TestReportingErrorCases:
         client = APIClient()
         client.force_authenticate(user=admin_user)
 
-        # Test with contract_id filter
+        # Test with contract_id filter - should return empty since time entries don't track staff
         response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?contract_id={contract.id}")
         assert response.status_code == 200
-        assert len(response.data["buckets"]) == 1
+        assert len(response.data["buckets"]) == 0
 
     def test_staff_time_report_invalid_date_format(self, admin_user, staff_profile):
         """Test staff time report with invalid date format."""
@@ -620,7 +602,7 @@ class TestReportingErrorCases:
         assert "Invalid end_date format" in str(response.data)
 
     def test_staff_time_report_with_valid_date_filters(self, admin_user, staff_profile):
-        """Test staff time report with valid date filters."""
+        """Test staff time report with valid date filters (returns empty since time entries don't track staff)."""
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
@@ -637,13 +619,11 @@ class TestReportingErrorCases:
         # Create entries in different date ranges
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 5),
             hours=Decimal("10.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 2, 15),
             hours=Decimal("15.00"),
         )
@@ -651,15 +631,15 @@ class TestReportingErrorCases:
         client = APIClient()
         client.force_authenticate(user=admin_user)
 
-        # Test with start_date filter
+        # Test with start_date filter - should return empty since time entries don't track staff
         response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?start_date=2024-02-01")
         assert response.status_code == 200
-        assert len(response.data["buckets"]) == 1  # Only February entry
+        assert len(response.data["buckets"]) == 0
 
-        # Test with end_date filter
+        # Test with end_date filter - should return empty since time entries don't track staff
         response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?end_date=2024-01-31")
         assert response.status_code == 200
-        assert len(response.data["buckets"]) == 1  # Only January entry
+        assert len(response.data["buckets"]) == 0
 
 
 @pytest.mark.django_db

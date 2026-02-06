@@ -216,7 +216,6 @@ class DeliverableAssignmentFilter(django_filters.FilterSet):
 class DeliverableTimeEntryFilter(django_filters.FilterSet):
     contract_id = django_filters.NumberFilter(field_name="deliverable__contract_id")
     deliverable_id = django_filters.NumberFilter(field_name="deliverable_id")
-    staff_id = django_filters.NumberFilter(field_name="staff_id")
 
     entry_date_from = django_filters.DateFilter(field_name="entry_date", lookup_expr="gte")
     entry_date_to = django_filters.DateFilter(field_name="entry_date", lookup_expr="lte")
@@ -226,7 +225,6 @@ class DeliverableTimeEntryFilter(django_filters.FilterSet):
         fields = [
             "contract_id",
             "deliverable_id",
-            "staff_id",
             "entry_date_from",
             "entry_date_to",
         ]

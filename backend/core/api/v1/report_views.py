@@ -354,27 +354,23 @@ class StaffReportViewSet(ViewSet):
         GET /api/v1/reports/staff/{staff_id}/time/
 
         Returns weekly time buckets grouped by deliverable/contract.
+
+        NOTE: Time entries no longer track staff, so this endpoint returns empty results.
+        Consider using deliverable assignments for staff utilization reporting.
         """
         try:
             staff_member = Staff.objects.get(pk=pk)
         except Staff.DoesNotExist as err:
             raise NotFound("Staff member not found") from err
 
-        # Get query parameters
-        contract_id = request.query_params.get("contract_id")
+        # Time entries no longer track staff, so return empty result
+        # Validate query parameters for backwards compatibility
         start_date_str = request.query_params.get("start_date")
         end_date_str = request.query_params.get("end_date")
 
-        # Build query
-        time_entries = DeliverableTimeEntry.objects.filter(staff=staff_member)
-
-        if contract_id:
-            time_entries = time_entries.filter(deliverable__contract_id=contract_id)
-
         if start_date_str:
             try:
-                start_date = date.fromisoformat(start_date_str)
-                time_entries = time_entries.filter(entry_date__gte=start_date)
+                date.fromisoformat(start_date_str)
             except ValueError:
                 return Response(
                     {"error": "Invalid start_date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
@@ -382,49 +378,17 @@ class StaffReportViewSet(ViewSet):
 
         if end_date_str:
             try:
-                end_date = date.fromisoformat(end_date_str)
-                time_entries = time_entries.filter(entry_date__lte=end_date)
+                date.fromisoformat(end_date_str)
             except ValueError:
                 return Response(
                     {"error": "Invalid end_date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
                 )
 
-        # Group by week
-        weekly_data = {}
-        for entry in time_entries.select_related("deliverable", "deliverable__contract"):
-            week_ending = get_week_ending_date(entry.entry_date)
-
-            if week_ending not in weekly_data:
-                weekly_data[week_ending] = {
-                    "week_ending": week_ending,
-                    "total_hours": Decimal("0"),
-                    "by_deliverable": {},
-                }
-
-            weekly_data[week_ending]["total_hours"] += entry.hours
-
-            deliverable_key = f"{entry.deliverable.id}"
-            if deliverable_key not in weekly_data[week_ending]["by_deliverable"]:
-                weekly_data[week_ending]["by_deliverable"][deliverable_key] = {
-                    "deliverable_id": entry.deliverable.id,
-                    "deliverable_name": entry.deliverable.name,
-                    "contract_id": entry.deliverable.contract.id,
-                    "hours": Decimal("0"),
-                }
-
-            weekly_data[week_ending]["by_deliverable"][deliverable_key]["hours"] += entry.hours
-
-        # Convert to list and sort by week
-        buckets = []
-        for week_ending in sorted(weekly_data.keys()):
-            bucket = weekly_data[week_ending]
-            bucket["by_deliverable"] = list(bucket["by_deliverable"].values())
-            buckets.append(bucket)
-
+        # Return empty buckets since time entries no longer track staff
         report_data = {
             "staff_id": staff_member.id,
             "staff_name": f"{staff_member.first_name} {staff_member.last_name}".strip() or staff_member.email,
-            "buckets": buckets,
+            "buckets": [],
         }
 
         serializer = StaffTimeReportSerializer(report_data)

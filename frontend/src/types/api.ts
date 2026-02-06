@@ -108,7 +108,6 @@ export interface Staff {
 export interface TimeEntry {
   id: number;
   deliverable: number;
-  staff: number;
   entry_date: string;
   hours: string;
   notes: string;

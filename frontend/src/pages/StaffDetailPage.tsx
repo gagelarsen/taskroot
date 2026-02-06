@@ -18,8 +18,8 @@ import {
 } from '@mui/material';
 import { Edit, ArrowBack } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { staffApi, assignmentsApi, timeEntriesApi } from '../api/client';
-import type { Staff, DeliverableAssignment, TimeEntry } from '../types/api';
+import { staffApi, assignmentsApi } from '../api/client';
+import type { Staff, DeliverableAssignment } from '../types/api';
 import { AxiosError } from 'axios';
 
 export function StaffDetailPage() {
@@ -27,25 +27,22 @@ export function StaffDetailPage() {
   const navigate = useNavigate();
   const [staff, setStaff] = useState<Staff | null>(null);
   const [assignments, setAssignments] = useState<DeliverableAssignment[]>([]);
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
-      
+
       setLoading(true);
       setError('');
       try {
-        const [staffData, assignmentsData, timeEntriesData] = await Promise.all([
+        const [staffData, assignmentsData] = await Promise.all([
           staffApi.get(parseInt(id)),
           assignmentsApi.list({ staff_id: parseInt(id) }),
-          timeEntriesApi.list({ staff_id: parseInt(id) }),
         ]);
         setStaff(staffData);
         setAssignments(assignmentsData);
-        setTimeEntries(timeEntriesData);
       } catch (err) {
         if (err instanceof AxiosError) {
           setError(err.response?.data?.detail || 'Failed to load staff details');
@@ -105,11 +102,6 @@ export function StaffDetailPage() {
 
   const totalAssignedHours = assignments.reduce(
     (sum, assignment) => sum + parseFloat(assignment.budget_hours),
-    0
-  );
-
-  const totalLoggedHours = timeEntries.reduce(
-    (sum, entry) => sum + parseFloat(entry.hours),
     0
   );
 
@@ -182,19 +174,13 @@ export function StaffDetailPage() {
         </Typography>
         <Divider sx={{ mb: 2 }} />
         <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={6}>
             <Typography variant="body2" color="text.secondary">
-              Total Assigned Hours
+              Total Assigned Hours Per Week
             </Typography>
             <Typography variant="h5">{totalAssignedHours.toFixed(2)}</Typography>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <Typography variant="body2" color="text.secondary">
-              Total Logged Hours
-            </Typography>
-            <Typography variant="h5">{totalLoggedHours.toFixed(2)}</Typography>
-          </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={6}>
             <Typography variant="body2" color="text.secondary">
               Active Assignments
             </Typography>
@@ -233,40 +219,6 @@ export function StaffDetailPage() {
                         '-'
                       )}
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
-
-      {/* Recent Time Entries */}
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Recent Time Entries
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        {timeEntries.length === 0 ? (
-          <Typography color="text.secondary">No time entries</Typography>
-        ) : (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Deliverable</TableCell>
-                  <TableCell align="right">Hours</TableCell>
-                  <TableCell>Notes</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {timeEntries.slice(0, 10).map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>{new Date(entry.entry_date).toLocaleDateString()}</TableCell>
-                    <TableCell>Deliverable #{entry.deliverable}</TableCell>
-                    <TableCell align="right">{entry.hours}</TableCell>
-                    <TableCell>{entry.notes || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

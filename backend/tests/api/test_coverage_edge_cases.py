@@ -107,7 +107,6 @@ class TestViewEdgeCases:
         # Create time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=other_staff_user_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("5.0"),
         )
@@ -127,7 +126,6 @@ class TestViewEdgeCases:
         # Create time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=other_staff_user_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("5.0"),
         )
