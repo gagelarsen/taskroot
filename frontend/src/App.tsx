@@ -9,6 +9,9 @@ import { ContractEditPage } from './pages/ContractEditPage';
 import { DeliverableDetailPage } from './pages/DeliverableDetailPage';
 import { DeliverableEditPage } from './pages/DeliverableEditPage';
 import { TaskEditPage } from './pages/TaskEditPage';
+import { StaffListPage } from './pages/StaffListPage';
+import { StaffDetailPage } from './pages/StaffDetailPage';
+import { StaffEditPage } from './pages/StaffEditPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('access_token');
@@ -88,6 +91,36 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <TaskEditPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <StaffListPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/staff/:id/edit"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <StaffEditPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/staff/:id"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <StaffDetailPage />
                 </AppShell>
               </PrivateRoute>
             }
