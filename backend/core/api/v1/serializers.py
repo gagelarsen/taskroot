@@ -106,7 +106,7 @@ class ContractSerializer(serializers.ModelSerializer):
         return obj.get_elapsed_weeks()
 
     @extend_schema_field(
-        serializers.FloatField(read_only=True, help_text="Assigned budget hours divided by planned weeks")
+        serializers.FloatField(read_only=True, help_text="Sum of assigned budget hours per week from all assignments")
     )
     def get_assigned_budget_hours_per_week(self, obj):
         return obj.get_assigned_budget_hours_per_week()
@@ -267,7 +267,7 @@ class DeliverableSerializer(serializers.ModelSerializer):
         return obj.get_elapsed_weeks()
 
     @extend_schema_field(
-        serializers.FloatField(read_only=True, help_text="Assigned budget hours divided by planned weeks")
+        serializers.FloatField(read_only=True, help_text="Sum of assigned budget hours per week from all assignments")
     )
     def get_assigned_budget_hours_per_week(self, obj):
         return obj.get_assigned_budget_hours_per_week()

@@ -330,17 +330,21 @@ class TestWeeksCalculations:
         assert deliverable.get_elapsed_weeks() >= 1  # At least 1 week
 
     def test_per_week_metrics(self, deliverable, staff_member):
-        """Per-week metrics should divide totals by weeks."""
+        """
+        Per-week metrics for assignments.
+        Assignment budget_hours represents hours per week, not total hours.
+        So assigned_budget_hours_per_week is just the sum of assignment budget_hours.
+        """
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff_member,
-            budget_hours=Decimal("80.00"),
+            budget_hours=Decimal("40.00"),  # 40 hours per week
             is_lead=True,
         )
 
-        # deliverable uses contract dates: Jan 1 - Mar 31 (90 days = 13 weeks)
-        # 80 / 13 = 6.153846...
-        assert deliverable.get_assigned_budget_hours_per_week() == Decimal("80.00") / Decimal("13")
+        # Assignment budget_hours is already in hours per week
+        # So assigned_budget_hours_per_week should equal the sum of assignment budget_hours
+        assert deliverable.get_assigned_budget_hours_per_week() == Decimal("40.00")
 
 
 @pytest.mark.django_db
