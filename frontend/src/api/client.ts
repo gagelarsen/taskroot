@@ -122,6 +122,21 @@ export const staffApi = {
     // Handle paginated response
     return response.data.results || response.data;
   },
+  get: async (id: number): Promise<Staff> => {
+    const response = await apiClient.get(`/staff/${id}/`);
+    return response.data;
+  },
+  create: async (data: Partial<Staff>): Promise<Staff> => {
+    const response = await apiClient.post('/staff/', data);
+    return response.data;
+  },
+  update: async (id: number, data: Partial<Staff>): Promise<Staff> => {
+    const response = await apiClient.put(`/staff/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/staff/${id}/`);
+  },
 };
 
 // Time Entries API
