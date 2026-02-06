@@ -27,7 +27,7 @@ class TestContractBurnReport:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 28),  # 4 weeks
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -40,7 +40,7 @@ class TestContractBurnReport:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=admin_profile,
-            expected_hours=Decimal("100.00"),
+            budget_hours=Decimal("100.00"),
             is_lead=True,
         )
 
@@ -63,23 +63,23 @@ class TestContractBurnReport:
         # Check structure
         assert "contract_id" in data
         assert "buckets" in data
-        assert "budget_hours_total" in data
-        assert "expected_hours_total" in data
-        assert "actual_hours_total" in data
+        assert "budget_hours" in data
+        assert "assigned_budget_hours" in data
+        assert "spent_hours" in data
         assert "is_over_budget" in data
 
         # Check values
         assert data["contract_id"] == contract.id
-        assert data["budget_hours_total"] == "1000.00"
-        assert data["expected_hours_total"] == "100.00"
-        assert data["actual_hours_total"] == "25.00"
+        assert data["budget_hours"] == "1000.00"
+        assert data["assigned_budget_hours"] == "100.00"
+        assert data["spent_hours"] == "25.00"
         assert data["is_over_budget"] is False
 
         # Check buckets
         assert len(data["buckets"]) > 0
         first_bucket = data["buckets"][0]
         assert "bucket" in first_bucket
-        assert "expected_hours" in first_bucket
+        assert "budget_hours" in first_bucket
         assert "actual_hours" in first_bucket
         assert "cumulative_expected" in first_bucket
         assert "cumulative_actual" in first_bucket
@@ -94,7 +94,7 @@ class TestContractDeliverablesReport:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -114,13 +114,13 @@ class TestContractDeliverablesReport:
         DeliverableAssignment.objects.create(
             deliverable=d1,
             staff=admin_profile,
-            expected_hours=Decimal("50.00"),
+            budget_hours=Decimal("50.00"),
             is_lead=True,
         )
         DeliverableAssignment.objects.create(
             deliverable=d2,
             staff=admin_profile,
-            expected_hours=Decimal("75.00"),
+            budget_hours=Decimal("75.00"),
             is_lead=True,
         )
 
@@ -152,8 +152,8 @@ class TestContractDeliverablesReport:
 
         d1_data = deliverables[d1.id]
         assert d1_data["name"] == "Deliverable 1"
-        assert d1_data["expected_hours_total"] == "50.00"
-        assert d1_data["actual_hours_total"] == "30.00"
+        assert d1_data["assigned_budget_hours"] == "50.00"
+        assert d1_data["spent_hours"] == "30.00"
         assert d1_data["variance_hours"] == "-20.00"  # 30 - 50
 
 
@@ -166,7 +166,7 @@ class TestDeliverableBurnReport:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -181,7 +181,7 @@ class TestDeliverableBurnReport:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=admin_profile,
-            expected_hours=Decimal("80.00"),
+            budget_hours=Decimal("80.00"),
             is_lead=True,
         )
 
@@ -201,8 +201,8 @@ class TestDeliverableBurnReport:
 
         assert data["deliverable_id"] == deliverable.id
         assert data["name"] == "Test Deliverable"
-        assert data["expected_hours_total"] == "80.00"
-        assert data["actual_hours_total"] == "40.00"
+        assert data["assigned_budget_hours"] == "80.00"
+        assert data["spent_hours"] == "40.00"
         assert data["variance_hours"] == "-40.00"
         assert data["is_over_expected"] is False
         assert len(data["buckets"]) > 0
@@ -217,7 +217,7 @@ class TestDeliverableStatusHistory:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -272,7 +272,7 @@ class TestStaffTimeReport:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -327,7 +327,7 @@ class TestCSVExports:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -379,7 +379,7 @@ class TestCSVExports:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 1, 28),  # 4 weeks
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -392,7 +392,7 @@ class TestCSVExports:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=admin_profile,
-            expected_hours=Decimal("100.00"),
+            budget_hours=Decimal("100.00"),
             is_lead=True,
         )
 
@@ -436,7 +436,7 @@ class TestCSVExports:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -509,7 +509,7 @@ class TestReportingErrorCases:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -541,7 +541,7 @@ class TestReportingErrorCases:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -579,7 +579,7 @@ class TestReportingErrorCases:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -624,7 +624,7 @@ class TestReportingErrorCases:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.00"),
+            budget_hours=Decimal("1000.00"),
             status="active",
         )
 
@@ -675,7 +675,7 @@ class TestWeekEndingEdgeCases:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),  # Monday
             end_date=date(2024, 1, 2),  # Tuesday (before first Sunday)
-            budget_hours_total=Decimal("100.00"),
+            budget_hours=Decimal("100.00"),
             status="active",
         )
 

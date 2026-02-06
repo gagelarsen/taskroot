@@ -30,7 +30,7 @@ class TestCanCreateTaskAsStaff:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
 
@@ -49,7 +49,7 @@ class TestCanCreateTaskAsStaff:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
 
@@ -68,7 +68,7 @@ class TestCanCreateTaskAsStaff:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
 
@@ -87,7 +87,7 @@ class TestCanCreateTaskAsStaff:
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
 

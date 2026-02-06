@@ -50,8 +50,8 @@ class Deliverable(models.Model):
     # Rollup metrics - computed fields (read-only)
 
     def get_assigned_budget_hours(self) -> Decimal:
-        """Sum of all task budget_hours for this deliverable."""
-        result = self.tasks.aggregate(total=Sum("budget_hours"))["total"]
+        """Sum of all assignment budget_hours for this deliverable."""
+        result = self.assignments.aggregate(total=Sum("budget_hours"))["total"]
         return result or Decimal("0")
 
     def get_spent_hours(self) -> Decimal:
@@ -100,12 +100,16 @@ class Deliverable(models.Model):
         return spent_total / Decimal(str(elapsed_weeks))
 
     def get_remaining_budget_hours(self) -> Decimal:
-        """Budget hours remaining (budget - assigned budget hours)."""
-        return self.budget_hours - self.get_assigned_budget_hours()
+        """Budget hours remaining (budget - spent hours)."""
+        return self.budget_hours - self.get_spent_hours()
 
     def get_unspent_budget_hours(self) -> Decimal:
-        """Unspent budget hours (budget - spent hours)."""
-        return self.budget_hours - self.get_spent_hours()
+        """Unspent budget hours (budget - spent hours). Alias for get_remaining_budget_hours()."""
+        return self.get_remaining_budget_hours()
+
+    def get_unassigned_budget_hours(self) -> Decimal:
+        """Unassigned budget hours (budget - assigned budget hours)."""
+        return self.budget_hours - self.get_assigned_budget_hours()
 
     def get_variance_hours(self) -> Decimal:
         """Difference between spent and assigned budget hours (spent - assigned budget)."""
@@ -118,12 +122,18 @@ class Deliverable(models.Model):
         return self.get_spent_hours() > self.budget_hours
 
     def is_overassigned(self) -> bool:
-        """True if assigned budget hours exceed deliverable budget."""
+        """True if assigned budget hours exceed deliverable budget (only if budget is set)."""
+        if self.budget_hours == 0:
+            return False
         return self.get_assigned_budget_hours() > self.budget_hours
 
+    def is_over_expected(self) -> bool:
+        """True if spent hours exceed assigned budget hours (from assignments)."""
+        return self.get_spent_hours() > self.get_assigned_budget_hours()
+
     def is_missing_budget(self) -> bool:
-        """True if budget hours is 0 but has tasks."""
-        return self.budget_hours == 0 and self.tasks.exists()
+        """True if assigned budget hours is 0 but has assignments."""
+        return self.get_assigned_budget_hours() == 0 and self.assignments.exists()
 
     def is_missing_lead(self) -> bool:
         """True if no assignment has is_lead=True."""

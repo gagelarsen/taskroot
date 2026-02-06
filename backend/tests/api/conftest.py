@@ -63,9 +63,7 @@ def other_staff_profile(db):
 @pytest.fixture
 def contract(db):
     """Create a test contract."""
-    return Contract.objects.create(
-        start_date="2026-01-01", end_date="2026-12-31", budget_hours_total=100.0, status="active"
-    )
+    return Contract.objects.create(start_date="2026-01-01", end_date="2026-12-31", budget_hours=100.0, status="active")
 
 
 @pytest.fixture

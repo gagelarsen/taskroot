@@ -40,7 +40,7 @@ def contract(db):
     return Contract.objects.create(
         start_date=date(2024, 1, 1),
         end_date=date(2024, 12, 31),
-        budget_hours_total=Decimal("1000.0"),
+        budget_hours=Decimal("1000.0"),
         status="active",
     )
 
@@ -131,7 +131,7 @@ class TestContractFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("100.0"),
+            budget_hours=Decimal("100.0"),
             is_lead=True,
         )
 
@@ -186,7 +186,7 @@ class TestDeliverableFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("100.0"),
+            budget_hours=Decimal("100.0"),
             is_lead=True,
         )
 
@@ -200,7 +200,7 @@ class TestDeliverableFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("0.0"),
+            budget_hours=Decimal("0.0"),
             is_lead=True,
         )
 
@@ -216,7 +216,7 @@ class TestDeliverableFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("50.0"),
+            budget_hours=Decimal("50.0"),
             is_lead=True,
         )
 
@@ -273,7 +273,7 @@ class TestDeliverableFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("100.0"),
+            budget_hours=Decimal("100.0"),
             is_lead=True,
         )
 
@@ -294,7 +294,7 @@ class TestDeliverableFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("100.0"),
+            budget_hours=Decimal("100.0"),
             is_lead=True,
         )
 
@@ -363,7 +363,7 @@ class TestAssignmentFilters:
         DeliverableAssignment.objects.create(
             deliverable=deliverable,
             staff=staff,
-            expected_hours=Decimal("100.0"),
+            budget_hours=Decimal("100.0"),
             is_lead=True,
         )
 
@@ -394,12 +394,12 @@ class TestOrderingBackend:
         Contract.objects.create(
             start_date=date(2024, 1, 1),
             end_date=date(2024, 12, 31),
-            budget_hours_total=Decimal("1000.0"),
+            budget_hours=Decimal("1000.0"),
         )
         Contract.objects.create(
             start_date=date(2025, 1, 1),
             end_date=date(2025, 12, 31),
-            budget_hours_total=Decimal("2000.0"),
+            budget_hours=Decimal("2000.0"),
         )
 
         response = auth_client.get("/api/v1/contracts/?order_by=start_date&order_dir=desc")

@@ -11,18 +11,16 @@ class BurnBucketSerializer(serializers.Serializer):
     """
     Represents a single time bucket in a burn report.
 
-    Used for weekly/daily/monthly burn data showing expected vs actual hours.
+    Used for weekly/daily/monthly burn data showing budget vs actual hours.
     """
 
     bucket = serializers.DateField(help_text="The ending date of this time bucket (e.g., week ending date)")
-    expected_hours = serializers.DecimalField(
-        max_digits=10, decimal_places=2, help_text="Expected hours for this bucket"
-    )
+    budget_hours = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Budget hours for this bucket")
     actual_hours = serializers.DecimalField(
         max_digits=10, decimal_places=2, help_text="Actual hours logged for this bucket"
     )
     cumulative_expected = serializers.DecimalField(
-        max_digits=10, decimal_places=2, help_text="Cumulative expected hours up to and including this bucket"
+        max_digits=10, decimal_places=2, help_text="Cumulative budget hours up to and including this bucket"
     )
     cumulative_actual = serializers.DecimalField(
         max_digits=10, decimal_places=2, help_text="Cumulative actual hours up to and including this bucket"
@@ -37,18 +35,16 @@ class ContractBurnReportSerializer(serializers.Serializer):
     contract_id = serializers.IntegerField(help_text="Contract ID")
     start_date = serializers.DateField(help_text="Contract start date")
     end_date = serializers.DateField(help_text="Contract end date")
-    budget_hours_total = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Total budget hours")
-    expected_hours_total = serializers.DecimalField(
-        max_digits=10, decimal_places=2, help_text="Total expected hours from all deliverables"
+    budget_hours = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Total budget hours")
+    assigned_budget_hours = serializers.DecimalField(
+        max_digits=10, decimal_places=2, help_text="Total assigned budget hours from all deliverable assignments"
     )
-    actual_hours_total = serializers.DecimalField(
-        max_digits=10, decimal_places=2, help_text="Total actual hours logged"
-    )
+    spent_hours = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Total spent hours logged")
     remaining_budget_hours = serializers.DecimalField(
-        max_digits=10, decimal_places=2, help_text="Remaining budget hours (budget - actual)"
+        max_digits=10, decimal_places=2, help_text="Remaining budget hours (budget - spent)"
     )
-    is_over_budget = serializers.BooleanField(help_text="True if actual hours exceed budget")
-    is_over_expected = serializers.BooleanField(help_text="True if actual hours exceed expected")
+    is_over_budget = serializers.BooleanField(help_text="True if spent hours exceed budget")
+    is_over_expected = serializers.BooleanField(help_text="True if spent hours exceed assigned budget")
     buckets = BurnBucketSerializer(many=True, help_text="Time series data buckets (weekly by default)")
 
 
@@ -60,10 +56,12 @@ class DeliverableSummarySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     status = serializers.CharField()
-    expected_hours_total = serializers.DecimalField(max_digits=10, decimal_places=2)
-    actual_hours_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    assigned_budget_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
+    spent_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
     variance_hours = serializers.DecimalField(
-        max_digits=10, decimal_places=2, help_text="Difference between actual and expected (actual - expected)"
+        max_digits=10,
+        decimal_places=2,
+        help_text="Difference between spent and assigned budget (spent - assigned budget)",
     )
     latest_status = serializers.CharField(allow_null=True, help_text="Latest status update summary")
 
@@ -86,8 +84,8 @@ class DeliverableBurnReportSerializer(serializers.Serializer):
     name = serializers.CharField()
     start_date = serializers.DateField(allow_null=True)
     due_date = serializers.DateField(allow_null=True)
-    expected_hours_total = serializers.DecimalField(max_digits=10, decimal_places=2)
-    actual_hours_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    assigned_budget_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
+    spent_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
     variance_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
     is_over_expected = serializers.BooleanField()
     buckets = BurnBucketSerializer(many=True)

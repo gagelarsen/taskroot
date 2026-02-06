@@ -39,7 +39,7 @@ def contract_payload():
     return {
         "start_date": "2026-01-01",
         "end_date": "2026-12-31",
-        "budget_hours_total": "100.0",
+        "budget_hours": "100.0",
         "status": "active",
     }
 

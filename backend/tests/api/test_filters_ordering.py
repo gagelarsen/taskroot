@@ -26,13 +26,13 @@ def data():
     c1 = Contract.objects.create(
         start_date="2026-01-01",
         end_date="2026-06-30",
-        budget_hours_total="100.0",
+        budget_hours="100.0",
         status="active",
     )
     c2 = Contract.objects.create(
         start_date="2026-07-01",
         end_date="2026-12-31",
-        budget_hours_total="200.0",
+        budget_hours="200.0",
         status="draft",
     )
 
@@ -56,13 +56,13 @@ def data():
     )
 
     # Assignments (d1 has lead, d2 has non-lead, d3 none)
-    DeliverableAssignment.objects.create(deliverable=d1, staff=s1, expected_hours="10.0", is_lead=True)
-    DeliverableAssignment.objects.create(deliverable=d2, staff=s1, expected_hours="5.0", is_lead=False)
+    DeliverableAssignment.objects.create(deliverable=d1, staff=s1, budget_hours="10.0", is_lead=True)
+    DeliverableAssignment.objects.create(deliverable=d2, staff=s1, budget_hours="5.0", is_lead=False)
 
     # Tasks (one assigned, one unassigned)
-    t1 = Task.objects.create(deliverable=d1, assignee=s1, title="Write report", planned_hours="2.0", status="todo")
-    t2 = Task.objects.create(deliverable=d1, assignee=None, title="Unassigned task", planned_hours="1.0", status="todo")
-    t3 = Task.objects.create(deliverable=d3, assignee=None, title="Gamma task", planned_hours="1.0", status="blocked")
+    t1 = Task.objects.create(deliverable=d1, assignee=s1, title="Write report", budget_hours="2.0", status="todo")
+    t2 = Task.objects.create(deliverable=d1, assignee=None, title="Unassigned task", budget_hours="1.0", status="todo")
+    t3 = Task.objects.create(deliverable=d3, assignee=None, title="Gamma task", budget_hours="1.0", status="blocked")
 
     # Time entries
     DeliverableTimeEntry.objects.create(deliverable=d1, staff=s1, entry_date="2026-02-01", hours="1.0")
