@@ -99,7 +99,7 @@ export interface Staff {
   last_name: string;
   role: 'admin' | 'manager' | 'staff';
   status: 'active' | 'inactive';
-  expected_hours_per_week: number;
+  expected_hours_per_week: string; // DecimalField from Django
   created_at: string;
   updated_at: string;
 }

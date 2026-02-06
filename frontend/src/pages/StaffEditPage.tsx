@@ -46,7 +46,7 @@ export function StaffEditPage() {
             last_name: data.last_name,
             status: data.status,
             role: data.role,
-            expected_hours_per_week: data.expected_hours_per_week,
+            expected_hours_per_week: parseFloat(data.expected_hours_per_week),
           });
         } catch (err) {
           if (err instanceof AxiosError) {
