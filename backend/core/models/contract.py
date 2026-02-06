@@ -80,10 +80,12 @@ class Contract(models.Model):
         return max(1, ceil(days / 7))
 
     def get_assigned_budget_hours_per_week(self) -> Decimal:
-        """Assigned budget hours divided by planned weeks."""
-        planned_weeks = self.get_planned_weeks()
-        assigned_budget = self.get_assigned_budget_hours()
-        return assigned_budget / Decimal(str(planned_weeks))
+        """
+        Sum of assigned budget hours per week across all deliverables.
+        Since assignment budget_hours represents hours per week,
+        we just sum them directly without dividing by planned weeks.
+        """
+        return self.get_assigned_budget_hours()
 
     def get_spent_hours_per_week(self) -> Decimal:
         """Spent hours divided by elapsed weeks."""
