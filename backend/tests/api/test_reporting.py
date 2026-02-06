@@ -163,7 +163,7 @@ class TestDeliverableBurnReport:
         """Test deliverable burn report returns correct structure."""
         contract = Contract.objects.create(
             start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            end_date=date(2024, 1, 28),  # 4 weeks
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -171,8 +171,6 @@ class TestDeliverableBurnReport:
         deliverable = Deliverable.objects.create(
             contract=contract,
             name="Test Deliverable",
-            start_date=date(2024, 1, 1),
-            due_date=date(2024, 1, 28),  # 4 weeks
             status="in_progress",
         )
 

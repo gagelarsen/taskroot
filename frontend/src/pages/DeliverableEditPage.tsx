@@ -30,8 +30,8 @@ export function DeliverableEditPage() {
     budget_hours: '0',
     status: 'planned',
     contract: contractParam ? parseInt(contractParam) : 0,
-    start_date: null,
-    due_date: null,
+    charge_code: '',
+    target_completion_date: null,
   });
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(!isNew);
@@ -73,8 +73,8 @@ export function DeliverableEditPage() {
         budget_hours: deliverable.budget_hours,
         status: deliverable.status,
         contract: deliverable.contract,
-        start_date: deliverable.start_date || null,
-        due_date: deliverable.due_date || null,
+        charge_code: deliverable.charge_code || '',
+        target_completion_date: deliverable.target_completion_date || null,
       };
 
       if (isNew) {
@@ -178,21 +178,21 @@ export function DeliverableEditPage() {
             </TextField>
 
             <TextField
-              label="Start Date"
-              type="date"
-              value={deliverable.start_date || ''}
-              onChange={(e) => setDeliverable({ ...deliverable, start_date: e.target.value || null })}
+              label="Charge Code"
+              value={deliverable.charge_code || ''}
+              onChange={(e) => setDeliverable({ ...deliverable, charge_code: e.target.value })}
               fullWidth
-              InputLabelProps={{ shrink: true }}
+              helperText="Optional billing or tracking code"
             />
 
             <TextField
-              label="Due Date"
+              label="Target Completion Date"
               type="date"
-              value={deliverable.due_date || ''}
-              onChange={(e) => setDeliverable({ ...deliverable, due_date: e.target.value || null })}
+              value={deliverable.target_completion_date || ''}
+              onChange={(e) => setDeliverable({ ...deliverable, target_completion_date: e.target.value || null })}
               fullWidth
               InputLabelProps={{ shrink: true }}
+              helperText="Optional target date for completion"
             />
 
             <Stack direction="row" spacing={2} justifyContent="flex-end">

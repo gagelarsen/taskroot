@@ -18,14 +18,14 @@ class Deliverable(models.Model):
 
     contract = models.ForeignKey(Contract, on_delete=models.PROTECT, related_name="deliverables")
     name = models.CharField(max_length=255, default="")
+    charge_code = models.CharField(max_length=100, blank=True, default="")
     budget_hours = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0"))],
         default=Decimal("0"),
     )
-    start_date = models.DateField(null=True, blank=True)
-    due_date = models.DateField(null=True, blank=True)
+    target_completion_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -34,14 +34,6 @@ class Deliverable(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["contract"]),
-        ]
-        constraints = [
-            models.CheckConstraint(
-                condition=models.Q(due_date__gte=models.F("start_date"))
-                | models.Q(due_date__isnull=True)
-                | models.Q(start_date__isnull=True),
-                name="deliverable_due_after_start",
-            ),
         ]
 
     def __str__(self) -> str:
@@ -62,21 +54,21 @@ class Deliverable(models.Model):
     def get_planned_weeks(self) -> int:
         """
         Number of planned weeks for this deliverable.
-        Uses deliverable start_date/due_date if present, else contract dates.
+        Uses contract start_date and end_date.
         Minimum is 1 week.
         """
-        start = self.start_date or self.contract.start_date
-        end = self.due_date or self.contract.end_date
+        start = self.contract.start_date
+        end = self.contract.end_date
         days = (end - start).days + 1
         return max(1, ceil(days / 7))
 
     def get_elapsed_weeks(self) -> int:
         """
-        Number of elapsed weeks from start to today (capped at planned end).
+        Number of elapsed weeks from contract start to today (capped at contract end).
         Minimum is 1 week.
         """
-        start = self.start_date or self.contract.start_date
-        end = self.due_date or self.contract.end_date
+        start = self.contract.start_date
+        end = self.contract.end_date
         today = date.today()
         actual_end = min(today, end)
 

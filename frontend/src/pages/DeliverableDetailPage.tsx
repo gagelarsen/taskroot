@@ -147,15 +147,15 @@ export function DeliverableDetailPage() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Start Date
+                    Target Completion Date
                   </Typography>
-                  <Typography>{deliverable.start_date || 'N/A'}</Typography>
+                  <Typography>{deliverable.target_completion_date || 'Not set'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Due Date
+                    Charge Code
                   </Typography>
-                  <Typography>{deliverable.due_date || 'N/A'}</Typography>
+                  <Typography>{deliverable.charge_code || 'N/A'}</Typography>
                 </Box>
               </Box>
             </CardContent>
@@ -339,7 +339,6 @@ export function DeliverableDetailPage() {
           <TableHead>
             <TableRow>
               <TableCell>Date</TableCell>
-              <TableCell>Staff ID</TableCell>
               <TableCell align="right">Hours</TableCell>
               <TableCell>Notes</TableCell>
             </TableRow>
@@ -348,14 +347,13 @@ export function DeliverableDetailPage() {
             {timeEntries.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell>{entry.entry_date}</TableCell>
-                <TableCell>{entry.staff}</TableCell>
                 <TableCell align="right">{parseFloat(entry.hours).toFixed(1)}</TableCell>
                 <TableCell>{entry.notes || 'N/A'}</TableCell>
               </TableRow>
             ))}
             {timeEntries.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={3} align="center">
                   No time entries found
                 </TableCell>
               </TableRow>

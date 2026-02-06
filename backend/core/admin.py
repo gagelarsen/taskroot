@@ -50,9 +50,9 @@ class TaskInline(admin.TabularInline):
 
 @admin.register(Deliverable)
 class DeliverableAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "contract", "start_date", "due_date", "status")
+    list_display = ("id", "name", "charge_code", "contract", "target_completion_date", "status")
     list_filter = ("status",)
-    search_fields = ("name", "id")
+    search_fields = ("name", "charge_code", "id")
     autocomplete_fields = ("contract",)
     inlines = (DeliverableAssignmentInline, DeliverableTimeEntryInline, DeliverableStatusUpdateInline, TaskInline)
 

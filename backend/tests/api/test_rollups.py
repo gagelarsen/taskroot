@@ -48,12 +48,10 @@ def contract(db):
 
 @pytest.fixture
 def deliverable(contract):
-    """Create a deliverable with known dates."""
+    """Create a deliverable."""
     return Deliverable.objects.create(
         contract=contract,
         name="Test Deliverable",
-        start_date=date(2024, 1, 1),
-        due_date=date(2024, 1, 28),  # 28 days = 4 weeks
         status=Deliverable.Status.IN_PROGRESS,
     )
 
@@ -264,13 +262,17 @@ class TestDeliverableRollups:
 class TestWeeksCalculations:
     """Test weeks calculation logic."""
 
-    def test_planned_weeks_minimum_is_one(self, contract):
+    def test_planned_weeks_minimum_is_one(self):
         """Planned weeks should be at least 1."""
-        # Create deliverable with same start and end date
+        # Create contract with same start and end date
+        contract = Contract.objects.create(
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 1),  # Same day
+            budget_hours=Decimal("100.00"),
+            status=Contract.Status.ACTIVE,
+        )
         deliverable = Deliverable.objects.create(
             contract=contract,
-            start_date=date(2024, 1, 1),
-            due_date=date(2024, 1, 1),  # Same day
             status=Deliverable.Status.PLANNED,
         )
 
@@ -278,16 +280,14 @@ class TestWeeksCalculations:
 
     def test_planned_weeks_calculation(self, deliverable):
         """Planned weeks should be ceil((end - start + 1) / 7)."""
-        # deliverable has 28 days (Jan 1 - Jan 28)
-        # (28 - 1 + 1) / 7 = 28 / 7 = 4 weeks
-        assert deliverable.get_planned_weeks() == 4
+        # deliverable uses contract dates: Jan 1 - Mar 31 (90 days)
+        # 90 / 7 = 12.857... = 13 weeks
+        assert deliverable.get_planned_weeks() == 13
 
-    def test_planned_weeks_uses_contract_dates_when_deliverable_dates_missing(self, contract):
-        """Should fall back to contract dates when deliverable dates are None."""
+    def test_planned_weeks_uses_contract_dates(self, contract):
+        """Deliverables always use contract dates for weeks calculation."""
         deliverable = Deliverable.objects.create(
             contract=contract,
-            start_date=None,
-            due_date=None,
             status=Deliverable.Status.PLANNED,
         )
 
@@ -295,26 +295,34 @@ class TestWeeksCalculations:
         # 90 / 7 = 12.857... = 13 weeks
         assert deliverable.get_planned_weeks() == 13
 
-    def test_elapsed_weeks_minimum_is_one(self, contract):
+    def test_elapsed_weeks_minimum_is_one(self):
         """Elapsed weeks should be at least 1."""
-        # Create deliverable in the future
+        # Create contract in the future
         future_start = date.today() + timedelta(days=30)
+        contract = Contract.objects.create(
+            start_date=future_start,
+            end_date=future_start + timedelta(days=7),
+            budget_hours=Decimal("100.00"),
+            status=Contract.Status.ACTIVE,
+        )
         deliverable = Deliverable.objects.create(
             contract=contract,
-            start_date=future_start,
-            due_date=future_start + timedelta(days=7),
             status=Deliverable.Status.PLANNED,
         )
 
         assert deliverable.get_elapsed_weeks() == 1
 
-    def test_elapsed_weeks_caps_at_end_date(self, contract):
+    def test_elapsed_weeks_caps_at_end_date(self):
         """Elapsed weeks should cap at the end date, not go beyond."""
-        # Create deliverable that ended in the past
+        # Create contract that ended in the past
+        contract = Contract.objects.create(
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 14),  # 14 days = 2 weeks
+            budget_hours=Decimal("100.00"),
+            status=Contract.Status.ACTIVE,
+        )
         deliverable = Deliverable.objects.create(
             contract=contract,
-            start_date=date(2024, 1, 1),
-            due_date=date(2024, 1, 14),  # 14 days = 2 weeks
             status=Deliverable.Status.COMPLETE,
         )
 
@@ -330,9 +338,9 @@ class TestWeeksCalculations:
             is_lead=True,
         )
 
-        # deliverable has 4 planned weeks
-        # 80 / 4 = 20 hours per week
-        assert deliverable.get_assigned_budget_hours_per_week() == Decimal("20.00")
+        # deliverable uses contract dates: Jan 1 - Mar 31 (90 days = 13 weeks)
+        # 80 / 13 = 6.153846...
+        assert deliverable.get_assigned_budget_hours_per_week() == Decimal("80.00") / Decimal("13")
 
 
 @pytest.mark.django_db
