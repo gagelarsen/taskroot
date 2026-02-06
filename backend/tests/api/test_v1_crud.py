@@ -122,7 +122,7 @@ class TestV1CrudSmoke:
         assert any(item["id"] == assignment_id for item in r.data["results"])
 
     def test_time_entry_create_and_list(self, api_client, contract_payload, staff_payload):
-        staff = api_client.post("/api/v1/staff/", staff_payload, format="json").data
+        _ = api_client.post("/api/v1/staff/", staff_payload, format="json").data
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
         deliverable = api_client.post(
             "/api/v1/deliverables/",
@@ -132,7 +132,7 @@ class TestV1CrudSmoke:
 
         r = api_client.post(
             "/api/v1/deliverable-time-entries/",
-            {"deliverable": deliverable["id"], "staff": staff["id"], "entry_date": "2026-02-01", "hours": "1.5"},
+            {"deliverable": deliverable["id"], "entry_date": "2026-02-01", "hours": "1.5"},
             format="json",
         )
         assert r.status_code == 201, r.data
@@ -207,7 +207,7 @@ class TestV1Validations:
         assert "non_field_errors" in r.data
 
     def test_time_entry_hours_leq_zero_is_400(self, api_client, contract_payload, staff_payload):
-        staff = api_client.post("/api/v1/staff/", staff_payload, format="json").data
+        _ = api_client.post("/api/v1/staff/", staff_payload, format="json").data
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
         deliverable = api_client.post(
             "/api/v1/deliverables/",
@@ -217,7 +217,7 @@ class TestV1Validations:
 
         r = api_client.post(
             "/api/v1/deliverable-time-entries/",
-            {"deliverable": deliverable["id"], "staff": staff["id"], "entry_date": "2026-02-01", "hours": "0"},
+            {"deliverable": deliverable["id"], "entry_date": "2026-02-01", "hours": "0"},
             format="json",
         )
         assert r.status_code == 400

@@ -4,11 +4,11 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 class IsOwnTimeEntryOrPrivileged(BasePermission):
     """
-    Staff can edit/delete only their own time entries.
-    Managers/admins can edit/delete any time entry.
+    All authenticated staff can edit/delete time entries.
+    Time entries no longer track which staff member created them.
     """
 
-    message = "You can only modify your own time entries."
+    message = "You must be authenticated to modify time entries."
 
     def has_object_permission(self, request, view, obj):
         if request.method in ("GET", "HEAD", "OPTIONS"):
@@ -18,24 +18,18 @@ class IsOwnTimeEntryOrPrivileged(BasePermission):
         if not staff:
             return False
 
-        # Managers and admins can edit any time entry
-        role = get_staff_role(request)
-        if role in {"manager", "admin"}:
-            return True
-
-        # Staff can only edit their own
-        return obj.staff_id == staff.id
+        # All authenticated staff can edit time entries
+        return True
 
 
 class CanCreateTimeEntryAsStaff(BasePermission):
     """
-    Staff can create time entries (perform_create will force staff=self).
-    Managers/admins can create for anyone.
+    All authenticated staff can create time entries.
+    Time entries no longer track which staff member created them.
     """
 
     def has_permission(self, request, view):
         # Allow all authenticated staff to create time entries
-        # The view's perform_create will enforce staff=self for staff role
         return True
 
 

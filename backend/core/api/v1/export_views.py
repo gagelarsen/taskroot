@@ -25,7 +25,7 @@ class TimeEntriesCSVExport(APIView):
 
     @extend_schema(
         summary="Export time entries to CSV",
-        description="Export time entries with optional filters (contract_id, deliverable_id, staff_id, date range)",
+        description="Export time entries with optional filters (contract_id, deliverable_id, date range)",
         parameters=[
             OpenApiParameter(
                 name="contract_id",
@@ -36,12 +36,6 @@ class TimeEntriesCSVExport(APIView):
             OpenApiParameter(
                 name="deliverable_id",
                 description="Filter by deliverable ID",
-                required=False,
-                type=int,
-            ),
-            OpenApiParameter(
-                name="staff_id",
-                description="Filter by staff ID",
                 required=False,
                 type=int,
             ),
@@ -69,7 +63,7 @@ class TimeEntriesCSVExport(APIView):
         # Build query
         queryset = (
             DeliverableTimeEntry.objects.all()
-            .select_related("deliverable", "deliverable__contract", "staff")
+            .select_related("deliverable", "deliverable__contract")
             .order_by("entry_date", "id")
         )
 
@@ -81,10 +75,6 @@ class TimeEntriesCSVExport(APIView):
         deliverable_id = request.query_params.get("deliverable_id")
         if deliverable_id:
             queryset = queryset.filter(deliverable_id=deliverable_id)
-
-        staff_id = request.query_params.get("staff_id")
-        if staff_id:
-            queryset = queryset.filter(staff_id=staff_id)
 
         entry_date_from = request.query_params.get("entry_date_from")
         if entry_date_from:
@@ -118,9 +108,6 @@ class TimeEntriesCSVExport(APIView):
                 "ID",
                 "Entry Date",
                 "Hours",
-                "Staff ID",
-                "Staff Name",
-                "Staff Email",
                 "Deliverable ID",
                 "Deliverable Name",
                 "Contract ID",
@@ -132,15 +119,11 @@ class TimeEntriesCSVExport(APIView):
 
         # Write data rows
         for entry in queryset:
-            staff_name = f"{entry.staff.first_name} {entry.staff.last_name}".strip() or entry.staff.email
             writer.writerow(
                 [
                     entry.id,
                     entry.entry_date,
                     entry.hours,
-                    entry.staff.id,
-                    staff_name,
-                    entry.staff.email,
                     entry.deliverable.id,
                     entry.deliverable.name,
                     entry.deliverable.contract.id,

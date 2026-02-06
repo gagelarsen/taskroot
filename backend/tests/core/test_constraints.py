@@ -10,7 +10,7 @@ from core.models import Contract, Deliverable, DeliverableStatusUpdate, Delivera
 
 @pytest.mark.django_db
 def test_time_entry_hours_must_be_positive():
-    staff = Staff.objects.create(email="a@example.com", first_name="A", last_name="User")
+    _ = Staff.objects.create(email="a@example.com", first_name="A", last_name="User")
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
@@ -19,7 +19,7 @@ def test_time_entry_hours_must_be_positive():
     )
     deliverable = Deliverable.objects.create(contract=contract, name="D1")
 
-    te = DeliverableTimeEntry(deliverable=deliverable, staff=staff, entry_date=date(2026, 2, 1), hours=Decimal("0"))
+    te = DeliverableTimeEntry(deliverable=deliverable, entry_date=date(2026, 2, 1), hours=Decimal("0"))
     with pytest.raises(ValidationError):
         te.full_clean()
 
@@ -105,7 +105,7 @@ def test_deliverable_due_date_must_be_after_start_date():
 @pytest.mark.django_db
 def test_time_entry_unique_external_key():
     """Time entries with same (external_source, external_id) should be unique."""
-    staff = Staff.objects.create(email="c@example.com", first_name="C", last_name="User")
+    _ = Staff.objects.create(email="c@example.com", first_name="C", last_name="User")
     contract = Contract.objects.create(
         start_date=date(2026, 1, 1),
         end_date=date(2026, 12, 31),
@@ -116,7 +116,6 @@ def test_time_entry_unique_external_key():
     # First entry with external key
     DeliverableTimeEntry.objects.create(
         deliverable=deliverable,
-        staff=staff,
         entry_date=date(2026, 1, 15),
         hours=Decimal("8.0"),
         external_source="jira",
@@ -128,7 +127,6 @@ def test_time_entry_unique_external_key():
         with transaction.atomic():
             DeliverableTimeEntry.objects.create(
                 deliverable=deliverable,
-                staff=staff,
                 entry_date=date(2026, 1, 16),  # Different date
                 hours=Decimal("6.0"),  # Different hours
                 external_source="jira",

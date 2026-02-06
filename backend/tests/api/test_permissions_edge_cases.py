@@ -22,7 +22,6 @@ class TestTimeEntryPermissions:
         # Create a time entry
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -43,7 +42,6 @@ class TestTimeEntryPermissions:
         # Create a time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -62,7 +60,6 @@ class TestTimeEntryPermissions:
         # Create a time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -81,7 +78,6 @@ class TestTimeEntryPermissions:
         # Create a time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=other_staff_user_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -188,7 +184,6 @@ class TestViewEdgeCases:
         # Create a time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -203,7 +198,6 @@ class TestViewEdgeCases:
         # Create a time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=other_staff_user_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -218,7 +212,6 @@ class TestViewEdgeCases:
         # Create a time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=other_staff_user_profile,
             entry_date=date(2024, 1, 15),
             hours=Decimal("8.0"),
         )
@@ -239,7 +232,6 @@ class TestViewEdgeCases:
             "/api/v1/deliverable-time-entries/",
             {
                 "deliverable": deliverable.id,
-                "staff": staff_profile.id,
                 "entry_date": "2024-01-15",
                 "hours": 8.0,
             },

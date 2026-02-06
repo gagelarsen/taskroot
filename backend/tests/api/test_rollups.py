@@ -113,13 +113,11 @@ class TestDeliverableRollups:
         """Actual hours should sum all time entry hours."""
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("8.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 6),
             hours=Decimal("7.50"),
         )
@@ -140,7 +138,6 @@ class TestDeliverableRollups:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("50.00"),
         )
@@ -162,7 +159,6 @@ class TestDeliverableRollups:
         # Add time entries to go over
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("50.00"),
         )
@@ -205,6 +201,63 @@ class TestDeliverableRollups:
         assignment.save()
 
         assert deliverable.is_missing_lead() is False
+
+    def test_deliverable_unassigned_budget_hours(self, deliverable, staff_member):
+        """Test get_unassigned_budget_hours on Deliverable."""
+        # Set deliverable budget hours
+        deliverable.budget_hours = Decimal("100.00")
+        deliverable.save()
+
+        # Deliverable has 100 budget hours, no assignments yet
+        assert deliverable.get_unassigned_budget_hours() == Decimal("100.00")
+
+        # Add assignment with 30 hours
+        DeliverableAssignment.objects.create(
+            deliverable=deliverable,
+            staff=staff_member,
+            budget_hours=Decimal("30.00"),
+            is_lead=True,
+        )
+
+        # Unassigned should be 100 - 30 = 70
+        assert deliverable.get_unassigned_budget_hours() == Decimal("70.00")
+
+    def test_deliverable_is_overassigned_true(self, deliverable, staff_member):
+        """Test is_overassigned returns True when assigned > budget."""
+        # Set deliverable budget hours
+        deliverable.budget_hours = Decimal("100.00")
+        deliverable.save()
+
+        # Add assignments totaling more than 100
+        DeliverableAssignment.objects.create(
+            deliverable=deliverable,
+            staff=staff_member,
+            budget_hours=Decimal("120.00"),
+            is_lead=True,
+        )
+
+        assert deliverable.is_overassigned() is True
+
+    def test_deliverable_is_overassigned_false_when_zero_budget(self, contract, staff_member):
+        """Test is_overassigned returns False when budget_hours is 0."""
+        # Create deliverable with 0 budget
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="Zero Budget Deliverable",
+            status=Deliverable.Status.PLANNED,
+            budget_hours=Decimal("0"),
+        )
+
+        # Add assignment
+        DeliverableAssignment.objects.create(
+            deliverable=deliverable,
+            staff=staff_member,
+            budget_hours=Decimal("50.00"),
+            is_lead=True,
+        )
+
+        # Should return False when budget is 0 (line 127 in deliverable.py)
+        assert deliverable.is_overassigned() is False
 
 
 @pytest.mark.django_db
@@ -332,13 +385,11 @@ class TestContractRollups:
         # Add time entries
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("25.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=d2,
-            staff=staff_member,
             entry_date=date(2024, 1, 6),
             hours=Decimal("35.00"),
         )
@@ -356,7 +407,6 @@ class TestContractRollups:
         # Contract has 1000 budget hours
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("250.00"),
         )
@@ -377,7 +427,6 @@ class TestContractRollups:
         # Add time entries to exceed budget (1000 hours)
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("1100.00"),
         )
@@ -389,6 +438,28 @@ class TestContractRollups:
         # Contract has 90 days (Jan 1 - Mar 31)
         # 90 / 7 = 12.857... = 13 weeks
         assert contract.get_planned_weeks() == 13
+
+    def test_contract_unassigned_budget_hours(self, contract, staff_member):
+        """Test get_unassigned_budget_hours on Contract."""
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="Deliverable 1",
+            status=Deliverable.Status.IN_PROGRESS,
+        )
+
+        # Contract has 1000 budget hours, no assignments yet
+        assert contract.get_unassigned_budget_hours() == Decimal("1000.00")
+
+        # Add assignment with 300 hours
+        DeliverableAssignment.objects.create(
+            deliverable=deliverable,
+            staff=staff_member,
+            budget_hours=Decimal("300.00"),
+            is_lead=True,
+        )
+
+        # Unassigned should be 1000 - 300 = 700
+        assert contract.get_unassigned_budget_hours() == Decimal("700.00")
 
 
 @pytest.mark.django_db
@@ -447,7 +518,6 @@ class TestRollupsInAPI:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("10.00"),
         )
@@ -496,7 +566,6 @@ class TestRollupsInAPI:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("50.00"),
         )
@@ -543,7 +612,6 @@ class TestRollupsInAPI:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("20.00"),
         )
@@ -562,7 +630,6 @@ class TestRollupsInAPI:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=d2,
-            staff=staff_member,
             entry_date=date(2024, 1, 5),
             hours=Decimal("10.00"),
         )
