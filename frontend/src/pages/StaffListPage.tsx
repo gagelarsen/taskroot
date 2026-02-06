@@ -78,19 +78,12 @@ export function StaffListPage() {
           return deliverable && deliverable.status !== 'completed';
         });
 
-        // Calculate average hours per week
-        let totalWeightedHours = 0;
-
-        activeAssignments.forEach((assignment: DeliverableAssignment) => {
-          const deliverable = deliverableMap.get(assignment.deliverable);
-          if (deliverable && deliverable.planned_weeks && deliverable.planned_weeks > 0) {
-            const assignmentHours = parseFloat(assignment.budget_hours);
-            const hoursPerWeek = assignmentHours / deliverable.planned_weeks;
-            totalWeightedHours += hoursPerWeek;
-          }
-        });
-
-        const assignedHoursPerWeek = totalWeightedHours;
+        // Calculate total hours per week across all active assignments
+        // budget_hours on assignment is already per-week hours, not total hours
+        const assignedHoursPerWeek = activeAssignments.reduce(
+          (sum: number, assignment: DeliverableAssignment) => sum + parseFloat(assignment.budget_hours),
+          0
+        );
         const expectedHoursPerWeek = typeof staffMember.expected_hours_per_week === 'string'
           ? parseFloat(staffMember.expected_hours_per_week)
           : staffMember.expected_hours_per_week;
