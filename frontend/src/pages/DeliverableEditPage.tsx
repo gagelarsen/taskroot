@@ -46,7 +46,21 @@ export function DeliverableEditPage() {
 
         if (!isNew && id) {
           const deliverableData = await deliverablesApi.get(parseInt(id));
-          setDeliverable(deliverableData);
+          // Ensure dates are in YYYY-MM-DD format for date inputs
+          let targetDate = deliverableData.target_completion_date || '';
+
+          // If the date is in a different format, convert it to YYYY-MM-DD
+          if (targetDate && !targetDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const parsed = new Date(targetDate);
+            if (!isNaN(parsed.getTime())) {
+              targetDate = parsed.toISOString().split('T')[0];
+            }
+          }
+
+          setDeliverable({
+            ...deliverableData,
+            target_completion_date: targetDate,
+          });
         }
       } catch (err) {
         if (err instanceof AxiosError) {
@@ -188,10 +202,20 @@ export function DeliverableEditPage() {
             <TextField
               label="Target Completion Date"
               type="date"
-              value={deliverable.target_completion_date || ''}
+              value={(() => {
+                const date = deliverable.target_completion_date;
+                if (!date) return '';
+                // Ensure format is YYYY-MM-DD
+                if (date.match(/^\d{4}-\d{2}-\d{2}$/)) return date;
+                // Try to parse and convert
+                const parsed = new Date(date);
+                return !isNaN(parsed.getTime()) ? parsed.toISOString().split('T')[0] : '';
+              })()}
               onChange={(e) => setDeliverable({ ...deliverable, target_completion_date: e.target.value || null })}
               fullWidth
-              InputLabelProps={{ shrink: true }}
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
               helperText="Optional target date for completion"
             />
 
