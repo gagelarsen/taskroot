@@ -20,6 +20,7 @@ import {
   Description as ContractsIcon,
   Assignment as DeliverablesIcon,
   People as StaffIcon,
+  AssignmentInd as AssignmentsIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -49,6 +50,7 @@ export function AppShell({ children }: AppShellProps) {
     { text: 'Contracts', icon: <ContractsIcon />, path: '/contracts' },
     { text: 'Deliverables', icon: <DeliverablesIcon />, path: '/deliverables' },
     { text: 'Staff', icon: <StaffIcon />, path: '/staff' },
+    { text: 'Assignments', icon: <AssignmentsIcon />, path: '/assignments' },
   ];
 
   const drawer = (
