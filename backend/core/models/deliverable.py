@@ -106,8 +106,13 @@ class Deliverable(models.Model):
         return self.budget_hours - self.get_assigned_budget_hours()
 
     def get_variance_hours(self) -> Decimal:
-        """Difference between spent and assigned budget hours (spent - assigned budget)."""
-        return self.get_spent_hours() - self.get_assigned_budget_hours()
+        """
+        Variance between actual and planned hours per week.
+        Positive = spending more hours/week than assigned.
+        Negative = spending fewer hours/week than assigned.
+        Formula: spent_hours_per_week - assigned_budget_hours_per_week
+        """
+        return self.get_spent_hours_per_week() - self.get_assigned_budget_hours_per_week()
 
     # Health flags
 
@@ -122,8 +127,11 @@ class Deliverable(models.Model):
         return self.get_assigned_budget_hours() > self.budget_hours
 
     def is_over_expected(self) -> bool:
-        """True if spent hours exceed assigned budget hours (from assignments)."""
-        return self.get_spent_hours() > self.get_assigned_budget_hours()
+        """
+        True if spending rate exceeds assigned rate.
+        Compares spent_hours_per_week with assigned_budget_hours_per_week.
+        """
+        return self.get_spent_hours_per_week() > self.get_assigned_budget_hours_per_week()
 
     def is_missing_budget(self) -> bool:
         """True if assigned budget hours is 0 but has assignments."""
