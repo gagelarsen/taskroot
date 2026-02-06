@@ -59,9 +59,9 @@ export interface Deliverable {
   id: number;
   contract: number;
   name: string;
+  charge_code?: string;
   budget_hours: string;
-  start_date: string | null;
-  due_date: string | null;
+  target_completion_date?: string | null;
   status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'blocked';
   created_at: string;
   updated_at: string;
@@ -154,10 +154,8 @@ export interface ContractFilters {
 export interface DeliverableFilters {
   contract_id?: number;
   status?: string;
-  start_date_from?: string;
-  start_date_to?: string;
-  due_date_from?: string;
-  due_date_to?: string;
+  target_completion_date_from?: string;
+  target_completion_date_to?: string;
   staff_id?: number;
   lead_only?: boolean;
   has_assignments?: boolean;

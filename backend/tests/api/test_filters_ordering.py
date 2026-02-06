@@ -45,15 +45,9 @@ def data():
     )
 
     # Deliverables
-    d1 = Deliverable.objects.create(
-        contract=c1, name="Alpha", start_date="2026-01-10", due_date="2026-02-10", status="planned"
-    )
-    d2 = Deliverable.objects.create(
-        contract=c1, name="Beta", start_date="2026-02-01", due_date="2026-03-01", status="in_progress"
-    )
-    d3 = Deliverable.objects.create(
-        contract=c2, name="Gamma", start_date="2026-07-10", due_date="2026-08-10", status="planned"
-    )
+    d1 = Deliverable.objects.create(contract=c1, name="Alpha", target_completion_date="2026-02-10", status="planned")
+    d2 = Deliverable.objects.create(contract=c1, name="Beta", target_completion_date="2026-03-01", status="in_progress")
+    d3 = Deliverable.objects.create(contract=c2, name="Gamma", target_completion_date="2026-08-10", status="planned")
 
     # Assignments (d1 has lead, d2 has non-lead, d3 none)
     DeliverableAssignment.objects.create(deliverable=d1, staff=s1, budget_hours="10.0", is_lead=True)
@@ -116,10 +110,10 @@ def test_deliverables_filter_lead_only_true(client, data):
 
 
 @pytest.mark.django_db
-def test_deliverables_date_range_due_date(client, data):
+def test_deliverables_date_range_target_completion_date(client, data):
     d1, d2, d3 = data["deliverables"]
 
-    r = client.get("/api/v1/deliverables/?due_date_from=2026-03-01&due_date_to=2026-12-31")
+    r = client.get("/api/v1/deliverables/?target_completion_date_from=2026-03-01&target_completion_date_to=2026-12-31")
     assert r.status_code == 200
     assert _ids(r.data["results"]) == {d2.id, d3.id}
 
@@ -134,10 +128,10 @@ def test_deliverables_search_q(client, data):
 
 
 @pytest.mark.django_db
-def test_deliverables_ordering_due_date_asc(client, data):
+def test_deliverables_ordering_target_completion_date_asc(client, data):
     d1, d2, d3 = data["deliverables"]
 
-    r = client.get("/api/v1/deliverables/?order_by=due_date&order_dir=asc")
+    r = client.get("/api/v1/deliverables/?order_by=target_completion_date&order_dir=asc")
     assert r.status_code == 200
     ids = [row["id"] for row in r.data["results"]]
     assert ids == [d1.id, d2.id, d3.id]

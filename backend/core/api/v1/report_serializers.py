@@ -82,8 +82,6 @@ class DeliverableBurnReportSerializer(serializers.Serializer):
 
     deliverable_id = serializers.IntegerField()
     name = serializers.CharField()
-    start_date = serializers.DateField(allow_null=True)
-    due_date = serializers.DateField(allow_null=True)
     assigned_budget_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
     spent_hours = serializers.DecimalField(max_digits=10, decimal_places=2)
     variance_hours = serializers.DecimalField(max_digits=10, decimal_places=2)

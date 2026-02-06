@@ -199,9 +199,9 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "id",
             "contract",  # writable FK id
             "name",
+            "charge_code",
             "budget_hours",
-            "start_date",
-            "due_date",
+            "target_completion_date",
             "status",
             "created_at",
             "updated_at",

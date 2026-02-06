@@ -79,6 +79,35 @@ class TestV1CrudSmoke:
         assert r.status_code == 200
         assert any(item["id"] == deliverable_id for item in r.data["results"])
 
+    def test_deliverable_with_charge_code(self, api_client, contract_payload):
+        """Test creating and updating deliverable with charge_code field."""
+        contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
+
+        # Create deliverable with charge_code
+        r = api_client.post(
+            "/api/v1/deliverables/",
+            {"contract": contract["id"], "name": "D1", "charge_code": "CC-123", "status": "planned"},
+            format="json",
+        )
+        assert r.status_code == 201, r.data
+        assert r.data["charge_code"] == "CC-123"
+        deliverable_id = r.data["id"]
+
+        # Update charge_code
+        r = api_client.patch(
+            f"/api/v1/deliverables/{deliverable_id}/",
+            {"charge_code": "CC-456"},
+            format="json",
+        )
+        assert r.status_code == 200, r.data
+        assert r.data["charge_code"] == "CC-456"
+
+        # Verify charge_code is returned in list
+        r = api_client.get("/api/v1/deliverables/")
+        assert r.status_code == 200
+        deliverable = next(item for item in r.data["results"] if item["id"] == deliverable_id)
+        assert deliverable["charge_code"] == "CC-456"
+
     def test_task_create_without_assignee_and_list(self, api_client, contract_payload):
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
         deliverable = api_client.post(

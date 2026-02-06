@@ -74,35 +74,6 @@ def test_contract_end_date_must_be_after_start_date():
 
 
 @pytest.mark.django_db
-def test_deliverable_due_date_must_be_after_start_date():
-    """Deliverable due_date must be >= start_date when both are set."""
-    contract = Contract.objects.create(
-        start_date=date(2026, 1, 1),
-        end_date=date(2026, 12, 31),
-        budget_hours=Decimal("1000.0"),
-    )
-
-    # Valid deliverable
-    deliverable = Deliverable.objects.create(
-        contract=contract,
-        name="Valid",
-        start_date=date(2026, 1, 1),
-        due_date=date(2026, 6, 30),
-    )
-    assert deliverable.id is not None
-
-    # Invalid deliverable (due before start)
-    with pytest.raises(IntegrityError):
-        with transaction.atomic():
-            Deliverable.objects.create(
-                contract=contract,
-                name="Invalid",
-                start_date=date(2026, 6, 30),
-                due_date=date(2026, 1, 1),  # Before start
-            )
-
-
-@pytest.mark.django_db
 def test_time_entry_unique_external_key():
     """Time entries with same (external_source, external_id) should be unique."""
     _ = Staff.objects.create(email="c@example.com", first_name="C", last_name="User")

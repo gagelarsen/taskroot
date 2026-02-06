@@ -52,8 +52,6 @@ def deliverable(contract):
         contract=contract,
         name="Test Deliverable",
         status="in_progress",
-        start_date=date(2024, 1, 1),
-        due_date=date(2024, 6, 30),
     )
 
 

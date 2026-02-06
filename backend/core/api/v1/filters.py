@@ -74,10 +74,8 @@ class DeliverableFilter(django_filters.FilterSet):
     status = django_filters.CharFilter(field_name="status")
 
     # Canonical date ranges
-    start_date_from = django_filters.DateFilter(field_name="start_date", lookup_expr="gte")
-    start_date_to = django_filters.DateFilter(field_name="start_date", lookup_expr="lte")
-    due_date_from = django_filters.DateFilter(field_name="due_date", lookup_expr="gte")
-    due_date_to = django_filters.DateFilter(field_name="due_date", lookup_expr="lte")
+    target_completion_date_from = django_filters.DateFilter(field_name="target_completion_date", lookup_expr="gte")
+    target_completion_date_to = django_filters.DateFilter(field_name="target_completion_date", lookup_expr="lte")
 
     # Relationship-based filters (custom)
     staff_id = django_filters.NumberFilter(method="filter_staff_id")
@@ -94,10 +92,8 @@ class DeliverableFilter(django_filters.FilterSet):
         fields = [
             "contract_id",
             "status",
-            "start_date_from",
-            "start_date_to",
-            "due_date_from",
-            "due_date_to",
+            "target_completion_date_from",
+            "target_completion_date_to",
             "staff_id",
             "lead_only",
             "has_assignments",

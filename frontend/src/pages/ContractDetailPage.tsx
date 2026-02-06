@@ -213,7 +213,7 @@ export function ContractDetailPage() {
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Due Date</TableCell>
+              <TableCell>Target Date</TableCell>
               <TableCell align="right">Budget</TableCell>
               <TableCell align="right">Assigned Budget</TableCell>
               <TableCell align="right">Spent</TableCell>
@@ -234,7 +234,7 @@ export function ContractDetailPage() {
                 <TableCell>
                   <Chip label={deliverable.status} size="small" />
                 </TableCell>
-                <TableCell>{deliverable.due_date || 'N/A'}</TableCell>
+                <TableCell>{deliverable.target_completion_date || 'Not set'}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.budget_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.assigned_budget_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.spent_hours).toFixed(1)}</TableCell>

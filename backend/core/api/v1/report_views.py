@@ -226,9 +226,9 @@ class DeliverableReportViewSet(ViewSet):
                 {"error": "Only 'week' bucket type is currently supported"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Use deliverable dates or fall back to contract dates
-        start = deliverable.start_date or deliverable.contract.start_date
-        end = deliverable.due_date or deliverable.contract.end_date
+        # Use contract dates for deliverable burn report
+        start = deliverable.contract.start_date
+        end = deliverable.contract.end_date
 
         # Generate weekly buckets
         buckets = generate_weekly_buckets(start, end)
@@ -264,8 +264,6 @@ class DeliverableReportViewSet(ViewSet):
         report_data = {
             "deliverable_id": deliverable.id,
             "name": deliverable.name,
-            "start_date": deliverable.start_date,
-            "due_date": deliverable.due_date,
             "assigned_budget_hours": deliverable.get_assigned_budget_hours(),
             "spent_hours": deliverable.get_spent_hours(),
             "variance_hours": deliverable.get_variance_hours(),

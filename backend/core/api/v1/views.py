@@ -253,7 +253,7 @@ class DeliverableViewSet(ModelViewSet):
     search_fields = ["name"]
 
     # Canonical ordering uses ?order_by=<field>&order_dir=asc|desc
-    ordering_fields = ["start_date", "due_date", "id"]
+    ordering_fields = ["target_completion_date", "id"]
 
     def get_queryset(self):
         # select_related prevents N+1 when serializing contract id etc.
