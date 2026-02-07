@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from core.api.v1 import export_views, report_views, views
+from core.api.v1 import bulk_import, export_views, report_views, views
 
 router = DefaultRouter()
 router.register(r"staff", views.StaffViewSet, basename="staff")
@@ -25,4 +25,10 @@ export_patterns = [
     path("exports/contract-burn.csv", export_views.ContractBurnCSVExport.as_view(), name="export-contract-burn"),
 ]
 
-urlpatterns = router.urls + export_patterns
+# Bulk import endpoints
+import_patterns = [
+    path("bulk-import/", bulk_import.bulk_import_view, name="bulk-import"),
+    path("bulk-import/time-entries/", bulk_import.bulk_import_time_entries_view, name="bulk-import-time-entries"),
+]
+
+urlpatterns = router.urls + export_patterns + import_patterns

@@ -14,6 +14,7 @@ import { StaffListPage } from './pages/StaffListPage';
 import { StaffDetailPage } from './pages/StaffDetailPage';
 import { StaffEditPage } from './pages/StaffEditPage';
 import { AssignmentsPage } from './pages/AssignmentsPage';
+import { BulkImportPage } from './pages/BulkImportPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('access_token');
@@ -143,6 +144,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <AssignmentsPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/bulk-import"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <BulkImportPage />
                 </AppShell>
               </PrivateRoute>
             }

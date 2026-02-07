@@ -21,6 +21,7 @@ import {
   Assignment as DeliverablesIcon,
   People as StaffIcon,
   AssignmentInd as AssignmentsIcon,
+  CloudUpload as BulkImportIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +52,7 @@ export function AppShell({ children }: AppShellProps) {
     { text: 'Deliverables', icon: <DeliverablesIcon />, path: '/deliverables' },
     { text: 'Staff', icon: <StaffIcon />, path: '/staff' },
     { text: 'Assignments', icon: <AssignmentsIcon />, path: '/assignments' },
+    { text: 'Bulk Import', icon: <BulkImportIcon />, path: '/bulk-import' },
   ];
 
   const drawer = (
