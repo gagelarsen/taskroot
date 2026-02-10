@@ -23,6 +23,7 @@ import { contractsApi, deliverablesApi } from '../api/client';
 import type { Contract, Deliverable } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
+import { BurnDownChart } from '../components/BurnDownChart';
 import { AxiosError } from 'axios';
 
 export function ContractDetailPage() {
@@ -196,6 +197,10 @@ export function ContractDetailPage() {
           </CardContent>
         </Card>
       </Stack>
+
+      <Box sx={{ mb: 3 }}>
+        <BurnDownChart contract={contract} />
+      </Box>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
         <Typography variant="h5">Deliverables</Typography>
