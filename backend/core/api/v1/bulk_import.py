@@ -203,6 +203,8 @@ def bulk_import_view(request: Request) -> Response:
 
     The JSON format should match the structure in backend/docs/aquaveo-time-entries-data.json.
 
+    Time entries are matched to deliverables by their charge_code field.
+
     All imports are atomic - if any error occurs, the entire import is rolled back.
 
     Requires admin role.
@@ -231,6 +233,21 @@ def bulk_import_view(request: Request) -> Response:
         },
         400: {"description": "Invalid data"},
     },
+    examples=[
+        OpenApiExample(
+            "Sample Time Entries Import",
+            value={
+                "time_entries": [
+                    {
+                        "charge_code": "RD_T_NSF",
+                        "entry_date": "2024-01-15",
+                        "hours": 8.5,
+                        "note": "Work completed",
+                    }
+                ]
+            },
+        )
+    ],
 )
 @api_view(["POST"])
 @permission_classes([IsAdmin])
@@ -246,11 +263,11 @@ def bulk_import_time_entries_view(request: Request) -> Response:
 
             # Import time entries (depends on deliverables)
             for entry_data in data.get("time_entries", []):
-                # Find deliverable by name
+                # Find deliverable by charge_code
                 try:
-                    deliverable = Deliverable.objects.get(name=entry_data["deliverable_name"])
+                    deliverable = Deliverable.objects.get(charge_code=entry_data["charge_code"])
                 except Deliverable.DoesNotExist as err:
-                    raise ValueError(f"Deliverable not found: {entry_data['deliverable_name']}") from err
+                    raise ValueError(f"Deliverable not found with charge_code: {entry_data['charge_code']}") from err
 
                 # Create time entry
                 time_entry, created = DeliverableTimeEntry.objects.get_or_create(
