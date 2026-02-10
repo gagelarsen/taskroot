@@ -220,13 +220,14 @@ class TestBulkImportTimeEntries:
         Deliverable.objects.create(
             contract=contract,
             name="Deliverable 3",
+            charge_code="TEST_CHARGE_CODE",
             status="in_progress",
         )
 
         payload = {
             "time_entries": [
                 {
-                    "deliverable_name": "Deliverable 3",
+                    "charge_code": "TEST_CHARGE_CODE",
                     "entry_date": "2024-01-15",
                     "hours": 8.5,
                     "note": "Work completed",
