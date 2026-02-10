@@ -151,6 +151,9 @@ REST_FRAMEWORK = {
     # Pagination: makes list endpoints predictable as soon as we add them.
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    # Allow clients to override page size with ?page_size=N query parameter
+    "PAGE_SIZE_QUERY_PARAM": "page_size",
+    "MAX_PAGE_SIZE": 10000,
     # Filtering: enable django-filter so future viewsets can add filtersets cleanly.
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
