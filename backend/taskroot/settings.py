@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -167,6 +168,7 @@ REST_FRAMEWORK = {
 # JWT Configuration
 # Use a separate signing key for JWT tokens (minimum 32 bytes for SHA256)
 SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # bump this up
     "SIGNING_KEY": os.getenv(
         "JWT_SIGNING_KEY",
         # Default dev key (32+ bytes) - MUST be changed in production

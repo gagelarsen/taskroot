@@ -12,6 +12,10 @@ class Contract(models.Model):
         ACTIVE = "active", "Active"
         CLOSED = "closed", "Closed"
 
+    class ContractType(models.TextChoices):
+        FIXED_COST = "fixed_cost", "Fixed Cost"
+        TIME_AND_MATERIALS = "time_and_materials", "Time and Materials"
+
     name = models.CharField(max_length=255, default="")
     client_name = models.CharField(max_length=255, default="")
     start_date = models.DateField()
