@@ -231,6 +231,83 @@ export function ContractDetailPage() {
         <BurnDownChart contract={contract} />
       </Box>
 
+      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
+        Staff Assignments
+      </Typography>
+
+      <TableContainer component={Paper} sx={{ mb: 4 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Staff Member</TableCell>
+              <TableCell align="right">Total Budget Hours</TableCell>
+              <TableCell align="right">Deliverables</TableCell>
+              <TableCell>Lead Role</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {(() => {
+              // Aggregate staff across all deliverables
+              const staffMap = new Map<number, {
+                id: number;
+                name: string;
+                totalBudgetHours: number;
+                deliverableCount: number;
+                isLeadAnywhere: boolean;
+              }>();
+
+              deliverables.forEach(deliverable => {
+                deliverable.assignments?.forEach(assignment => {
+                  const existing = staffMap.get(assignment.staff);
+                  if (existing) {
+                    existing.totalBudgetHours += parseFloat(assignment.budget_hours);
+                    existing.deliverableCount += 1;
+                    existing.isLeadAnywhere = existing.isLeadAnywhere || assignment.is_lead;
+                  } else {
+                    staffMap.set(assignment.staff, {
+                      id: assignment.staff,
+                      name: assignment.staff_name,
+                      totalBudgetHours: parseFloat(assignment.budget_hours),
+                      deliverableCount: 1,
+                      isLeadAnywhere: assignment.is_lead,
+                    });
+                  }
+                });
+              });
+
+              const staffList = Array.from(staffMap.values()).sort((a, b) => 
+                a.name.localeCompare(b.name)
+              );
+
+              if (staffList.length === 0) {
+                return (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">
+                      <Typography color="text.secondary">No staff assigned</Typography>
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+
+              return staffList.map(staff => (
+                <TableRow key={staff.id}>
+                  <TableCell>{staff.name}</TableCell>
+                  <TableCell align="right">{staff.totalBudgetHours.toFixed(1)}</TableCell>
+                  <TableCell align="right">{staff.deliverableCount}</TableCell>
+                  <TableCell>
+                    {staff.isLeadAnywhere ? (
+                      <Chip label="Lead" color="primary" size="small" />
+                    ) : (
+                      <Chip label="Member" size="small" />
+                    )}
+                  </TableCell>
+                </TableRow>
+              ));
+            })()}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
         <Typography variant="h5">Deliverables</Typography>
         <Button
