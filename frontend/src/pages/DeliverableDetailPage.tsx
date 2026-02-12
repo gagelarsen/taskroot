@@ -23,6 +23,7 @@ import { deliverablesApi, timeEntriesApi, statusUpdatesApi } from '../api/client
 import type { Deliverable, TimeEntry, DeliverableStatusUpdate } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
+import { DeliverableBurnDownChart } from '../components/DeliverableBurnDownChart';
 import { AxiosError } from 'axios';
 
 export function DeliverableDetailPage() {
@@ -200,6 +201,11 @@ export function DeliverableDetailPage() {
           </CardContent>
         </Card>
       </Stack>
+
+      {/* Burn Down Chart */}
+      <Box sx={{ mt: 4, mb: 4 }}>
+        <DeliverableBurnDownChart deliverable={deliverable} />
+      </Box>
 
       <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
         Staff Assignments
