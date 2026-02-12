@@ -72,6 +72,12 @@ from core.models import (
                 enum=["start_date", "end_date", "id"],
             ),
             OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),
+            OpenApiParameter(
+                "contract_type",
+                OpenApiTypes.STR,
+                description="Filter by contract type",
+                enum=["fixed_cost", "time_and_materials"],
+            ),
         ],
     ),
     create=extend_schema(

@@ -18,7 +18,7 @@ class Deliverable(models.Model):
 
     contract = models.ForeignKey(Contract, on_delete=models.PROTECT, related_name="deliverables")
     name = models.CharField(max_length=255, default="")
-    charge_code = models.CharField(max_length=100, blank=True, default="", unique=True)
+    charge_code = models.CharField(max_length=100, blank=True, default="")
     budget_hours = models.DecimalField(
         max_digits=10,
         decimal_places=2,

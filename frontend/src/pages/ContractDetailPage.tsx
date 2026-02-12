@@ -149,6 +149,14 @@ export function ContractDetailPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
+                    Contract Type
+                  </Typography>
+                  <Typography>
+                    {contract.contract_type === 'fixed_cost' ? 'Fixed Cost' : 'Time and Materials'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
                     Start Date
                   </Typography>
                   <Typography>{contract.start_date}</Typography>

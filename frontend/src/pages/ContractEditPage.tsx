@@ -24,6 +24,7 @@ export function ContractEditPage() {
   const [contract, setContract] = useState<Partial<Contract>>({
     name: '',
     client_name: '',
+    contract_type: 'fixed_cost',
     budget_hours: '0',
     status: 'draft',
     start_date: '',
@@ -63,6 +64,7 @@ export function ContractEditPage() {
       const payload = {
         name: contract.name,
         client_name: contract.client_name,
+        contract_type: contract.contract_type,
         budget_hours: contract.budget_hours,
         status: contract.status,
         start_date: contract.start_date,
@@ -137,6 +139,20 @@ export function ContractEditPage() {
               required
               fullWidth
             />
+
+            <TextField
+              label="Contract Type"
+              select
+              value={contract.contract_type || 'fixed_cost'}
+              onChange={(e) =>
+                setContract({ ...contract, contract_type: e.target.value as Contract['contract_type'] })
+              }
+              required
+              fullWidth
+            >
+              <MenuItem value="fixed_cost">Fixed Cost</MenuItem>
+              <MenuItem value="time_and_materials">Time and Materials</MenuItem>
+            </TextField>
 
             <TextField
               label="Budget Hours"

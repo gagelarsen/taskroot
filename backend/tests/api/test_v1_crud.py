@@ -60,10 +60,17 @@ class TestV1CrudSmoke:
         r = api_client.post("/api/v1/contracts/", contract_payload, format="json")
         assert r.status_code == 201, r.data
         contract_id = r.data["id"]
+        assert r.data["contract_type"] == "fixed_cost"
 
         r = api_client.get("/api/v1/contracts/")
         assert r.status_code == 200
         assert any(item["id"] == contract_id for item in r.data["results"])
+
+    def test_contract_create_with_explicit_contract_type(self, api_client, contract_payload):
+        payload = {**contract_payload, "contract_type": "time_and_materials"}
+        r = api_client.post("/api/v1/contracts/", payload, format="json")
+        assert r.status_code == 201, r.data
+        assert r.data["contract_type"] == "time_and_materials"
 
     def test_deliverable_create_and_list(self, api_client, contract_payload):
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data

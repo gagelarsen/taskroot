@@ -13,6 +13,8 @@ import {
   Alert,
   Chip,
   Button,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -85,7 +87,26 @@ export function ContractsListPage() {
         onOrderByChange={(order_by) => setFilters({ ...filters, order_by })}
         onOrderDirChange={(order_dir) => setFilters({ ...filters, order_dir })}
         orderByOptions={orderByOptions}
-      />
+      >
+        <TextField
+          select
+          label="Contract Type"
+          variant="outlined"
+          size="small"
+          value={filters.contract_type || ''}
+          onChange={(e) =>
+            setFilters({
+              ...filters,
+              contract_type: (e.target.value || undefined) as ContractFilters['contract_type'],
+            })
+          }
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value="">All Types</MenuItem>
+          <MenuItem value="fixed_cost">Fixed Cost</MenuItem>
+          <MenuItem value="time_and_materials">Time and Materials</MenuItem>
+        </TextField>
+      </FilterBar>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -104,6 +125,7 @@ export function ContractsListPage() {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Client</TableCell>
+                <TableCell>Contract Type</TableCell>
                 <TableCell>Start Date</TableCell>
                 <TableCell>End Date</TableCell>
                 <TableCell>Status</TableCell>
@@ -124,6 +146,7 @@ export function ContractsListPage() {
                 >
                   <TableCell>{contract.name || `Contract #${contract.id}`}</TableCell>
                   <TableCell>{contract.client_name}</TableCell>
+                  <TableCell>{contract.contract_type === 'fixed_cost' ? 'Fixed Cost' : 'Time and Materials'}</TableCell>
                   <TableCell>{contract.start_date}</TableCell>
                   <TableCell>{contract.end_date}</TableCell>
                   <TableCell>
@@ -143,7 +166,7 @@ export function ContractsListPage() {
               ))}
               {contracts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     No contracts found
                   </TableCell>
                 </TableRow>

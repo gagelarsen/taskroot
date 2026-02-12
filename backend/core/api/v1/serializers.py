@@ -56,6 +56,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "budget_hours",
+            "contract_type",
             "status",
             "created_at",
             "updated_at",

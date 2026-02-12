@@ -25,6 +25,11 @@ class Contract(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0"))],
     )
+    contract_type = models.CharField(
+        max_length=30,
+        choices=ContractType.choices,
+        default=ContractType.FIXED_COST,
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
 
     created_at = models.DateTimeField(auto_now_add=True)

@@ -25,6 +25,7 @@ def _parse_bool(value: str | None):
 
 class ContractFilter(django_filters.FilterSet):
     status = django_filters.CharFilter(field_name="status")
+    contract_type = django_filters.CharFilter(field_name="contract_type")
 
     start_date_from = django_filters.DateFilter(field_name="start_date", lookup_expr="gte")
     start_date_to = django_filters.DateFilter(field_name="start_date", lookup_expr="lte")
@@ -39,6 +40,7 @@ class ContractFilter(django_filters.FilterSet):
         model = Contract
         fields = [
             "status",
+            "contract_type",
             "start_date_from",
             "start_date_to",
             "end_date_from",

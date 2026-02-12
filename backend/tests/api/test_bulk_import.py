@@ -629,3 +629,81 @@ class TestBulkImportIdempotency:
         # Verify no staff was created (rollback occurred)
         assert Staff.objects.count() == initial_staff_count
         assert not Staff.objects.filter(email="valid1@example.com").exists()
+
+
+@pytest.mark.django_db
+class TestBulkImportCoverageEdges:
+    """Target edge branches to maximize coverage for bulk import endpoints."""
+
+    def test_time_entries_import_missing_required_fields(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        payload = {
+            "time_entries": [
+                {"entry_date": "2026-01-15", "hours": 2.5, "note": "Missing charge code"},
+                {"charge_code": "SOME_CODE", "hours": 1.5, "note": "Missing entry date"},
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/time-entries/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is False
+        assert response.data["stats"]["time_entries_failed"] == 2
+        assert "errors" in response.data
+        assert any("Missing charge_code" in error for error in response.data["errors"])
+        assert any("Missing entry_date" in error for error in response.data["errors"])
+
+    def test_time_entries_import_create_exception_is_reported(
+        self, auth_client, admin_user, admin_profile, monkeypatch
+    ):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Project Coverage",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        Deliverable.objects.create(
+            contract=contract,
+            name="Deliverable Coverage",
+            charge_code="COVERAGE_CODE",
+            status="in_progress",
+        )
+
+        def raise_create_error(*args, **kwargs):
+            raise RuntimeError("forced create failure")
+
+        monkeypatch.setattr(DeliverableTimeEntry.objects, "create", raise_create_error)
+
+        payload = {
+            "time_entries": [
+                {
+                    "charge_code": "COVERAGE_CODE",
+                    "entry_date": "2026-01-20",
+                    "hours": 4,
+                    "note": "Will fail",
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/time-entries/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is False
+        assert response.data["stats"]["time_entries_failed"] == 1
+        assert "errors" in response.data
+        assert "forced create failure" in response.data["errors"][0]
+
+    def test_time_entries_import_non_mapping_payload_hits_outer_exception(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            ["not", "a", "mapping"],
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "Unexpected error" in response.data["error"]

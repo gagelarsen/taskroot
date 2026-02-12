@@ -13,3 +13,19 @@ repos:
     hooks:
       - id: black
         files: ^backend/
+
+  - repo: local
+    hooks:
+      - id: backend-tests-coverage
+        name: Backend tests with 100% coverage
+        entry: bash -c 'cd backend && ../../.venv/bin/python -m pytest -q --cov=core --cov=taskroot --cov-report=term --cov-fail-under=100'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: frontend-lint-build
+        name: Frontend lint and build
+        entry: bash -c 'cd frontend && npm run lint && npm run build'
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
