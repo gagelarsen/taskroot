@@ -186,6 +186,35 @@ export function DeliverableDetailPage() {
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
+                  Estimated Burn Rate
+                </Typography>
+                <Typography>{parseFloat(deliverable.estimated_burn_rate).toFixed(1)} h/week</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Actual Burn Rate (last 4 weeks)
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography>{parseFloat(deliverable.actual_burn_rate).toFixed(1)} h/week</Typography>
+                  {(() => {
+                    const estimated = parseFloat(deliverable.estimated_burn_rate);
+                    const actual = parseFloat(deliverable.actual_burn_rate);
+                    const variance = actual - estimated;
+                    const percentDiff = estimated > 0 ? (variance / estimated) * 100 : 0;
+
+                    if (Math.abs(percentDiff) < 5) {
+                      return <Chip label="On Pace" size="small" color="success" />;
+                    } else if (variance > 0) {
+                      return <Chip label={`+${variance.toFixed(1)} h/week`} size="small" color="warning" />;
+                    } else if (variance < 0) {
+                      return <Chip label={`${variance.toFixed(1)} h/week`} size="small" color="info" />;
+                    }
+                    return null;
+                  })()}
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
                   Health Flags
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
