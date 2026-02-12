@@ -22,6 +22,10 @@ import { contractsApi } from '../api/client';
 import type { Contract, ContractFilters } from '../types/api';
 import { FilterBar } from '../components/FilterBar';
 import { StatusBadge } from '../components/StatusBadge';
+import {
+  CONTRACT_TYPE_OPTIONS,
+  getContractTypeShortLabel,
+} from '../utils/contractTypes';
 import { AxiosError } from 'axios';
 
 export function ContractsListPage() {
@@ -103,8 +107,11 @@ export function ContractsListPage() {
           sx={{ minWidth: 200 }}
         >
           <MenuItem value="">All Types</MenuItem>
-          <MenuItem value="fixed_cost">Fixed Cost</MenuItem>
-          <MenuItem value="time_and_materials">Time and Materials</MenuItem>
+          {CONTRACT_TYPE_OPTIONS.map((contractTypeOption) => (
+            <MenuItem key={contractTypeOption.value} value={contractTypeOption.value}>
+              {contractTypeOption.label}
+            </MenuItem>
+          ))}
         </TextField>
       </FilterBar>
 
@@ -125,7 +132,7 @@ export function ContractsListPage() {
               <TableRow>
                 <TableCell>Name</TableCell>
                 <TableCell>Client</TableCell>
-                <TableCell>Contract Type</TableCell>
+                <TableCell sx={{ width: 110 }}>Contract Type</TableCell>
                 <TableCell>Start Date</TableCell>
                 <TableCell>End Date</TableCell>
                 <TableCell>Status</TableCell>
@@ -146,7 +153,14 @@ export function ContractsListPage() {
                 >
                   <TableCell>{contract.name || `Contract #${contract.id}`}</TableCell>
                   <TableCell>{contract.client_name}</TableCell>
-                  <TableCell>{contract.contract_type === 'fixed_cost' ? 'Fixed Cost' : 'Time and Materials'}</TableCell>
+                  <TableCell sx={{ width: 110 }}>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      sx={{ borderRadius: 999 }}
+                      label={getContractTypeShortLabel(contract.contract_type)}
+                    />
+                  </TableCell>
                   <TableCell>{contract.start_date}</TableCell>
                   <TableCell>{contract.end_date}</TableCell>
                   <TableCell>

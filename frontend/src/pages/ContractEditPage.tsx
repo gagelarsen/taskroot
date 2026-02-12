@@ -14,6 +14,7 @@ import { ArrowBack, Save } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { contractsApi } from '../api/client';
 import type { Contract } from '../types/api';
+import { CONTRACT_TYPE_OPTIONS } from '../utils/contractTypes';
 import { AxiosError } from 'axios';
 
 export function ContractEditPage() {
@@ -150,8 +151,11 @@ export function ContractEditPage() {
               required
               fullWidth
             >
-              <MenuItem value="fixed_cost">Fixed Cost</MenuItem>
-              <MenuItem value="time_and_materials">Time and Materials</MenuItem>
+              {CONTRACT_TYPE_OPTIONS.map((contractTypeOption) => (
+                <MenuItem key={contractTypeOption.value} value={contractTypeOption.value}>
+                  {contractTypeOption.label}
+                </MenuItem>
+              ))}
             </TextField>
 
             <TextField

@@ -31,6 +31,8 @@ class StaffSerializer(serializers.ModelSerializer):
 
 
 class ContractSerializer(serializers.ModelSerializer):
+    contract_type_display = serializers.CharField(source="get_contract_type_display", read_only=True)
+
     # Computed rollup fields (read-only)
     assigned_budget_hours = serializers.SerializerMethodField()
     spent_hours = serializers.SerializerMethodField()
@@ -57,6 +59,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "end_date",
             "budget_hours",
             "contract_type",
+            "contract_type_display",
             "status",
             "created_at",
             "updated_at",
@@ -78,6 +81,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
             "updated_at",
+            "contract_type_display",
             "assigned_budget_hours",
             "spent_hours",
             "planned_weeks",

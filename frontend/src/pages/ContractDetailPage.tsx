@@ -24,6 +24,7 @@ import type { Contract, Deliverable } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
 import { BurnDownChart } from '../components/BurnDownChart';
+import { getContractTypeShortLabel } from '../utils/contractTypes';
 import { AxiosError } from 'axios';
 
 export function ContractDetailPage() {
@@ -151,9 +152,14 @@ export function ContractDetailPage() {
                   <Typography variant="caption" color="text.secondary">
                     Contract Type
                   </Typography>
-                  <Typography>
-                    {contract.contract_type === 'fixed_cost' ? 'Fixed Cost' : 'Time and Materials'}
-                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      sx={{ borderRadius: 999 }}
+                      label={getContractTypeShortLabel(contract.contract_type)}
+                    />
+                  </Box>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">

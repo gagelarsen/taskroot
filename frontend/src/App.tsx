@@ -15,6 +15,7 @@ import { StaffDetailPage } from './pages/StaffDetailPage';
 import { StaffEditPage } from './pages/StaffEditPage';
 import { AssignmentsPage } from './pages/AssignmentsPage';
 import { BulkImportPage } from './pages/BulkImportPage';
+import { DashboardPage } from './pages/DashboardPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('access_token');
@@ -33,7 +34,7 @@ function App() {
             element={
               <PrivateRoute>
                 <AppShell>
-                  <ContractsListPage />
+                  <DashboardPage />
                 </AppShell>
               </PrivateRoute>
             }

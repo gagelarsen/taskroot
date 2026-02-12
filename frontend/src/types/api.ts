@@ -10,6 +10,7 @@ export interface Contract {
   name: string;
   client_name: string;
   contract_type: 'fixed_cost' | 'time_and_materials';
+  contract_type_display?: string;
   start_date: string;
   end_date: string;
   budget_hours: string;
