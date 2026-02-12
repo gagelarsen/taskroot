@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from math import ceil
 
@@ -114,6 +114,53 @@ class Deliverable(models.Model):
         Formula: spent_hours_per_week - assigned_budget_hours_per_week
         """
         return self.get_spent_hours_per_week() - self.get_assigned_budget_hours_per_week()
+
+    def get_estimated_burn_rate(self) -> Decimal:
+        """
+        Estimated burn rate (hours per week) based on staff assignments.
+        This is the amount of time allocated to staff each week.
+        Alias for get_assigned_budget_hours_per_week().
+        """
+        return self.get_assigned_budget_hours_per_week()
+
+    def get_actual_burn_rate(self, weeks: int = 4) -> Decimal:
+        """
+        Actual burn rate (hours per week) based on recent time entries.
+        Calculates average hours per week from time entries over the last N weeks.
+
+        Args:
+            weeks: Number of weeks to look back (default: 4)
+
+        Returns:
+            Average hours per week from time entries in the lookback period.
+            Returns Decimal("0") if no time entries exist in the period.
+        """
+        from datetime import date
+
+        today = date.today()
+        lookback_start = today - timedelta(days=weeks * 7)
+
+        # Get time entries in the lookback period
+        entries = self.time_entries.filter(entry_date__gte=lookback_start, entry_date__lte=today)
+
+        total_hours = entries.aggregate(total=Sum("hours"))["total"] or Decimal("0")
+
+        # If no entries in the period, return 0
+        if total_hours == Decimal("0"):
+            return Decimal("0")
+
+        # Calculate actual weeks in the period (based on first and last entry)
+        first_entry = entries.order_by("entry_date").first()
+        last_entry = entries.order_by("-entry_date").first()
+
+        if not first_entry or not last_entry:
+            return Decimal("0")
+
+        # Calculate weeks between first and last entry (minimum 1 week)
+        days_span = (last_entry.entry_date - first_entry.entry_date).days + 1
+        weeks_span = max(1, ceil(days_span / 7))
+
+        return total_hours / Decimal(str(weeks_span))
 
     # Health flags
 

@@ -25,6 +25,8 @@ export interface Contract {
   spent_hours_per_week: string;
   remaining_budget_hours: string;
   unspent_budget_hours: string;
+  estimated_burn_rate: string;
+  actual_burn_rate: string;
 
   // Health flags
   is_over_budget: boolean;
@@ -76,6 +78,8 @@ export interface Deliverable {
   remaining_budget_hours: string;
   unspent_budget_hours: string;
   variance_hours: string;
+  estimated_burn_rate: string;
+  actual_burn_rate: string;
 
   // Health flags
   is_over_budget: boolean;

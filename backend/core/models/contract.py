@@ -109,6 +109,31 @@ class Contract(models.Model):
         """Unassigned budget hours (budget - assigned budget hours)."""
         return self.budget_hours - self.get_assigned_budget_hours()
 
+    def get_estimated_burn_rate(self) -> Decimal:
+        """
+        Estimated burn rate (hours per week) based on staff assignments across all deliverables.
+        This is the amount of time allocated to staff each week.
+        Alias for get_assigned_budget_hours_per_week().
+        """
+        return self.get_assigned_budget_hours_per_week()
+
+    def get_actual_burn_rate(self, weeks: int = 4) -> Decimal:
+        """
+        Actual burn rate (hours per week) based on recent time entries across all deliverables.
+        Calculates average hours per week from time entries over the last N weeks.
+
+        Args:
+            weeks: Number of weeks to look back (default: 4)
+
+        Returns:
+            Sum of actual burn rates from all deliverables.
+            Returns Decimal("0") if no time entries exist in the period.
+        """
+        total = Decimal("0")
+        for deliverable in self.deliverables.all():
+            total += deliverable.get_actual_burn_rate(weeks=weeks)
+        return total
+
     # Health flags
 
     def is_over_budget(self) -> bool:

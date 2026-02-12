@@ -40,6 +40,8 @@ class ContractSerializer(serializers.ModelSerializer):
     spent_hours_per_week = serializers.SerializerMethodField()
     remaining_budget_hours = serializers.SerializerMethodField()
     unspent_budget_hours = serializers.SerializerMethodField()
+    estimated_burn_rate = serializers.SerializerMethodField()
+    actual_burn_rate = serializers.SerializerMethodField()
 
     # Health flags (read-only)
     is_over_budget = serializers.SerializerMethodField()
@@ -66,6 +68,8 @@ class ContractSerializer(serializers.ModelSerializer):
             "spent_hours_per_week",
             "remaining_budget_hours",
             "unspent_budget_hours",
+            "estimated_burn_rate",
+            "actual_burn_rate",
             "is_over_budget",
             "is_overassigned",
         ]
@@ -81,6 +85,8 @@ class ContractSerializer(serializers.ModelSerializer):
             "spent_hours_per_week",
             "remaining_budget_hours",
             "unspent_budget_hours",
+            "estimated_burn_rate",
+            "actual_burn_rate",
             "is_over_budget",
             "is_overassigned",
         ]
@@ -126,6 +132,24 @@ class ContractSerializer(serializers.ModelSerializer):
     )
     def get_unspent_budget_hours(self, obj):
         return obj.get_unspent_budget_hours()
+
+    @extend_schema_field(
+        serializers.FloatField(
+            read_only=True,
+            help_text="Estimated burn rate (hours per week) based on staff assignments across all deliverables",
+        )
+    )
+    def get_estimated_burn_rate(self, obj):
+        return obj.get_estimated_burn_rate()
+
+    @extend_schema_field(
+        serializers.FloatField(
+            read_only=True,
+            help_text="Actual burn rate (hours per week) based on recent time entries (last 4 weeks)",
+        )
+    )
+    def get_actual_burn_rate(self, obj):
+        return obj.get_actual_burn_rate(weeks=4)
 
     @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if spent hours exceed budget"))
     def get_is_over_budget(self, obj):
@@ -179,6 +203,8 @@ class DeliverableSerializer(serializers.ModelSerializer):
     remaining_budget_hours = serializers.SerializerMethodField()
     unspent_budget_hours = serializers.SerializerMethodField()
     variance_hours = serializers.SerializerMethodField()
+    estimated_burn_rate = serializers.SerializerMethodField()
+    actual_burn_rate = serializers.SerializerMethodField()
 
     # Health flags (read-only)
     is_over_budget = serializers.SerializerMethodField()
@@ -215,6 +241,8 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "remaining_budget_hours",
             "unspent_budget_hours",
             "variance_hours",
+            "estimated_burn_rate",
+            "actual_burn_rate",
             "is_over_budget",
             "is_overassigned",
             "is_missing_budget",
@@ -237,6 +265,8 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "remaining_budget_hours",
             "unspent_budget_hours",
             "variance_hours",
+            "estimated_burn_rate",
+            "actual_burn_rate",
             "is_over_budget",
             "is_overassigned",
             "is_missing_budget",
@@ -297,6 +327,24 @@ class DeliverableSerializer(serializers.ModelSerializer):
     )
     def get_variance_hours(self, obj):
         return obj.get_variance_hours()
+
+    @extend_schema_field(
+        serializers.FloatField(
+            read_only=True,
+            help_text="Estimated burn rate (hours per week) based on staff assignments",
+        )
+    )
+    def get_estimated_burn_rate(self, obj):
+        return obj.get_estimated_burn_rate()
+
+    @extend_schema_field(
+        serializers.FloatField(
+            read_only=True,
+            help_text="Actual burn rate (hours per week) based on recent time entries (last 4 weeks)",
+        )
+    )
+    def get_actual_burn_rate(self, obj):
+        return obj.get_actual_burn_rate(weeks=4)
 
     @extend_schema_field(
         serializers.BooleanField(read_only=True, help_text="True if spent hours exceed deliverable budget")
