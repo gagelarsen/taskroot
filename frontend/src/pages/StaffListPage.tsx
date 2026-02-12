@@ -116,7 +116,7 @@ export function StaffListPage() {
     loadStaff();
   }, [loadStaff]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): 'success' | 'default' => {
     switch (status) {
       case 'active':
         return 'success';
@@ -127,7 +127,7 @@ export function StaffListPage() {
     }
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string): 'error' | 'warning' | 'info' | 'default' => {
     switch (role) {
       case 'admin':
         return 'error';
@@ -263,14 +263,14 @@ export function StaffListPage() {
                     <TableCell>
                       <Chip
                         label={member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                        color={getRoleColor(member.role) as any}
+                        color={getRoleColor(member.role)}
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={member.status.charAt(0).toUpperCase() + member.status.slice(1)}
-                        color={getStatusColor(member.status) as any}
+                        color={getStatusColor(member.status)}
                         size="small"
                       />
                     </TableCell>

@@ -126,7 +126,7 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
           // Use only the actual time entry dates (not start/end dates) for trend calculation
           const dataPoints: { x: number; y: number }[] = [];
 
-          sortedDates.forEach((dateStr, idx) => {
+          sortedDates.forEach((dateStr) => {
             const dateIndex = dates.findIndex(d => d.toISOString().split('T')[0] === dateStr);
             if (dateIndex >= 0) {
               dataPoints.push({
@@ -209,8 +209,9 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
         }
 
         setChartData({ dates, budgetLine, spentLine, remainingLine, trendLine });
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to load time entries');
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { detail?: string } } };
+        setError(error.response?.data?.detail || 'Failed to load time entries');
       } finally {
         setLoading(false);
       }
