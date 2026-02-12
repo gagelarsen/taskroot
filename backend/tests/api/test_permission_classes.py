@@ -28,8 +28,8 @@ class TestCanCreateTaskAsStaff:
         client.force_authenticate(user=staff_user)
 
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
@@ -47,8 +47,8 @@ class TestCanCreateTaskAsStaff:
         client.force_authenticate(user=staff_user)
 
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
@@ -66,8 +66,8 @@ class TestCanCreateTaskAsStaff:
         client.force_authenticate(user=staff_user)
 
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")
@@ -85,8 +85,8 @@ class TestCanCreateTaskAsStaff:
         client.force_authenticate(user=staff_user)
 
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.0"),
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Test")

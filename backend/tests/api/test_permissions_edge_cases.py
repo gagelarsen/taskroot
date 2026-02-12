@@ -22,7 +22,7 @@ class TestTimeEntryPermissions:
         # Create a time entry
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -42,7 +42,7 @@ class TestTimeEntryPermissions:
         # Create a time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -60,7 +60,7 @@ class TestTimeEntryPermissions:
         # Create a time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -78,7 +78,7 @@ class TestTimeEntryPermissions:
         # Create a time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -171,7 +171,7 @@ class TestViewEdgeCases:
             {
                 "deliverable": deliverable.id,
                 "staff": admin_profile.id,
-                "entry_date": "2024-01-15",
+                "entry_date": "2026-01-15",
                 "hours": 0,  # Invalid
             },
             format="json",
@@ -184,7 +184,7 @@ class TestViewEdgeCases:
         # Create a time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -198,7 +198,7 @@ class TestViewEdgeCases:
         # Create a time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -212,7 +212,7 @@ class TestViewEdgeCases:
         # Create a time entry for other staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("8.0"),
         )
 
@@ -232,7 +232,7 @@ class TestViewEdgeCases:
             "/api/v1/deliverable-time-entries/",
             {
                 "deliverable": deliverable.id,
-                "entry_date": "2024-01-15",
+                "entry_date": "2026-01-15",
                 "hours": 8.0,
             },
             format="json",

@@ -25,8 +25,8 @@ class TestContractBurnReport:
         """Test basic contract burn report returns correct structure."""
         # Create contract
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 28),  # 4 weeks
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 28),  # 4 weeks
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -47,7 +47,7 @@ class TestContractBurnReport:
         # Add some time entries
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("25.00"),
         )
 
@@ -91,8 +91,8 @@ class TestContractDeliverablesReport:
     def test_contract_deliverables_summary(self, admin_user, admin_profile):
         """Test contract deliverables summary returns all deliverables."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -124,16 +124,16 @@ class TestContractDeliverablesReport:
         )
 
         # Add time entry to d1
-        # Contract is Jan 1 - Dec 31, 2024
+        # Contract is Jan 1 - Dec 31, 2026
         # Since contract is in the past, elapsed weeks = (365 days / 7) = 52.14... weeks
         # To get a clean variance, let's use a simpler calculation
         # We want spent_hours_per_week = 30 hrs/week
-        # elapsed_weeks = (date(2024, 12, 31) - date(2024, 1, 1)).days / 7 = 365 / 7 = 52.14...
+        # elapsed_weeks = (date(2026, 12, 31) - date(2026, 1, 1)).days / 7 = 365 / 7 = 52.14...
         # So we need: 30 hrs/week × 52.14... weeks ≈ 1564.29 hours total
         # But let's just check what the actual variance is and accept it
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("1560.00"),  # Some hours logged
         )
 
@@ -173,8 +173,8 @@ class TestDeliverableBurnReport:
     def test_deliverable_burn_report(self, admin_user, admin_profile):
         """Test deliverable burn report returns correct structure."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 28),  # 4 weeks
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 28),  # 4 weeks
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -192,13 +192,13 @@ class TestDeliverableBurnReport:
             is_lead=True,
         )
 
-        # Contract is Jan 1 - Jan 28, 2024 (4 weeks)
+        # Contract is Jan 1 - Jan 28, 2026 (4 weeks)
         # Since contract is in the past, elapsed weeks = 4
         # To get variance of -40 hrs/week: spent_hours_per_week = 40 hrs/week
         # So we need: 40 hrs/week × 4 weeks = 160 hours total
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 10),
+            entry_date=date(2026, 1, 10),
             hours=Decimal("160.00"),  # 160 hours total = 40 hrs/week over 4 weeks
         )
 
@@ -227,8 +227,8 @@ class TestDeliverableStatusHistory:
     def test_status_history_ordered(self, admin_user, admin_profile):
         """Test status history is ordered by period_end."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -242,19 +242,19 @@ class TestDeliverableStatusHistory:
         # Create status updates out of order
         _ = DeliverableStatusUpdate.objects.create(
             deliverable=deliverable,
-            period_end=date(2024, 1, 14),
+            period_end=date(2026, 1, 14),
             status="in_progress",
             summary="Week 2 update",
         )
         _ = DeliverableStatusUpdate.objects.create(
             deliverable=deliverable,
-            period_end=date(2024, 1, 7),
+            period_end=date(2026, 1, 7),
             status="in_progress",
             summary="Week 1 update",
         )
         _ = DeliverableStatusUpdate.objects.create(
             deliverable=deliverable,
-            period_end=date(2024, 1, 21),
+            period_end=date(2026, 1, 21),
             status="complete",
             summary="Week 3 update - completed",
         )
@@ -282,8 +282,8 @@ class TestStaffTimeReport:
     def test_staff_time_report_basic(self, admin_user, admin_profile, staff_profile):
         """Test staff time report returns empty results (time entries no longer track staff)."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -297,17 +297,17 @@ class TestStaffTimeReport:
         # Add time entries across different weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 2),  # Week 1
+            entry_date=date(2026, 1, 2),  # Week 1
             hours=Decimal("10.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 3),  # Week 1
+            entry_date=date(2026, 1, 3),  # Week 1
             hours=Decimal("15.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 9),  # Week 2
+            entry_date=date(2026, 1, 9),  # Week 2
             hours=Decimal("20.00"),
         )
 
@@ -331,8 +331,8 @@ class TestCSVExports:
     def test_time_entries_csv_export(self, admin_user, admin_profile, staff_profile):
         """Test time entries CSV export with filters."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -346,12 +346,12 @@ class TestCSVExports:
         # Create time entries
         _ = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("10.00"),
         )
         _ = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 10),
+            entry_date=date(2026, 1, 10),
             hours=Decimal("15.00"),
         )
 
@@ -377,8 +377,8 @@ class TestCSVExports:
     def test_contract_burn_csv_export(self, admin_user, admin_profile):
         """Test contract burn CSV export."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 28),  # 4 weeks
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 28),  # 4 weeks
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -398,7 +398,7 @@ class TestCSVExports:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("25.00"),
         )
 
@@ -433,8 +433,8 @@ class TestCSVExports:
     def test_time_entries_csv_with_all_filters(self, admin_user, admin_profile):
         """Test time entries CSV with all filter parameters."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -447,7 +447,7 @@ class TestCSVExports:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("10.00"),
         )
 
@@ -463,7 +463,7 @@ class TestCSVExports:
         assert response.status_code == 200
 
         # Test with date range filters
-        response = client.get("/api/v1/exports/time-entries.csv?entry_date_from=2024-01-01&entry_date_to=2024-01-31")
+        response = client.get("/api/v1/exports/time-entries.csv?entry_date_from=2026-01-01&entry_date_to=2026-01-31")
         assert response.status_code == 200
 
     def test_time_entries_csv_invalid_date_format(self, admin_user):
@@ -505,8 +505,8 @@ class TestReportingErrorCases:
     def test_contract_burn_invalid_bucket_type(self, admin_user, admin_profile):
         """Test contract burn report with invalid bucket type."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -537,8 +537,8 @@ class TestReportingErrorCases:
     def test_deliverable_burn_invalid_bucket_type(self, admin_user, admin_profile):
         """Test deliverable burn report with invalid bucket type."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -575,8 +575,8 @@ class TestReportingErrorCases:
     def test_staff_time_report_with_filters(self, admin_user, admin_profile, staff_profile):
         """Test staff time report with contract_id filter (returns empty since time entries don't track staff)."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -589,7 +589,7 @@ class TestReportingErrorCases:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("10.00"),
         )
 
@@ -619,8 +619,8 @@ class TestReportingErrorCases:
     def test_staff_time_report_with_valid_date_filters(self, admin_user, staff_profile):
         """Test staff time report with valid date filters (returns empty since time entries don't track staff)."""
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.00"),
             status="active",
         )
@@ -634,12 +634,12 @@ class TestReportingErrorCases:
         # Create entries in different date ranges
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("10.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 2, 15),
+            entry_date=date(2026, 2, 15),
             hours=Decimal("15.00"),
         )
 
@@ -647,12 +647,12 @@ class TestReportingErrorCases:
         client.force_authenticate(user=admin_user)
 
         # Test with start_date filter - should return empty since time entries don't track staff
-        response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?start_date=2024-02-01")
+        response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?start_date=2026-02-01")
         assert response.status_code == 200
         assert len(response.data["buckets"]) == 0
 
         # Test with end_date filter - should return empty since time entries don't track staff
-        response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?end_date=2024-01-31")
+        response = client.get(f"/api/v1/reports/staff/{staff_profile.id}/time/?end_date=2026-01-31")
         assert response.status_code == 200
         assert len(response.data["buckets"]) == 0
 
@@ -668,8 +668,8 @@ class TestWeekEndingEdgeCases:
         # Example: start_date = Monday Jan 1, end_date = Tuesday Jan 2
         # First week ending would be Sunday Jan 7, which is > Jan 2
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),  # Monday
-            end_date=date(2024, 1, 2),  # Tuesday (before first Sunday)
+            start_date=date(2026, 1, 1),  # Monday
+            end_date=date(2026, 1, 2),  # Tuesday (before first Sunday)
             budget_hours=Decimal("100.00"),
             status="active",
         )
@@ -682,4 +682,4 @@ class TestWeekEndingEdgeCases:
         # Should have exactly one bucket due to fallback
         assert len(response.data["buckets"]) == 1
         # The bucket should be the week ending date for start_date (Sunday Jan 7)
-        assert response.data["buckets"][0]["bucket"] == "2024-01-07"
+        assert response.data["buckets"][0]["bucket"] == "2026-01-07"

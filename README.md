@@ -313,11 +313,11 @@ Response:
   "id": 1,
   "contract": 1,
   "name": "API Development",
-  "start_date": "2024-01-01",
-  "due_date": "2024-01-28",
+  "start_date": "2026-01-01",
+  "due_date": "2026-01-28",
   "status": "in_progress",
-  "created_at": "2024-01-01T00:00:00Z",
-  "updated_at": "2024-01-15T12:00:00Z",
+  "created_at": "2026-01-01T00:00:00Z",
+  "updated_at": "2026-01-15T12:00:00Z",
 
   "expected_hours_total": 80.0,
   "actual_hours_total": 45.5,
@@ -333,11 +333,11 @@ Response:
 
   "latest_status_update": {
     "id": 5,
-    "period_end": "2024-01-14",
+    "period_end": "2026-01-14",
     "status": "on_track",
     "summary": "Making good progress on core features",
     "created_by": 2,
-    "created_at": "2024-01-14T17:00:00Z"
+    "created_at": "2026-01-14T17:00:00Z"
   }
 }
 ```
@@ -353,12 +353,12 @@ Response:
 ```json
 {
   "id": 1,
-  "start_date": "2024-01-01",
-  "end_date": "2024-03-31",
+  "start_date": "2026-01-01",
+  "end_date": "2026-03-31",
   "budget_hours_total": 1000.0,
   "status": "active",
-  "created_at": "2024-01-01T00:00:00Z",
-  "updated_at": "2024-01-15T12:00:00Z",
+  "created_at": "2026-01-01T00:00:00Z",
+  "updated_at": "2026-01-15T12:00:00Z",
 
   "expected_hours_total": 850.0,
   "actual_hours_total": 245.5,

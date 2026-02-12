@@ -39,8 +39,8 @@ def admin_profile(admin_user):
 def contract(db):
     """Create a contract with known dates."""
     return Contract.objects.create(
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 3, 31),  # 90 days = ~13 weeks
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 3, 31),  # 90 days = ~13 weeks
         budget_hours=Decimal("1000.00"),
         status=Contract.Status.ACTIVE,
     )
@@ -111,12 +111,12 @@ class TestDeliverableRollups:
         """Actual hours should sum all time entry hours."""
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("8.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 6),
+            entry_date=date(2026, 1, 6),
             hours=Decimal("7.50"),
         )
 
@@ -142,7 +142,7 @@ class TestDeliverableRollups:
         # Log 130 hours total (10 hours/week over 13 weeks)
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("650.00"),  # 650 hours total
         )
 
@@ -166,12 +166,12 @@ class TestDeliverableRollups:
         assert deliverable.is_over_expected() is False
 
         # Add time entries to go over the assigned rate
-        # Contract is Jan 1 - Mar 31, 2024 (13 weeks, in the past)
+        # Contract is Jan 1 - Mar 31, 2026 (13 weeks, in the past)
         # To exceed 40 hrs/week, we need > 40 hrs/week
         # Let's log 650 hours total = 50 hrs/week over 13 weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("650.00"),  # 650 / 13 = 50 hrs/week > 40 hrs/week
         )
 
@@ -280,8 +280,8 @@ class TestWeeksCalculations:
         """Planned weeks should be at least 1."""
         # Create contract with same start and end date
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 1),  # Same day
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 1),  # Same day
             budget_hours=Decimal("100.00"),
             status=Contract.Status.ACTIVE,
         )
@@ -330,8 +330,8 @@ class TestWeeksCalculations:
         """Elapsed weeks should cap at the end date, not go beyond."""
         # Create contract that ended in the past
         contract = Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 14),  # 14 days = 2 weeks
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 14),  # 14 days = 2 weeks
             budget_hours=Decimal("100.00"),
             status=Contract.Status.ACTIVE,
         )
@@ -411,12 +411,12 @@ class TestContractRollups:
         # Add time entries
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("25.00"),
         )
         DeliverableTimeEntry.objects.create(
             deliverable=d2,
-            entry_date=date(2024, 1, 6),
+            entry_date=date(2026, 1, 6),
             hours=Decimal("35.00"),
         )
 
@@ -433,7 +433,7 @@ class TestContractRollups:
         # Contract has 1000 budget hours
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("250.00"),
         )
 
@@ -453,7 +453,7 @@ class TestContractRollups:
         # Add time entries to exceed budget (1000 hours)
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("1100.00"),
         )
 
@@ -497,21 +497,21 @@ class TestLatestStatusUpdate:
         # Create multiple status updates
         DeliverableStatusUpdate.objects.create(
             deliverable=deliverable,
-            period_end=date(2024, 1, 7),
+            period_end=date(2026, 1, 7),
             status=DeliverableStatusUpdate.Status.ON_TRACK,
             summary="Week 1",
             created_by=staff_member,
         )
         latest = DeliverableStatusUpdate.objects.create(
             deliverable=deliverable,
-            period_end=date(2024, 1, 21),
+            period_end=date(2026, 1, 21),
             status=DeliverableStatusUpdate.Status.AT_RISK,
             summary="Week 3",
             created_by=staff_member,
         )
         DeliverableStatusUpdate.objects.create(
             deliverable=deliverable,
-            period_end=date(2024, 1, 14),
+            period_end=date(2026, 1, 14),
             status=DeliverableStatusUpdate.Status.ON_TRACK,
             summary="Week 2",
             created_by=staff_member,
@@ -519,7 +519,7 @@ class TestLatestStatusUpdate:
 
         result = deliverable.get_latest_status_update()
         assert result.id == latest.id
-        assert result.period_end == date(2024, 1, 21)
+        assert result.period_end == date(2026, 1, 21)
         assert result.status == DeliverableStatusUpdate.Status.AT_RISK
 
     def test_latest_status_update_returns_none_when_no_updates(self, deliverable):
@@ -544,7 +544,7 @@ class TestRollupsInAPI:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("10.00"),
         )
 
@@ -592,7 +592,7 @@ class TestRollupsInAPI:
         )
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("50.00"),
         )
 
@@ -625,7 +625,7 @@ class TestRollupsInAPI:
         from rest_framework.test import APIClient
 
         # Create deliverable that is over expected
-        # Contract is Jan 1 - Mar 31, 2024 (13 weeks, in the past)
+        # Contract is Jan 1 - Mar 31, 2026 (13 weeks, in the past)
         d1 = Deliverable.objects.create(
             contract=contract,
             name="Over Expected",
@@ -640,7 +640,7 @@ class TestRollupsInAPI:
         # To exceed 10 hrs/week over 13 weeks, we need > 130 hours total
         DeliverableTimeEntry.objects.create(
             deliverable=d1,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("195.00"),  # 195 / 13 = 15 hrs/week > 10 hrs/week
         )
 
@@ -659,7 +659,7 @@ class TestRollupsInAPI:
         # 10 hours total / 13 weeks = 0.77 hrs/week < 50 hrs/week
         DeliverableTimeEntry.objects.create(
             deliverable=d2,
-            entry_date=date(2024, 1, 5),
+            entry_date=date(2026, 1, 5),
             hours=Decimal("10.00"),
         )
 

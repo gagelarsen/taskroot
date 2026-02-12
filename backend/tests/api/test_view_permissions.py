@@ -83,7 +83,7 @@ class TestTimeEntryViewPermissions:
         # Create time entry
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("5.0"),
         )
 
@@ -103,7 +103,7 @@ class TestTimeEntryViewPermissions:
         # Create time entry
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("5.0"),
         )
 
@@ -118,7 +118,7 @@ class TestTimeEntryViewPermissions:
         # Create time entry for staff
         entry = DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("5.0"),
         )
 

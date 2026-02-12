@@ -38,8 +38,8 @@ def auth_client(api_client, admin_user):
 def contract(db):
     """Create a test contract."""
     return Contract.objects.create(
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 12, 31),
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 12, 31),
         budget_hours=Decimal("1000.0"),
         status="active",
     )
@@ -106,7 +106,7 @@ class TestContractFilters:
 
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("1500.0"),  # Exceeds 1000 budget
         )
 
@@ -133,12 +133,12 @@ class TestContractFilters:
         )
 
         # Create time entries that exceed expected rate
-        # Contract is Jan 1 - Dec 31, 2024 (52 weeks, in the past)
+        # Contract is Jan 1 - Dec 31, 2026 (52 weeks, in the past)
         # To exceed 100 hrs/week, we need > 100 hrs/week
         # Let's log 6240 hours total = 120 hrs/week over 52 weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("6240.0"),  # 6240 / 52 = 120 hrs/week > 100 hrs/week
         )
 
@@ -220,12 +220,12 @@ class TestDeliverableFilters:
         )
 
         # Add time entries exceeding expected rate
-        # Contract is Jan 1 - Dec 31, 2024 (52 weeks, in the past)
+        # Contract is Jan 1 - Dec 31, 2026 (52 weeks, in the past)
         # To exceed 50 hrs/week, we need > 50 hrs/week
         # Let's log 3120 hours total = 60 hrs/week over 52 weeks
         DeliverableTimeEntry.objects.create(
             deliverable=deliverable,
-            entry_date=date(2024, 1, 15),
+            entry_date=date(2026, 1, 15),
             hours=Decimal("3120.0"),  # 3120 / 52 = 60 hrs/week > 50 hrs/week
         )
 
@@ -393,8 +393,8 @@ class TestOrderingBackend:
     def test_ordering_desc(self, auth_client):
         """Test descending order."""
         Contract.objects.create(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 12, 31),
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             budget_hours=Decimal("1000.0"),
         )
         Contract.objects.create(

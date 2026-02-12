@@ -77,8 +77,8 @@ class TestBulkImportSuccess:
                 {
                     "name": "Project A",
                     "client_name": "Client X",
-                    "start_date": "2024-01-01",
-                    "end_date": "2024-12-31",
+                    "start_date": "2026-01-01",
+                    "end_date": "2026-12-31",
                     "budget_hours": 1000,
                     "status": "active",
                 }
@@ -114,8 +114,8 @@ class TestBulkImportSuccess:
                 {
                     "name": "Project B",
                     "client_name": "Client Y",
-                    "start_date": "2024-01-01",
-                    "end_date": "2024-12-31",
+                    "start_date": "2026-01-01",
+                    "end_date": "2026-12-31",
                     "budget_hours": 2000,
                     "status": "active",
                 }
@@ -127,7 +127,7 @@ class TestBulkImportSuccess:
                     "name": "Deliverable 1",
                     "charge_code": "PROJ_B_D1",
                     "budget_hours": 500,
-                    "target_completion_date": "2024-06-30",
+                    "target_completion_date": "2026-06-30",
                     "status": "in_progress",
                 }
             ],
@@ -168,8 +168,8 @@ class TestBulkImportSuccess:
         contract = Contract.objects.create(
             name="Project C",
             client_name="Client Z",
-            start_date="2024-01-01",
-            end_date="2024-12-31",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
             budget_hours=1000,
             status="active",
         )
@@ -212,8 +212,8 @@ class TestBulkImportTimeEntries:
         # Create deliverable first
         contract = Contract.objects.create(
             name="Project D",
-            start_date="2024-01-01",
-            end_date="2024-12-31",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
             budget_hours=1000,
             status="active",
         )
@@ -228,7 +228,7 @@ class TestBulkImportTimeEntries:
             "time_entries": [
                 {
                     "charge_code": "TEST_CHARGE_CODE",
-                    "entry_date": "2024-01-15",
+                    "entry_date": "2026-01-15",
                     "hours": 8.5,
                     "note": "Work completed",
                 }
@@ -239,11 +239,161 @@ class TestBulkImportTimeEntries:
         assert response.status_code == 200
         assert response.data["success"] is True
         assert response.data["stats"]["time_entries_created"] == 1
+        assert response.data["stats"]["time_entries_skipped"] == 0
+        assert response.data["stats"]["time_entries_failed"] == 0
 
         # Verify time entry was created
         entry = DeliverableTimeEntry.objects.get(note="Work completed")
         assert entry.hours == Decimal("8.5")
-        assert str(entry.entry_date) == "2024-01-15"
+        assert str(entry.entry_date) == "2026-01-15"
+
+    def test_import_time_entries_with_duplicate_date(self, auth_client, admin_user, admin_profile):
+        """Test that duplicate entries (same charge_code + date) are skipped with warning."""
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Project E",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="Deliverable 4",
+            charge_code="DUP_TEST",
+            status="in_progress",
+        )
+
+        # Create existing time entry
+        DeliverableTimeEntry.objects.create(
+            deliverable=deliverable,
+            entry_date="2026-01-15",
+            hours=Decimal("5.0"),
+            note="Existing entry",
+        )
+
+        payload = {
+            "time_entries": [
+                {
+                    "charge_code": "DUP_TEST",
+                    "entry_date": "2026-01-15",
+                    "hours": 8.5,
+                    "note": "Duplicate entry",
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/time-entries/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True  # Success because no failures
+        assert response.data["stats"]["time_entries_created"] == 0
+        assert response.data["stats"]["time_entries_skipped"] == 1
+        assert response.data["stats"]["time_entries_failed"] == 0
+        assert "warnings" in response.data
+        assert len(response.data["warnings"]) == 1
+        assert "already exists" in response.data["warnings"][0]
+
+        # Verify only the original entry exists
+        assert DeliverableTimeEntry.objects.filter(deliverable=deliverable).count() == 1
+        entry = DeliverableTimeEntry.objects.get(deliverable=deliverable)
+        assert entry.hours == Decimal("5.0")
+        assert entry.note == "Existing entry"
+
+    def test_import_time_entries_with_nonexistent_charge_code(self, auth_client, admin_user, admin_profile):
+        """Test that entries with non-existent charge codes are skipped with warning."""
+        client = auth_client(admin_user)
+
+        payload = {
+            "time_entries": [
+                {
+                    "charge_code": "NONEXISTENT_CODE",
+                    "entry_date": "2026-01-15",
+                    "hours": 8.5,
+                    "note": "Invalid charge code",
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/time-entries/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True  # Success because no failures
+        assert response.data["stats"]["time_entries_created"] == 0
+        assert response.data["stats"]["time_entries_skipped"] == 1
+        assert response.data["stats"]["time_entries_failed"] == 0
+        assert "warnings" in response.data
+        assert len(response.data["warnings"]) == 1
+        assert "not found" in response.data["warnings"][0]
+        assert "NONEXISTENT_CODE" in response.data["warnings"][0]
+
+    def test_import_time_entries_mixed_valid_and_invalid(self, auth_client, admin_user, admin_profile):
+        """Test that valid entries are imported even when some are invalid."""
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Project F",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="Deliverable 5",
+            charge_code="MIXED_TEST",
+            status="in_progress",
+        )
+
+        # Create existing entry for duplicate test
+        DeliverableTimeEntry.objects.create(
+            deliverable=deliverable,
+            entry_date="2026-01-10",
+            hours=Decimal("3.0"),
+            note="Existing",
+        )
+
+        payload = {
+            "time_entries": [
+                {
+                    "charge_code": "MIXED_TEST",
+                    "entry_date": "2026-01-15",
+                    "hours": 8.5,
+                    "note": "Valid entry 1",
+                },
+                {
+                    "charge_code": "NONEXISTENT",
+                    "entry_date": "2026-01-16",
+                    "hours": 5.0,
+                    "note": "Invalid charge code",
+                },
+                {
+                    "charge_code": "MIXED_TEST",
+                    "entry_date": "2026-01-10",
+                    "hours": 7.0,
+                    "note": "Duplicate date",
+                },
+                {
+                    "charge_code": "MIXED_TEST",
+                    "entry_date": "2026-01-17",
+                    "hours": 6.0,
+                    "note": "Valid entry 2",
+                },
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/time-entries/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["time_entries_created"] == 2  # Two valid entries
+        assert response.data["stats"]["time_entries_skipped"] == 2  # One nonexistent, one duplicate
+        assert response.data["stats"]["time_entries_failed"] == 0
+        assert "warnings" in response.data
+        assert len(response.data["warnings"]) == 2
+
+        # Verify the valid entries were created
+        assert DeliverableTimeEntry.objects.filter(deliverable=deliverable).count() == 3  # 1 existing + 2 new
+        assert DeliverableTimeEntry.objects.filter(note="Valid entry 1").exists()
+        assert DeliverableTimeEntry.objects.filter(note="Valid entry 2").exists()
 
     def test_import_multiple_time_entries(self, auth_client, admin_user, admin_profile):
         """Test importing multiple time entries."""
@@ -252,8 +402,8 @@ class TestBulkImportTimeEntries:
         # Create deliverable
         contract = Contract.objects.create(
             name="Project E",
-            start_date="2024-01-01",
-            end_date="2024-12-31",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
             budget_hours=1000,
             status="active",
         )
@@ -267,13 +417,13 @@ class TestBulkImportTimeEntries:
             "time_entries": [
                 {
                     "deliverable_name": "Deliverable 4",
-                    "entry_date": "2024-01-15",
+                    "entry_date": "2026-01-15",
                     "hours": 8.0,
                     "note": "Day 1",
                 },
                 {
                     "deliverable_name": "Deliverable 4",
-                    "entry_date": "2024-01-16",
+                    "entry_date": "2026-01-16",
                     "hours": 7.5,
                     "note": "Day 2",
                 },
@@ -338,8 +488,8 @@ class TestBulkImportErrors:
         # Create contract and deliverable
         contract = Contract.objects.create(
             name="Project F",
-            start_date="2024-01-01",
-            end_date="2024-12-31",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
             budget_hours=1000,
             status="active",
         )
@@ -373,7 +523,7 @@ class TestBulkImportErrors:
             "time_entries": [
                 {
                     "deliverable_name": "Nonexistent Deliverable",
-                    "entry_date": "2024-01-15",
+                    "entry_date": "2026-01-15",
                     "hours": 8.0,
                 }
             ]
@@ -428,8 +578,8 @@ class TestBulkImportIdempotency:
                 {
                     "name": "Unique Project",
                     "client_name": "Unique Client",
-                    "start_date": "2024-01-01",
-                    "end_date": "2024-12-31",
+                    "start_date": "2026-01-01",
+                    "end_date": "2026-12-31",
                     "budget_hours": 1000,
                     "status": "active",
                 }

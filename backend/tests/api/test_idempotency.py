@@ -34,8 +34,8 @@ def auth_client(api_client, admin_user):
 def contract(db):
     """Create a test contract."""
     return Contract.objects.create(
-        start_date="2024-01-01",
-        end_date="2024-12-31",
+        start_date="2026-01-01",
+        end_date="2026-12-31",
         budget_hours=1000,
         status="active",
     )
@@ -67,7 +67,7 @@ class TestTimeEntryIdempotency:
         payload = {
             "deliverable": deliverable.id,
             "staff": staff.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 8.0,
             "note": "Development work",
         }
@@ -91,7 +91,7 @@ class TestTimeEntryIdempotency:
         payload = {
             "deliverable": deliverable.id,
             "staff": staff.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 8.0,
             "note": "Development work",
             "external_source": "jira",
@@ -119,7 +119,7 @@ class TestTimeEntryIdempotency:
         payload1 = {
             "deliverable": deliverable.id,
             "staff": staff.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 8.0,
             "external_source": "jira",
             "external_id": "PROJ-123",
@@ -128,7 +128,7 @@ class TestTimeEntryIdempotency:
         payload2 = {
             "deliverable": deliverable.id,
             "staff": staff.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 6.0,
             "external_source": "jira",
             "external_id": "PROJ-456",  # Different external_id
@@ -148,7 +148,7 @@ class TestTimeEntryIdempotency:
         """Providing external_source without external_id returns 400."""
         payload = {
             "deliverable": deliverable.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 8.0,
             "external_source": "jira",
             # Missing external_id
@@ -162,7 +162,7 @@ class TestTimeEntryIdempotency:
         """Providing external_id without external_source returns 400."""
         payload = {
             "deliverable": deliverable.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 8.0,
             "external_id": "PROJ-123",
             # Missing external_source
@@ -177,7 +177,7 @@ class TestTimeEntryIdempotency:
         payload1 = {
             "deliverable": deliverable.id,
             "staff": staff.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 8.0,
             "external_source": "jira",
             "external_id": "123",
@@ -186,7 +186,7 @@ class TestTimeEntryIdempotency:
         payload2 = {
             "deliverable": deliverable.id,
             "staff": staff.id,
-            "entry_date": "2024-01-15",
+            "entry_date": "2026-01-15",
             "hours": 6.0,
             "external_source": "harvest",
             "external_id": "123",  # Same ID but different source
