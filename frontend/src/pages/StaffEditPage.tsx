@@ -67,11 +67,16 @@ export function StaffEditPage() {
     setError('');
 
     try {
+      const payload = {
+        ...formData,
+        expected_hours_per_week: formData.expected_hours_per_week.toString(),
+      };
+
       if (isNew) {
-        const created = await staffApi.create(formData);
+        const created = await staffApi.create(payload);
         navigate(`/staff/${created.id}`);
       } else {
-        const updated = await staffApi.update(parseInt(id!), formData);
+        const updated = await staffApi.update(parseInt(id!), payload);
         navigate(`/staff/${updated.id}`);
       }
     } catch (err) {
