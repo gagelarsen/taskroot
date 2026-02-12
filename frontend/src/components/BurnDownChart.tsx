@@ -34,18 +34,39 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
       setError('');
       try {
         // Fetch all time entries for this contract
-        // Use a large page_size to get all entries (DRF default is usually 100)
-        const response = await apiClient.get('/deliverable-time-entries/', {
-          params: {
-            contract_id: contract.id,
-            order_by: 'entry_date',
-            order_dir: 'asc',
-            page_size: 10000, // Get all entries in one request
-          },
-        });
+        // Loop through all pages to get ALL entries (in case pagination limit is enforced)
+        let allTimeEntries: TimeEntry[] = [];
+        let nextUrl: string | null = '/deliverable-time-entries/';
+        let pageNum = 1;
 
-        // Handle paginated response - DRF returns { results: [...], count, next, previous }
-        const timeEntries: TimeEntry[] = response.data.results || response.data;
+        while (nextUrl) {
+          const response = await apiClient.get(nextUrl, {
+            params: nextUrl === '/deliverable-time-entries/' ? {
+              contract_id: contract.id,
+              order_by: 'entry_date',
+              order_dir: 'asc',
+              page_size: 10000, // Try to get all in one request
+            } : undefined, // For subsequent pages, use the next URL as-is
+          });
+
+          // Handle paginated response - DRF returns { results: [...], count, next, previous }
+          const pageEntries: TimeEntry[] = response.data.results || response.data;
+          allTimeEntries = [...allTimeEntries, ...pageEntries];
+
+          console.log(`BurnDownChart: Loaded page ${pageNum} - ${pageEntries.length} entries (total so far: ${allTimeEntries.length})`);
+
+          // Check if there's a next page
+          nextUrl = response.data.next || null;
+          pageNum++;
+
+          // Safety check to prevent infinite loops
+          if (pageNum > 100) {
+            console.error('BurnDownChart: Too many pages, stopping at 100 pages');
+            break;
+          }
+        }
+
+        const timeEntries = allTimeEntries;
 
         console.log('BurnDownChart: Loaded time entries for contract', contract.id, ':', timeEntries.length, 'entries');
         console.log('BurnDownChart: Total hours from entries:', timeEntries.reduce((sum, e) => sum + parseFloat(e.hours), 0));
