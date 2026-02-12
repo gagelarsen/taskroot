@@ -20,7 +20,7 @@ class TestTimeEntryValidation:
             "/api/v1/deliverable-time-entries/",
             {
                 "deliverable": deliverable.id,
-                "entry_date": "2024-01-15",
+                "entry_date": "2026-01-15",
                 "hours": "-5.0",
             },
             format="json",
@@ -40,7 +40,7 @@ class TestTimeEntryValidation:
             "/api/v1/deliverable-time-entries/",
             {
                 "deliverable": deliverable.id,
-                "entry_date": "2024-01-15",
+                "entry_date": "2026-01-15",
                 "hours": "0",
             },
             format="json",
@@ -60,7 +60,7 @@ class TestTimeEntryValidation:
             "/api/v1/deliverable-time-entries/",
             {
                 "deliverable": deliverable.id,
-                "entry_date": "2024-01-15",
+                "entry_date": "2026-01-15",
                 "hours": "5.5",
             },
             format="json",

@@ -19,12 +19,12 @@ class TestContractMethods:
     def test_get_elapsed_weeks_before_start_date(self, mock_date):
         """Test get_elapsed_weeks when today is before start_date."""
         # Mock today to be before the contract start
-        mock_today = date(2024, 1, 1)
+        mock_today = date(2026, 1, 1)
         mock_date.today.return_value = mock_today
 
         # Create a contract that starts in the future
-        future_start = date(2024, 2, 1)  # 1 month in the future
-        future_end = date(2024, 12, 31)
+        future_start = date(2026, 2, 1)  # 1 month in the future
+        future_end = date(2026, 12, 31)
 
         contract = Contract.objects.create(
             start_date=future_start,

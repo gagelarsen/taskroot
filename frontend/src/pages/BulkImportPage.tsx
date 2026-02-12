@@ -9,6 +9,8 @@ interface ImportStats {
   deliverables_created?: number;
   tasks_created?: number;
   time_entries_created?: number;
+  time_entries_skipped?: number;
+  time_entries_failed?: number;
 }
 
 interface ImportResult {
@@ -16,6 +18,8 @@ interface ImportResult {
   message?: string;
   error?: string;
   stats?: ImportStats;
+  warnings?: string[];
+  errors?: string[];
 }
 
 export function BulkImportPage() {
@@ -200,8 +204,50 @@ export function BulkImportPage() {
                             Time entries created: <strong>{result.stats.time_entries_created}</strong>
                           </Typography>
                         )}
+                        {result.stats.time_entries_skipped !== undefined && result.stats.time_entries_skipped > 0 && (
+                          <Typography variant="body2" color="warning.main">
+                            Time entries skipped: <strong>{result.stats.time_entries_skipped}</strong>
+                          </Typography>
+                        )}
+                        {result.stats.time_entries_failed !== undefined && result.stats.time_entries_failed > 0 && (
+                          <Typography variant="body2" color="error.main">
+                            Time entries failed: <strong>{result.stats.time_entries_failed}</strong>
+                          </Typography>
+                        )}
                       </Stack>
                     </Box>
+                  )}
+
+                  {/* Warnings */}
+                  {result.warnings && result.warnings.length > 0 && (
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                      <Typography variant="body2" gutterBottom>
+                        <strong>Warnings ({result.warnings.length}):</strong>
+                      </Typography>
+                      <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                        {result.warnings.map((warning, idx) => (
+                          <li key={idx}>
+                            <Typography variant="body2">{warning}</Typography>
+                          </li>
+                        ))}
+                      </Box>
+                    </Alert>
+                  )}
+
+                  {/* Errors */}
+                  {result.errors && result.errors.length > 0 && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      <Typography variant="body2" gutterBottom>
+                        <strong>Errors ({result.errors.length}):</strong>
+                      </Typography>
+                      <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2 }}>
+                        {result.errors.map((error, idx) => (
+                          <li key={idx}>
+                            <Typography variant="body2">{error}</Typography>
+                          </li>
+                        ))}
+                      </Box>
+                    </Alert>
                   )}
                 </>
               ) : (
@@ -242,8 +288,8 @@ export function BulkImportPage() {
     {
       "name": "Project A",
       "client_name": "Client X",
-      "start_date": "2024-01-01",
-      "end_date": "2024-12-31",
+      "start_date": "2026-01-01",
+      "end_date": "2026-12-31",
       "budget_hours": 1000,
       "status": "active"
     }
@@ -255,7 +301,7 @@ export function BulkImportPage() {
       "name": "Deliverable 1",
       "charge_code": "PROJ_A_D1",
       "budget_hours": 500,
-      "target_completion_date": "2024-06-30",
+      "target_completion_date": "2026-06-30",
       "status": "in_progress"
     }
   ],
@@ -281,7 +327,7 @@ export function BulkImportPage() {
   "time_entries": [
     {
       "deliverable_name": "Deliverable 1",
-      "entry_date": "2024-01-15",
+      "entry_date": "2026-01-15",
       "hours": 8.5,
       "note": "Work completed on task"
     }

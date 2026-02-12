@@ -63,7 +63,7 @@ from core.models import Contract, Deliverable, DeliverableTimeEntry, Staff, Task
             value={
                 "version": "1.0",
                 "staff": [{"email": "user@example.com", "first_name": "John", "last_name": "Doe"}],
-                "contracts": [{"name": "Project A", "client_name": "Client X", "start_date": "2024-01-01"}],
+                "contracts": [{"name": "Project A", "client_name": "Client X", "start_date": "2026-01-01"}],
             },
         )
     ],
@@ -205,7 +205,14 @@ def bulk_import_view(request: Request) -> Response:
 
     Time entries are matched to deliverables by their charge_code field.
 
-    All imports are atomic - if any error occurs, the entire import is rolled back.
+    **Smart Import Behavior:**
+    - Entries with non-existent charge codes are **skipped** with a warning
+    - Duplicate entries (same charge_code + date) are **skipped** with a warning
+    - Valid entries are imported successfully
+    - The import continues processing all entries even if some fail
+    - Returns detailed stats showing created/skipped/failed counts
+
+    The entire import is atomic - either all valid entries are created or none are.
 
     Requires admin role.
     """,
@@ -227,11 +234,23 @@ def bulk_import_view(request: Request) -> Response:
                     "type": "object",
                     "properties": {
                         "time_entries_created": {"type": "integer"},
+                        "time_entries_skipped": {"type": "integer"},
+                        "time_entries_failed": {"type": "integer"},
                     },
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of warnings for skipped entries",
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of errors for failed entries",
                 },
             },
         },
-        400: {"description": "Invalid data"},
+        400: {"description": "Unexpected error during import"},
     },
     examples=[
         OpenApiExample(
@@ -240,7 +259,7 @@ def bulk_import_view(request: Request) -> Response:
                 "time_entries": [
                     {
                         "charge_code": "RD_T_NSF",
-                        "entry_date": "2024-01-15",
+                        "entry_date": "2026-01-15",
                         "hours": 8.5,
                         "note": "Work completed",
                     }
@@ -254,44 +273,105 @@ def bulk_import_view(request: Request) -> Response:
 def bulk_import_time_entries_view(request: Request) -> Response:
     """
     Bulk import time entries from JSON payload.
+
+    Processes all entries and reports successes/failures individually.
+    Does not fail the entire import if some entries have errors.
     """
     data = request.data
 
+    stats = {
+        "time_entries_created": 0,
+        "time_entries_skipped": 0,
+        "time_entries_failed": 0,
+    }
+    warnings = []
+    errors = []
+
     try:
         with transaction.atomic():
-            stats = {"time_entries_created": 0}
-
             # Import time entries (depends on deliverables)
-            for entry_data in data.get("time_entries", []):
+            for idx, entry_data in enumerate(data.get("time_entries", []), start=1):
+                charge_code = entry_data.get("charge_code", "")
+                entry_date = entry_data.get("entry_date", "")
+                hours = entry_data.get("hours", 0)
+
+                # Validate required fields
+                if not charge_code:
+                    errors.append(f"Entry #{idx}: Missing charge_code")
+                    stats["time_entries_failed"] += 1
+                    continue
+
+                if not entry_date:
+                    errors.append(f"Entry #{idx}: Missing entry_date")
+                    stats["time_entries_failed"] += 1
+                    continue
+
                 # Find deliverable by charge_code
                 try:
-                    deliverable = Deliverable.objects.get(charge_code=entry_data["charge_code"])
-                except Deliverable.DoesNotExist as err:
-                    raise ValueError(f"Deliverable not found with charge_code: {entry_data['charge_code']}") from err
+                    deliverable = Deliverable.objects.get(charge_code=charge_code)
+                except Deliverable.DoesNotExist:
+                    warnings.append(f"Entry #{idx}: Deliverable not found with charge_code '{charge_code}' - skipped")
+                    stats["time_entries_skipped"] += 1
+                    continue
+
+                # Check if entry already exists for this deliverable and date
+                existing_entry = DeliverableTimeEntry.objects.filter(
+                    deliverable=deliverable,
+                    entry_date=entry_date,
+                ).first()
+
+                if existing_entry:
+                    warnings.append(
+                        f"Entry #{idx}: Time entry already exists for charge_code '{charge_code}' "
+                        f"on {entry_date} ({existing_entry.hours}h) - skipped"
+                    )
+                    stats["time_entries_skipped"] += 1
+                    continue
 
                 # Create time entry
-                time_entry, created = DeliverableTimeEntry.objects.get_or_create(
-                    deliverable=deliverable,
-                    entry_date=entry_data["entry_date"],
-                    hours=Decimal(str(entry_data["hours"])),
-                    defaults={
-                        "note": entry_data.get("note", ""),
-                    },
-                )
-                if created:
+                try:
+                    DeliverableTimeEntry.objects.create(
+                        deliverable=deliverable,
+                        entry_date=entry_date,
+                        hours=Decimal(str(hours)),
+                        note=entry_data.get("note", ""),
+                    )
                     stats["time_entries_created"] += 1
+                except Exception as e:
+                    errors.append(f"Entry #{idx}: Failed to create - {str(e)}")
+                    stats["time_entries_failed"] += 1
 
-            return Response(
-                {
-                    "success": True,
-                    "message": "Time entries imported successfully",
-                    "stats": stats,
-                },
-                status=status.HTTP_200_OK,
+            # Determine overall success
+            success = stats["time_entries_created"] > 0 or (
+                stats["time_entries_failed"] == 0 and stats["time_entries_skipped"] > 0
             )
+
+            message_parts = []
+            if stats["time_entries_created"] > 0:
+                message_parts.append(f"{stats['time_entries_created']} entries created")
+            if stats["time_entries_skipped"] > 0:
+                message_parts.append(f"{stats['time_entries_skipped']} entries skipped")
+            if stats["time_entries_failed"] > 0:
+                message_parts.append(f"{stats['time_entries_failed']} entries failed")
+
+            message = ", ".join(message_parts) if message_parts else "No entries processed"
+
+            response_data = {
+                "success": success,
+                "message": message,
+                "stats": stats,
+            }
+
+            if warnings:
+                response_data["warnings"] = warnings
+
+            if errors:
+                response_data["errors"] = errors
+
+            return Response(response_data, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response(
-            {"success": False, "error": str(e)},
+            {"success": False, "error": f"Unexpected error: {str(e)}"},
             status=status.HTTP_400_BAD_REQUEST,
         )

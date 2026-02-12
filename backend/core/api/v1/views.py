@@ -81,8 +81,8 @@ from core.models import (
             OpenApiExample(
                 "Create contract",
                 value={
-                    "start_date": "2024-01-01",
-                    "end_date": "2024-12-31",
+                    "start_date": "2026-01-01",
+                    "end_date": "2026-12-31",
                     "budget_hours_total": 1000.0,
                     "status": "active",
                 },
@@ -222,8 +222,8 @@ class StaffViewSet(ModelViewSet):
                 value={
                     "contract": 1,
                     "name": "API Development",
-                    "start_date": "2024-01-01",
-                    "due_date": "2024-01-31",
+                    "start_date": "2026-01-01",
+                    "due_date": "2026-01-31",
                     "status": "in_progress",
                 },
                 request_only=True,
@@ -449,7 +449,7 @@ class DeliverableAssignmentViewSet(ModelViewSet):
                 "Create time entry",
                 value={
                     "deliverable": 1,
-                    "entry_date": "2024-01-15",
+                    "entry_date": "2026-01-15",
                     "hours": 8.0,
                 },
                 request_only=True,
@@ -459,7 +459,7 @@ class DeliverableAssignmentViewSet(ModelViewSet):
                 value={
                     "deliverable": 1,
                     "staff": 2,
-                    "entry_date": "2024-01-15",
+                    "entry_date": "2026-01-15",
                     "hours": 8.0,
                     "note": "Development work",
                     "external_source": "jira",
@@ -584,7 +584,7 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
                 "Create status update",
                 value={
                     "deliverable": 1,
-                    "period_end": "2024-01-31",
+                    "period_end": "2026-01-31",
                     "status": "on_track",
                     "summary": "All tasks completed on schedule.",
                 },
