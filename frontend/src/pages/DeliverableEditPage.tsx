@@ -28,7 +28,7 @@ export function DeliverableEditPage() {
   const [deliverable, setDeliverable] = useState<Partial<Deliverable>>({
     name: '',
     budget_hours: '0',
-    status: 'planned',
+    status: 'not_started',
     contract: contractParam ? parseInt(contractParam) : 0,
     charge_code: '',
     target_completion_date: null,

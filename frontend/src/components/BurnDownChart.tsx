@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, Typography, CircularProgress, Alert, Box } from '@mui/material';
 import { LineChart } from '@mui/x-charts/LineChart';
+import type { AxiosResponse } from 'axios';
 import { apiClient } from '../api/client';
 import type { Contract } from '../types/api';
 
@@ -12,6 +13,11 @@ interface TimeEntry {
   note: string;
   created_at: string;
   updated_at: string;
+}
+
+interface PaginatedTimeEntriesResponse {
+  results: TimeEntry[];
+  next: string | null;
 }
 
 interface BurnDownChartProps {
@@ -41,7 +47,7 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
         let pageNum = 1;
 
         while (nextUrl) {
-          const response = await apiClient.get(nextUrl, {
+          const response: AxiosResponse<PaginatedTimeEntriesResponse | TimeEntry[]> = await apiClient.get(nextUrl, {
             params: nextUrl === '/deliverable-time-entries/' ? {
               contract_id: contract.id,
               order_by: 'entry_date',
@@ -51,13 +57,15 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
           });
 
           // Handle paginated response - DRF returns { results: [...], count, next, previous }
-          const pageEntries: TimeEntry[] = response.data.results || response.data;
+          const pageEntries: TimeEntry[] = Array.isArray(response.data)
+            ? response.data
+            : response.data.results;
           allTimeEntries = [...allTimeEntries, ...pageEntries];
 
           console.log(`BurnDownChart: Loaded page ${pageNum} - ${pageEntries.length} entries (total so far: ${allTimeEntries.length})`);
 
           // Check if there's a next page
-          nextUrl = response.data.next || null;
+          nextUrl = Array.isArray(response.data) ? null : response.data.next || null;
           pageNum++;
 
           // Safety check to prevent infinite loops
@@ -316,16 +324,14 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
               color: '#ff9800',
               curve: 'linear',
               showMark: false,
-              strokeDasharray: '5 5', // Dashed line
             },
           ]}
           height={400}
           margin={{ top: 10, right: 10, bottom: 50, left: 80 }}
           slotProps={{
             legend: {
-              direction: 'row',
-              position: { vertical: 'top', horizontal: 'middle' },
-              padding: 0,
+              direction: 'horizontal',
+              position: { vertical: 'top', horizontal: 'center' },
             },
           }}
         />

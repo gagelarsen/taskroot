@@ -132,13 +132,13 @@ export function StaffDetailPage() {
         </Typography>
         <Divider sx={{ mb: 2 }} />
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="body2" color="text.secondary">
               Email
             </Typography>
             <Typography variant="body1">{staff.email}</Typography>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="body2" color="text.secondary">
               Role
             </Typography>
@@ -148,7 +148,7 @@ export function StaffDetailPage() {
               size="small"
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="body2" color="text.secondary">
               Status
             </Typography>
@@ -158,7 +158,7 @@ export function StaffDetailPage() {
               size="small"
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="body2" color="text.secondary">
               Expected Hours Per Week
             </Typography>
@@ -174,13 +174,13 @@ export function StaffDetailPage() {
         </Typography>
         <Divider sx={{ mb: 2 }} />
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="body2" color="text.secondary">
               Total Assigned Hours Per Week
             </Typography>
             <Typography variant="h5">{totalAssignedHours.toFixed(2)}</Typography>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Typography variant="body2" color="text.secondary">
               Active Assignments
             </Typography>

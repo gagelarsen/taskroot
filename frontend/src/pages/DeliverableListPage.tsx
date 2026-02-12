@@ -176,7 +176,7 @@ export function DeliverableListPage() {
                 sx={{ cursor: 'pointer' }}
               >
                 <TableCell>{deliverable.name}</TableCell>
-                <TableCell>{deliverable.contract_name || `Contract #${deliverable.contract}`}</TableCell>
+                <TableCell>{`Contract #${deliverable.contract}`}</TableCell>
                 <TableCell>
                   <Chip label={deliverable.status} size="small" />
                 </TableCell>
@@ -208,7 +208,7 @@ export function DeliverableListPage() {
                 <TableCell>
                   <Stack direction="row" spacing={0.5}>
                     {deliverable.is_overassigned && <Chip label="Overassigned" size="small" color="warning" />}
-                    {deliverable.is_over_expected && <Chip label="Over Expected" size="small" color="error" />}
+                    {deliverable.is_over_budget && <Chip label="Over Budget" size="small" color="error" />}
                     {deliverable.is_missing_budget && <Chip label="Missing Budget" size="small" color="info" />}
                     {deliverable.is_missing_lead && <Chip label="Missing Lead" size="small" color="info" />}
                   </Stack>
