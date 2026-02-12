@@ -17,6 +17,11 @@ import {
   MenuItem,
   LinearProgress,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
 } from '@mui/material';
 import { Add, Warning, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -46,6 +51,16 @@ export function StaffListPage() {
   const [filters, setFilters] = useState<StaffFilters>({
     order_by: 'last_name',
     order_dir: 'asc',
+  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    status: 'active' as 'active' | 'inactive',
+    role: 'staff' as 'admin' | 'manager' | 'staff',
+    expected_hours_per_week: 40,
   });
   const navigate = useNavigate();
 
@@ -116,6 +131,57 @@ export function StaffListPage() {
     loadStaff();
   }, [loadStaff]);
 
+  const handleOpenCreateDialog = () => {
+    setError('');
+    setFormData({
+      email: '',
+      first_name: '',
+      last_name: '',
+      status: 'active',
+      role: 'staff',
+      expected_hours_per_week: 40,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    if (saving) return;
+    setDialogOpen(false);
+  };
+
+  const handleCreateStaff = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await staffApi.create({
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        status: formData.status,
+        role: formData.role,
+        expected_hours_per_week: formData.expected_hours_per_week.toString(),
+      });
+      setDialogOpen(false);
+      await loadStaff();
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        const errorData = err.response?.data;
+        if (typeof errorData === 'object' && errorData !== null) {
+          const messages = Object.entries(errorData)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          setError(messages || 'Failed to save staff');
+        } else {
+          setError(errorData?.detail || 'Failed to save staff');
+        }
+      } else {
+        setError('Failed to save staff');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getStatusColor = (status: string): 'success' | 'default' => {
     switch (status) {
       case 'active':
@@ -157,7 +223,7 @@ export function StaffListPage() {
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => navigate('/staff/new')}
+          onClick={handleOpenCreateDialog}
         >
           Create Staff
         </Button>
@@ -315,6 +381,95 @@ export function StaffListPage() {
           </Table>
         </TableContainer>
       )}
+
+      <Dialog open={dialogOpen} onClose={handleCloseCreateDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Create Staff Member</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Email"
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="First Name"
+              required
+              value={formData.first_name}
+              onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Last Name"
+              required
+              value={formData.last_name}
+              onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              select
+              label="Role"
+              required
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'manager' | 'staff' })}
+              fullWidth
+            >
+              <MenuItem value="staff">Staff</MenuItem>
+              <MenuItem value="manager">Manager</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
+            </TextField>
+
+            <TextField
+              select
+              label="Status"
+              required
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+              fullWidth
+            >
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </TextField>
+
+            <TextField
+              label="Expected Hours Per Week"
+              type="number"
+              required
+              value={formData.expected_hours_per_week}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  expected_hours_per_week: Number.isNaN(parseFloat(e.target.value))
+                    ? 0
+                    : parseFloat(e.target.value),
+                })
+              }
+              inputProps={{ min: 0, step: 0.5 }}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCreateDialog} disabled={saving}>Cancel</Button>
+          <Button
+            onClick={handleCreateStaff}
+            variant="contained"
+            disabled={
+              saving ||
+              !formData.email.trim() ||
+              !formData.first_name.trim() ||
+              !formData.last_name.trim()
+            }
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

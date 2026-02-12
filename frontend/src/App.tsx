@@ -50,6 +50,16 @@ function App() {
             }
           />
           <Route
+            path="/contracts/new"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <ContractEditPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/contracts/:id/edit"
             element={
               <PrivateRoute>
@@ -75,6 +85,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <DeliverableListPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/deliverables/new"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <DeliverableEditPage />
                 </AppShell>
               </PrivateRoute>
             }

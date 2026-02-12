@@ -15,7 +15,13 @@ import {
   TextField,
   MenuItem,
   Stack,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { deliverablesApi, contractsApi } from '../api/client';
 import type { Deliverable, DeliverableFilters, Contract } from '../types/api';
@@ -30,6 +36,16 @@ export function DeliverableListPage() {
   const [filters, setFilters] = useState<DeliverableFilters>({
     order_by: 'id',
     order_dir: 'desc',
+  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    contract: 0,
+    budget_hours: '0',
+    status: 'planned',
+    charge_code: '',
+    target_completion_date: '',
   });
   const navigate = useNavigate();
 
@@ -67,6 +83,57 @@ export function DeliverableListPage() {
     loadDeliverables();
   }, [loadDeliverables]);
 
+  const handleOpenCreateDialog = () => {
+    setError('');
+    setFormData({
+      name: '',
+      contract: contracts[0]?.id || 0,
+      budget_hours: '0',
+      status: 'planned',
+      charge_code: '',
+      target_completion_date: '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    if (saving) return;
+    setDialogOpen(false);
+  };
+
+  const handleCreateDeliverable = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await deliverablesApi.create({
+        name: formData.name,
+        contract: formData.contract,
+        budget_hours: formData.budget_hours,
+        status: formData.status,
+        charge_code: formData.charge_code,
+        target_completion_date: formData.target_completion_date || null,
+      });
+      setDialogOpen(false);
+      await loadDeliverables();
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        const errorData = err.response?.data;
+        if (typeof errorData === 'object' && errorData !== null) {
+          const messages = Object.entries(errorData)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          setError(messages || 'Failed to save deliverable');
+        } else {
+          setError(errorData?.detail || 'Failed to save deliverable');
+        }
+      } else {
+        setError('Failed to save deliverable');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -81,9 +148,12 @@ export function DeliverableListPage() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Deliverables
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4">Deliverables</Typography>
+        <Button variant="contained" startIcon={<Add />} onClick={handleOpenCreateDialog}>
+          Create Deliverable
+        </Button>
+      </Box>
 
       <Stack direction="row" spacing={2} sx={{ mb: 3 }} flexWrap="wrap">
         <TextField
@@ -225,6 +295,86 @@ export function DeliverableListPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={dialogOpen} onClose={handleCloseCreateDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Create Deliverable</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              fullWidth
+            />
+
+            <TextField
+              label="Contract"
+              select
+              value={formData.contract || ''}
+              onChange={(e) => setFormData({ ...formData, contract: parseInt(e.target.value) })}
+              required
+              fullWidth
+            >
+              {contracts.map((contract) => (
+                <MenuItem key={contract.id} value={contract.id}>
+                  {contract.name || `Contract #${contract.id}`} ({contract.client_name || 'No client'})
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              label="Budget Hours"
+              type="number"
+              value={formData.budget_hours}
+              onChange={(e) => setFormData({ ...formData, budget_hours: e.target.value })}
+              required
+              fullWidth
+              inputProps={{ min: 0, step: 0.5 }}
+            />
+
+            <TextField
+              label="Status"
+              select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              required
+              fullWidth
+            >
+              <MenuItem value="planned">Planned</MenuItem>
+              <MenuItem value="in_progress">In Progress</MenuItem>
+              <MenuItem value="complete">Complete</MenuItem>
+              <MenuItem value="blocked">Blocked</MenuItem>
+            </TextField>
+
+            <TextField
+              label="Charge Code"
+              value={formData.charge_code}
+              onChange={(e) => setFormData({ ...formData, charge_code: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
+              label="Target Completion Date"
+              type="date"
+              value={formData.target_completion_date}
+              onChange={(e) => setFormData({ ...formData, target_completion_date: e.target.value })}
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCreateDialog} disabled={saving}>Cancel</Button>
+          <Button
+            onClick={handleCreateDeliverable}
+            variant="contained"
+            disabled={saving || !formData.name.trim() || !formData.contract}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

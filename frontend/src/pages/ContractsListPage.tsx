@@ -15,6 +15,11 @@ import {
   Button,
   TextField,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +40,17 @@ export function ContractsListPage() {
   const [filters, setFilters] = useState<ContractFilters>({
     order_by: 'start_date',
     order_dir: 'desc',
+  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    client_name: '',
+    contract_type: 'fixed_cost' as Contract['contract_type'],
+    budget_hours: '0',
+    status: 'draft' as Contract['status'],
+    start_date: '',
+    end_date: '',
   });
   const navigate = useNavigate();
 
@@ -70,6 +86,51 @@ export function ContractsListPage() {
     { value: 'budget_hours', label: 'Budget' },
   ];
 
+  const handleOpenCreateDialog = () => {
+    setError('');
+    setFormData({
+      name: '',
+      client_name: '',
+      contract_type: 'fixed_cost',
+      budget_hours: '0',
+      status: 'draft',
+      start_date: '',
+      end_date: '',
+    });
+    setDialogOpen(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    if (saving) return;
+    setDialogOpen(false);
+  };
+
+  const handleCreateContract = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await contractsApi.create(formData);
+      setDialogOpen(false);
+      await loadContracts();
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        const errorData = err.response?.data;
+        if (typeof errorData === 'object' && errorData !== null) {
+          const messages = Object.entries(errorData)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('; ');
+          setError(messages || 'Failed to save contract');
+        } else {
+          setError(errorData?.detail || 'Failed to save contract');
+        }
+      } else {
+        setError('Failed to save contract');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -77,7 +138,7 @@ export function ContractsListPage() {
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => navigate('/contracts/new')}
+          onClick={handleOpenCreateDialog}
         >
           Create Contract
         </Button>
@@ -189,6 +250,105 @@ export function ContractsListPage() {
           </Table>
         </TableContainer>
       )}
+
+      <Dialog open={dialogOpen} onClose={handleCloseCreateDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Create Contract</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Contract Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              fullWidth
+            />
+
+            <TextField
+              label="Client Name"
+              value={formData.client_name}
+              onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+              required
+              fullWidth
+            />
+
+            <TextField
+              label="Contract Type"
+              select
+              value={formData.contract_type}
+              onChange={(e) =>
+                setFormData({ ...formData, contract_type: e.target.value as Contract['contract_type'] })
+              }
+              required
+              fullWidth
+            >
+              {CONTRACT_TYPE_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              label="Budget Hours"
+              type="number"
+              value={formData.budget_hours}
+              onChange={(e) => setFormData({ ...formData, budget_hours: e.target.value })}
+              required
+              fullWidth
+              inputProps={{ min: 0, step: 0.5 }}
+            />
+
+            <TextField
+              label="Status"
+              select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as Contract['status'] })}
+              required
+              fullWidth
+            >
+              <MenuItem value="draft">Draft</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="closed">Closed</MenuItem>
+            </TextField>
+
+            <TextField
+              label="Start Date"
+              type="date"
+              value={formData.start_date}
+              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+              required
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              label="End Date"
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+              required
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCreateDialog} disabled={saving}>Cancel</Button>
+          <Button
+            onClick={handleCreateContract}
+            variant="contained"
+            disabled={
+              saving ||
+              !formData.name.trim() ||
+              !formData.client_name.trim() ||
+              !formData.start_date ||
+              !formData.end_date
+            }
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
