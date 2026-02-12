@@ -26,7 +26,8 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
     budgetLine: number[];
     spentLine: number[];
     remainingLine: number[];
-  }>({ dates: [], budgetLine: [], spentLine: [], remainingLine: [] });
+    trendLine: (number | null)[];
+  }>({ dates: [], budgetLine: [], spentLine: [], remainingLine: [], trendLine: [] });
 
   useEffect(() => {
     const loadTimeEntries = async () => {
@@ -74,7 +75,7 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
         console.log('BurnDownChart: Contract spent_hours:', contract.spent_hours);
 
         if (!timeEntries || timeEntries.length === 0) {
-          setChartData({ dates: [], budgetLine: [], spentLine: [], remainingLine: [] });
+          setChartData({ dates: [], budgetLine: [], spentLine: [], remainingLine: [], trendLine: [] });
           setLoading(false);
           return;
         }
@@ -118,6 +119,82 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
           remainingLine.push(Math.max(0, budgetHours - cumulativeSpent));
         });
 
+        // Calculate trend line (linear regression from spent hours)
+        const trendLine: (number | null)[] = new Array(dates.length).fill(null);
+
+        if (spentLine.length >= 2) {
+          // Use only the actual time entry dates (not start/end dates) for trend calculation
+          const dataPoints: { x: number; y: number }[] = [];
+
+          sortedDates.forEach((dateStr, idx) => {
+            const dateIndex = dates.findIndex(d => d.toISOString().split('T')[0] === dateStr);
+            if (dateIndex >= 0) {
+              dataPoints.push({
+                x: dates[dateIndex].getTime(),
+                y: spentLine[dateIndex],
+              });
+            }
+          });
+
+          if (dataPoints.length >= 2) {
+            // Calculate linear regression (y = mx + b)
+            const n = dataPoints.length;
+            const sumX = dataPoints.reduce((sum, p) => sum + p.x, 0);
+            const sumY = dataPoints.reduce((sum, p) => sum + p.y, 0);
+            const sumXY = dataPoints.reduce((sum, p) => sum + p.x * p.y, 0);
+            const sumX2 = dataPoints.reduce((sum, p) => sum + p.x * p.x, 0);
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            // Start trend line from the last actual data point
+            const lastDataPointIndex = dates.findIndex(
+              d => d.toISOString().split('T')[0] === sortedDates[sortedDates.length - 1]
+            );
+
+            if (lastDataPointIndex >= 0) {
+              // Fill trend line with the actual value at the last data point
+              trendLine[lastDataPointIndex] = spentLine[lastDataPointIndex];
+
+              // Project trend forward from the last data point
+              const lastDataDate = dates[lastDataPointIndex];
+              const lastDataHours = spentLine[lastDataPointIndex];
+
+              // Calculate how many more hours we need to reach the budget
+              const remainingHours = budgetHours - lastDataHours;
+
+              if (remainingHours > 0 && slope > 0) {
+                // Calculate when we'll reach the budget based on the trend
+                const hoursPerMs = slope;
+                const msToCompletion = remainingHours / hoursPerMs;
+                const projectedCompletionDate = new Date(lastDataDate.getTime() + msToCompletion);
+
+                // Add intermediate points and the completion point
+                for (let i = lastDataPointIndex + 1; i < dates.length; i++) {
+                  const projectedHours = slope * dates[i].getTime() + intercept;
+                  trendLine[i] = Math.min(projectedHours, budgetHours); // Cap at budget
+                }
+
+                // Add the projected completion date if it's beyond our current range
+                const lastDate = dates[dates.length - 1];
+                if (projectedCompletionDate > lastDate) {
+                  dates.push(projectedCompletionDate);
+                  spentLine.push(lastDataHours); // Keep actual spent flat
+                  budgetLine.push(budgetHours);
+                  remainingLine.push(Math.max(0, budgetHours - lastDataHours));
+                  trendLine.push(budgetHours); // Trend reaches budget
+                }
+              } else if (remainingHours <= 0) {
+                // Already over budget, just extend the trend line to show the trajectory
+                for (let i = lastDataPointIndex + 1; i < dates.length; i++) {
+                  const projectedHours = slope * dates[i].getTime() + intercept;
+                  trendLine[i] = projectedHours;
+                }
+              }
+            }
+          }
+        }
+
         // Add contract end date as the last point (if it exists and is after the last entry)
         if (contract.end_date) {
           const endDate = new Date(contract.end_date);
@@ -127,10 +204,11 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
             spentLine.push(cumulativeSpent);
             budgetLine.push(budgetHours);
             remainingLine.push(Math.max(0, budgetHours - cumulativeSpent));
+            trendLine.push(null); // No trend at contract end date
           }
         }
 
-        setChartData({ dates, budgetLine, spentLine, remainingLine });
+        setChartData({ dates, budgetLine, spentLine, remainingLine, trendLine });
       } catch (err: any) {
         setError(err.response?.data?.detail || 'Failed to load time entries');
       } finally {
@@ -180,6 +258,16 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
   const budgetHours = parseFloat(contract.budget_hours);
   const remaining = budgetHours - totalSpent;
 
+  // Find the projected completion date (where trend line reaches budget)
+  let projectedCompletionDate: Date | null = null;
+  for (let i = 0; i < chartData.trendLine.length; i++) {
+    const trendValue = chartData.trendLine[i];
+    if (trendValue !== null && trendValue >= budgetHours) {
+      projectedCompletionDate = chartData.dates[i];
+      break;
+    }
+  }
+
   return (
     <Card>
       <CardContent>
@@ -221,6 +309,14 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
               curve: 'linear',
               showMark: false,
             },
+            {
+              data: chartData.trendLine,
+              label: 'Projected Trend',
+              color: '#ff9800',
+              curve: 'linear',
+              showMark: false,
+              strokeDasharray: '5 5', // Dashed line
+            },
           ]}
           height={400}
           margin={{ top: 10, right: 10, bottom: 50, left: 80 }}
@@ -232,7 +328,7 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
             },
           }}
         />
-        <Box sx={{ mt: 2, display: 'flex', gap: 3, justifyContent: 'center' }}>
+        <Box sx={{ mt: 2, display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Typography variant="body2" color="text.secondary">
             Budget: <strong>{budgetHours.toFixed(1)}h</strong>
           </Typography>
@@ -245,6 +341,16 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
           <Typography variant="body2" color="text.secondary">
             Time Entries: <strong>{chartData.dates.length - (contract.start_date ? 1 : 0) - (contract.end_date ? 1 : 0)}</strong> dates
           </Typography>
+          {projectedCompletionDate && remaining > 0 && (
+            <Typography variant="body2" color="warning.main">
+              Projected Completion: <strong>{projectedCompletionDate.toLocaleDateString()}</strong>
+            </Typography>
+          )}
+          {remaining < 0 && (
+            <Typography variant="body2" color="error.main">
+              Over Budget: <strong>{Math.abs(remaining).toFixed(1)}h</strong>
+            </Typography>
+          )}
         </Box>
       </CardContent>
     </Card>
