@@ -12,7 +12,6 @@ import {
 import { ArrowBack, Save } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { staffApi } from '../api/client';
-import type { Staff } from '../types/api';
 import { AxiosError } from 'axios';
 
 export function StaffEditPage() {
@@ -160,7 +159,7 @@ export function StaffEditPage() {
               label="Role"
               required
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'manager' | 'staff' })}
               fullWidth
             >
               <MenuItem value="staff">Staff</MenuItem>
@@ -173,7 +172,7 @@ export function StaffEditPage() {
               label="Status"
               required
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
               fullWidth
             >
               <MenuItem value="active">Active</MenuItem>

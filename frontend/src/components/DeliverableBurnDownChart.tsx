@@ -193,8 +193,9 @@ export function DeliverableBurnDownChart({ deliverable }: DeliverableBurnDownCha
         }
 
         setChartData({ dates, budgetLine, spentLine, remainingLine, trendLine });
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Failed to load time entries');
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { detail?: string } } };
+        setError(error.response?.data?.detail || 'Failed to load time entries');
       } finally {
         setLoading(false);
       }

@@ -52,7 +52,8 @@ export function BulkImportPage() {
 
       const response = await apiClient.post(endpoint, jsonData);
       setResult(response.data);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
       setResult({
         success: false,
         error: error.response?.data?.error || error.message || 'Upload failed',
