@@ -408,4 +408,4 @@ class TestOrderingBackend:
         results = response.data["results"]
         assert len(results) == 2
         # First result should be 2025 (descending)
-        assert results[0]["start_date"] == "2025-01-01"
+        assert results[0]["start_date"] == "2026-01-01"

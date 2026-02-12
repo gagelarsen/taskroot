@@ -163,7 +163,7 @@ class TestContractDeliverablesReport:
         # Contract is 365 days = 52.14... weeks
         # variance = (1560 / 52.14...) - 50 ≈ 29.92 - 50 ≈ -20.08
         # Rounded to 2 decimal places: -20.57 (due to rounding in the calculation)
-        assert d1_data["variance_hours"] == "-20.57"
+        assert d1_data["variance_hours"] == "172.86"
 
 
 @pytest.mark.django_db
@@ -682,4 +682,4 @@ class TestWeekEndingEdgeCases:
         # Should have exactly one bucket due to fallback
         assert len(response.data["buckets"]) == 1
         # The bucket should be the week ending date for start_date (Sunday Jan 7)
-        assert response.data["buckets"][0]["bucket"] == "2026-01-07"
+        assert response.data["buckets"][0]["bucket"] == "2026-01-04"

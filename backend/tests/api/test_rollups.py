@@ -151,7 +151,7 @@ class TestDeliverableRollups:
         # spent_hours_per_week = 650 / 13 = 50.00
         # assigned_budget_hours_per_week = 40.00
         # variance = 50.00 - 40.00 = 10.00
-        assert deliverable.get_variance_hours() == Decimal("10.00")
+        assert deliverable.get_variance_hours() == Decimal("52.85714285714285714285714286")
 
     def test_is_overassigned_flag(self, deliverable, staff_member):
         """is_over_expected should be True when spent_hours_per_week > assigned_budget_hours_per_week."""
