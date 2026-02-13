@@ -119,7 +119,8 @@ export interface TimeEntry {
   deliverable: number;
   entry_date: string;
   hours: string;
-  notes: string;
+  note?: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
 }

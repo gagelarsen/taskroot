@@ -152,6 +152,10 @@ export const timeEntriesApi = {
     // Handle paginated response
     return response.data.results || response.data;
   },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/deliverable-time-entries/', data);
+    return response.data;
+  },
 };
 
 // Status Updates API
