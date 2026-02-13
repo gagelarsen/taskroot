@@ -1,5 +1,11 @@
 import axios from 'axios';
-import type { ContractFilters, DeliverableFilters, TimeEntryFilters, Staff } from '../types/api';
+import type {
+  ContractFilters,
+  CreateDeliverableStatusUpdatePayload,
+  DeliverableFilters,
+  TimeEntryFilters,
+  Staff,
+} from '../types/api';
 
 // API base URL - defaults to localhost for development
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -160,6 +166,17 @@ export const statusUpdatesApi = {
     const response = await apiClient.get('/deliverable-status-updates/', { params });
     // Handle paginated response
     return response.data.results || response.data;
+  },
+  create: async (data: CreateDeliverableStatusUpdatePayload) => {
+    const response = await apiClient.post('/deliverable-status-updates/', data);
+    return response.data;
+  },
+  update: async (id: number, data: Partial<CreateDeliverableStatusUpdatePayload>) => {
+    const response = await apiClient.patch(`/deliverable-status-updates/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/deliverable-status-updates/${id}/`);
   },
 };
 

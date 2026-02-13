@@ -15,6 +15,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { tasksApi, staffApi, deliverablesApi } from '../api/client';
 import type { Task, Staff, Deliverable } from '../types/api';
 import { AxiosError } from 'axios';
+import { TASK_STATUS_OPTIONS } from '../utils/taskStatus';
 
 export function TaskEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -175,10 +176,11 @@ export function TaskEditPage() {
               required
               fullWidth
             >
-              <MenuItem value="todo">To Do</MenuItem>
-              <MenuItem value="in_progress">In Progress</MenuItem>
-              <MenuItem value="done">Done</MenuItem>
-              <MenuItem value="blocked">Blocked</MenuItem>
+              {TASK_STATUS_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
             </TextField>
 
             <TextField

@@ -27,6 +27,10 @@ import { deliverablesApi, contractsApi } from '../api/client';
 import type { Deliverable, DeliverableFilters, Contract } from '../types/api';
 import { TargetDateBadge } from '../components/TargetDateBadge';
 import { AxiosError } from 'axios';
+import {
+  formatDeliverableLifecycleStatusLabel,
+  getDeliverableLifecycleStatusChipColor,
+} from '../utils/deliverableStatus';
 
 export function DeliverableListPage() {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
@@ -248,7 +252,11 @@ export function DeliverableListPage() {
                 <TableCell>{deliverable.name}</TableCell>
                 <TableCell>{`Contract #${deliverable.contract}`}</TableCell>
                 <TableCell>
-                  <Chip label={deliverable.status} size="small" />
+                  <Chip
+                    label={formatDeliverableLifecycleStatusLabel(deliverable.status)}
+                    size="small"
+                    color={getDeliverableLifecycleStatusChipColor(deliverable.status)}
+                  />
                 </TableCell>
                 <TableCell>
                   {deliverable.target_completion_date ? (

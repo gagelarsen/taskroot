@@ -15,6 +15,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { contractsApi } from '../api/client';
 import type { Contract } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS } from '../utils/contractTypes';
+import { CONTRACT_STATUS_OPTIONS } from '../utils/contractStatus';
 import { AxiosError } from 'axios';
 
 export function ContractEditPage() {
@@ -176,9 +177,11 @@ export function ContractEditPage() {
               required
               fullWidth
             >
-              <MenuItem value="draft">Draft</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="closed">Closed</MenuItem>
+              {CONTRACT_STATUS_OPTIONS.map((contractStatusOption) => (
+                <MenuItem key={contractStatusOption.value} value={contractStatusOption.value}>
+                  {contractStatusOption.label}
+                </MenuItem>
+              ))}
             </TextField>
 
             <TextField

@@ -4,6 +4,8 @@ import {
   Typography,
   Card,
   CardContent,
+  TextField,
+  MenuItem,
   Table,
   TableBody,
   TableCell,
@@ -17,7 +19,7 @@ import {
   Button,
   Stack,
 } from '@mui/material';
-import { ArrowBack, Add, Edit } from '@mui/icons-material';
+import { ArrowBack, Add, Edit, Delete, Save, Close } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { deliverablesApi, timeEntriesApi, statusUpdatesApi } from '../api/client';
 import type { Deliverable, TimeEntry, DeliverableStatusUpdate } from '../types/api';
@@ -25,6 +27,12 @@ import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
 import { DeliverableBurnDownChart } from '../components/DeliverableBurnDownChart';
 import { AxiosError } from 'axios';
+import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
+import {
+  formatDeliverableLifecycleStatusLabel,
+  getDeliverableLifecycleStatusChipColor,
+} from '../utils/deliverableStatus';
+import { formatTaskStatusLabel, getTaskStatusChipColor } from '../utils/taskStatus';
 
 export function DeliverableDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,8 +40,52 @@ export function DeliverableDetailPage() {
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [statusUpdates, setStatusUpdates] = useState<DeliverableStatusUpdate[]>([]);
+  const [newStatusUpdate, setNewStatusUpdate] = useState({
+    period_end: new Date().toISOString().split('T')[0],
+    status: 'on_track' as DeliverableStatusUpdate['status'],
+    summary: '',
+  });
+  const [savingStatusUpdate, setSavingStatusUpdate] = useState(false);
+  const [statusUpdateCreateError, setStatusUpdateCreateError] = useState('');
+  const [statusUpdateActionError, setStatusUpdateActionError] = useState('');
+  const [editingStatusUpdateId, setEditingStatusUpdateId] = useState<number | null>(null);
+  const [editingStatusUpdate, setEditingStatusUpdate] = useState<{
+    period_end: string;
+    status: DeliverableStatusUpdate['status'];
+    summary: string;
+  } | null>(null);
+  const [savingEditedStatusUpdateId, setSavingEditedStatusUpdateId] = useState<number | null>(null);
+  const [deletingStatusUpdateId, setDeletingStatusUpdateId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const getApiErrorMessage = (err: unknown, fallbackMessage: string) => {
+    if (!(err instanceof AxiosError)) {
+      return fallbackMessage;
+    }
+
+    const responseData = err.response?.data;
+    if (typeof responseData === 'string') {
+      return responseData;
+    }
+
+    if (responseData?.detail && typeof responseData.detail === 'string') {
+      return responseData.detail;
+    }
+
+    if (responseData && typeof responseData === 'object') {
+      for (const value of Object.values(responseData as Record<string, unknown>)) {
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+          return value[0];
+        }
+        if (typeof value === 'string') {
+          return value;
+        }
+      }
+    }
+
+    return fallbackMessage;
+  };
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -62,6 +114,93 @@ export function DeliverableDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleCreateStatusUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deliverable) return;
+
+    setSavingStatusUpdate(true);
+    setStatusUpdateCreateError('');
+
+    try {
+      await statusUpdatesApi.create({
+        deliverable: deliverable.id,
+        period_end: newStatusUpdate.period_end,
+        status: newStatusUpdate.status,
+        summary: newStatusUpdate.summary,
+      });
+
+      setNewStatusUpdate({
+        period_end: new Date().toISOString().split('T')[0],
+        status: 'on_track',
+        summary: '',
+      });
+
+      await loadData();
+    } catch (err) {
+      setStatusUpdateCreateError(getApiErrorMessage(err, 'Failed to save status update'));
+    } finally {
+      setSavingStatusUpdate(false);
+    }
+  };
+
+  const startEditStatusUpdate = (update: DeliverableStatusUpdate) => {
+    setEditingStatusUpdateId(update.id);
+    setEditingStatusUpdate({
+      period_end: update.period_end,
+      status: update.status,
+      summary: update.summary,
+    });
+    setStatusUpdateActionError('');
+  };
+
+  const cancelEditStatusUpdate = () => {
+    setEditingStatusUpdateId(null);
+    setEditingStatusUpdate(null);
+    setStatusUpdateActionError('');
+  };
+
+  const handleSaveEditedStatusUpdate = async (statusUpdateId: number) => {
+    if (!editingStatusUpdate || !deliverable) return;
+
+    setSavingEditedStatusUpdateId(statusUpdateId);
+    setStatusUpdateActionError('');
+
+    try {
+      await statusUpdatesApi.update(statusUpdateId, {
+        deliverable: deliverable.id,
+        period_end: editingStatusUpdate.period_end,
+        status: editingStatusUpdate.status,
+        summary: editingStatusUpdate.summary,
+      });
+      cancelEditStatusUpdate();
+      await loadData();
+    } catch (err) {
+      setStatusUpdateActionError(getApiErrorMessage(err, 'Failed to update status update'));
+    } finally {
+      setSavingEditedStatusUpdateId(null);
+    }
+  };
+
+  const handleDeleteStatusUpdate = async (statusUpdateId: number) => {
+    const confirmed = window.confirm('Delete this status update?');
+    if (!confirmed) return;
+
+    setDeletingStatusUpdateId(statusUpdateId);
+    setStatusUpdateActionError('');
+
+    try {
+      await statusUpdatesApi.delete(statusUpdateId);
+      if (editingStatusUpdateId === statusUpdateId) {
+        cancelEditStatusUpdate();
+      }
+      await loadData();
+    } catch (err) {
+      setStatusUpdateActionError(getApiErrorMessage(err, 'Failed to delete status update'));
+    } finally {
+      setDeletingStatusUpdateId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -133,7 +272,10 @@ export function DeliverableDetailPage() {
               Status
             </Typography>
             <Box sx={{ mt: 1 }}>
-              <Chip label={deliverable.status} />
+              <Chip
+                label={formatDeliverableLifecycleStatusLabel(deliverable.status)}
+                color={getDeliverableLifecycleStatusChipColor(deliverable.status)}
+              />
             </Box>
           </CardContent>
         </Card>
@@ -229,6 +371,45 @@ export function DeliverableDetailPage() {
             </Box>
           </CardContent>
         </Card>
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Latest Status Update
+            </Typography>
+            {deliverable.latest_status_update ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Period End
+                  </Typography>
+                  <Typography>{deliverable.latest_status_update.period_end}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Status
+                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Chip
+                      label={formatDeliverableStatusLabel(deliverable.latest_status_update.status)}
+                      size="small"
+                      color={getDeliverableStatusChipColor(deliverable.latest_status_update.status)}
+                    />
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Summary
+                  </Typography>
+                  <Typography>
+                    {deliverable.latest_status_update.summary || 'No summary provided'}
+                  </Typography>
+                </Box>
+              </Box>
+            ) : (
+              <Typography color="text.secondary">No status updates yet</Typography>
+            )}
+          </CardContent>
+        </Card>
       </Stack>
 
       {/* Burn Down Chart */}
@@ -308,7 +489,11 @@ export function DeliverableDetailPage() {
                   <TableCell>{task.assignee_name || 'Unassigned'}</TableCell>
                   <TableCell align="right">{parseFloat(task.budget_hours).toFixed(1)}</TableCell>
                   <TableCell>
-                    <Chip label={task.status} size="small" />
+                    <Chip
+                      label={formatTaskStatusLabel(task.status)}
+                      size="small"
+                      color={getTaskStatusChipColor(task.status)}
+                    />
                   </TableCell>
                   <TableCell>{new Date(task.updated_at).toLocaleDateString()}</TableCell>
                   <TableCell align="right">
@@ -337,6 +522,83 @@ export function DeliverableDetailPage() {
         Status Updates
       </Typography>
 
+      <Paper sx={{ p: 3, mb: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Add Status Update
+        </Typography>
+
+        {statusUpdateCreateError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {statusUpdateCreateError}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleCreateStatusUpdate}>
+          <Stack spacing={2}>
+            <TextField
+              label="Period End"
+              type="date"
+              value={newStatusUpdate.period_end}
+              onChange={(e) =>
+                setNewStatusUpdate({
+                  ...newStatusUpdate,
+                  period_end: e.target.value,
+                })
+              }
+              required
+              fullWidth
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
+            />
+
+            <TextField
+              label="Status"
+              select
+              value={newStatusUpdate.status}
+              onChange={(e) =>
+                setNewStatusUpdate({
+                  ...newStatusUpdate,
+                  status: e.target.value as DeliverableStatusUpdate['status'],
+                })
+              }
+              required
+              fullWidth
+            >
+              <MenuItem value="on_track">On Track</MenuItem>
+              <MenuItem value="at_risk">At Risk</MenuItem>
+              <MenuItem value="off_track">Off Track</MenuItem>
+            </TextField>
+
+            <TextField
+              label="Summary"
+              value={newStatusUpdate.summary}
+              onChange={(e) =>
+                setNewStatusUpdate({
+                  ...newStatusUpdate,
+                  summary: e.target.value,
+                })
+              }
+              fullWidth
+              multiline
+              minRows={3}
+            />
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button type="submit" variant="contained" startIcon={<Add />} disabled={savingStatusUpdate}>
+                {savingStatusUpdate ? 'Saving...' : 'Add Update'}
+              </Button>
+            </Box>
+          </Stack>
+        </Box>
+      </Paper>
+
+      {statusUpdateActionError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {statusUpdateActionError}
+        </Alert>
+      )}
+
       <TableContainer component={Paper} sx={{ mb: 4 }}>
         <Table>
           <TableHead>
@@ -345,22 +607,111 @@ export function DeliverableDetailPage() {
               <TableCell>Status</TableCell>
               <TableCell>Summary</TableCell>
               <TableCell>Created At</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {statusUpdates.map((update) => (
               <TableRow key={update.id}>
-                <TableCell>{update.period_end}</TableCell>
                 <TableCell>
-                  <Chip label={update.status} size="small" />
+                  {editingStatusUpdateId === update.id && editingStatusUpdate ? (
+                    <TextField
+                      type="date"
+                      size="small"
+                      value={editingStatusUpdate.period_end}
+                      onChange={(e) =>
+                        setEditingStatusUpdate({
+                          ...editingStatusUpdate,
+                          period_end: e.target.value,
+                        })
+                      }
+                      slotProps={{ inputLabel: { shrink: true } }}
+                    />
+                  ) : (
+                    update.period_end
+                  )}
                 </TableCell>
-                <TableCell>{update.summary}</TableCell>
+                <TableCell>
+                  {editingStatusUpdateId === update.id && editingStatusUpdate ? (
+                    <TextField
+                      select
+                      size="small"
+                      value={editingStatusUpdate.status}
+                      onChange={(e) =>
+                        setEditingStatusUpdate({
+                          ...editingStatusUpdate,
+                          status: e.target.value as DeliverableStatusUpdate['status'],
+                        })
+                      }
+                      sx={{ minWidth: 140 }}
+                    >
+                      <MenuItem value="on_track">On Track</MenuItem>
+                      <MenuItem value="at_risk">At Risk</MenuItem>
+                      <MenuItem value="off_track">Off Track</MenuItem>
+                    </TextField>
+                  ) : (
+                    <Chip
+                      label={formatDeliverableStatusLabel(update.status)}
+                      size="small"
+                      color={getDeliverableStatusChipColor(update.status)}
+                    />
+                  )}
+                </TableCell>
+                <TableCell>
+                  {editingStatusUpdateId === update.id && editingStatusUpdate ? (
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={editingStatusUpdate.summary}
+                      onChange={(e) =>
+                        setEditingStatusUpdate({
+                          ...editingStatusUpdate,
+                          summary: e.target.value,
+                        })
+                      }
+                    />
+                  ) : (
+                    update.summary
+                  )}
+                </TableCell>
                 <TableCell>{new Date(update.created_at).toLocaleString()}</TableCell>
+                <TableCell align="right">
+                  {editingStatusUpdateId === update.id ? (
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button
+                        size="small"
+                        startIcon={<Save />}
+                        onClick={() => handleSaveEditedStatusUpdate(update.id)}
+                        disabled={savingEditedStatusUpdateId === update.id}
+                      >
+                        {savingEditedStatusUpdateId === update.id ? 'Saving...' : 'Save'}
+                      </Button>
+                      <Button size="small" startIcon={<Close />} onClick={cancelEditStatusUpdate}>
+                        Cancel
+                      </Button>
+                    </Stack>
+                  ) : (
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button size="small" startIcon={<Edit />} onClick={() => startEditStatusUpdate(update)}>
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        startIcon={<Delete />}
+                        onClick={() => handleDeleteStatusUpdate(update.id)}
+                        disabled={deletingStatusUpdateId === update.id}
+                      >
+                        {deletingStatusUpdateId === update.id ? 'Deleting...' : 'Delete'}
+                      </Button>
+                    </Stack>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
             {statusUpdates.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} align="center">
+                <TableCell colSpan={5} align="center">
                   No status updates found
                 </TableCell>
               </TableRow>

@@ -21,6 +21,7 @@ import { AxiosError } from 'axios';
 import { contractsApi } from '../api/client';
 import type { Contract } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
+import { formatContractStatusLabel } from '../utils/contractStatus';
 
 type ActivityFilter = 'all' | 'active' | 'inactive';
 type FlagFilter = 'all' | 'any' | 'over_budget' | 'overassigned' | 'over_expected';
@@ -365,7 +366,7 @@ export function DashboardPage() {
                           {contract.name || `Contract #${contract.id}`}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {contract.client_name} • {getContractTypeShortLabel(contract.contract_type)} • {contract.status}
+                          {contract.client_name} • {getContractTypeShortLabel(contract.contract_type)} • {formatContractStatusLabel(contract.status)}
                         </Typography>
                       </Box>
                     </TableCell>

@@ -576,7 +576,7 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
                 "status",
                 OpenApiTypes.STR,
                 description="Filter by status",
-                enum=["on_track", "at_risk", "blocked", "complete"],
+                enum=["on_track", "at_risk", "off_track"],
             ),
             OpenApiParameter("order_by", OpenApiTypes.STR, description="Field to order by", enum=["period_end", "id"]),
             OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),

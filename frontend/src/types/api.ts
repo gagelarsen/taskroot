@@ -66,7 +66,7 @@ export interface Deliverable {
   charge_code?: string;
   budget_hours: string;
   target_completion_date?: string | null;
-  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'blocked';
+  status: 'planned' | 'in_progress' | 'complete' | 'blocked' | 'not_started' | 'completed' | 'on_hold';
   created_at: string;
   updated_at: string;
 
@@ -126,10 +126,18 @@ export interface DeliverableStatusUpdate {
   id: number;
   deliverable: number;
   period_end: string;
-  status: 'on_track' | 'at_risk' | 'blocked' | 'completed';
+  status: 'on_track' | 'at_risk' | 'off_track';
   summary: string;
-  created_by: number;
+  created_by: number | null;
   created_at: string;
+}
+
+export interface CreateDeliverableStatusUpdatePayload {
+  deliverable: number;
+  period_end: string;
+  status: 'on_track' | 'at_risk' | 'off_track';
+  summary: string;
+  created_by?: number | null;
 }
 
 // Assignment types

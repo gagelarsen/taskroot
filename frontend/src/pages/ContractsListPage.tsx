@@ -31,6 +31,11 @@ import {
   CONTRACT_TYPE_OPTIONS,
   getContractTypeShortLabel,
 } from '../utils/contractTypes';
+import {
+  CONTRACT_STATUS_OPTIONS,
+  formatContractStatusLabel,
+  getContractStatusChipColor,
+} from '../utils/contractStatus';
 import { AxiosError } from 'axios';
 
 export function ContractsListPage() {
@@ -225,7 +230,11 @@ export function ContractsListPage() {
                   <TableCell>{contract.start_date}</TableCell>
                   <TableCell>{contract.end_date}</TableCell>
                   <TableCell>
-                    <Chip label={contract.status} size="small" />
+                    <Chip
+                      label={formatContractStatusLabel(contract.status)}
+                      size="small"
+                      color={getContractStatusChipColor(contract.status)}
+                    />
                   </TableCell>
                   <TableCell align="right">{parseFloat(contract.budget_hours).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.assigned_budget_hours_per_week).toFixed(1)}</TableCell>
@@ -306,9 +315,11 @@ export function ContractsListPage() {
               required
               fullWidth
             >
-              <MenuItem value="draft">Draft</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="closed">Closed</MenuItem>
+              {CONTRACT_STATUS_OPTIONS.map((contractStatusOption) => (
+                <MenuItem key={contractStatusOption.value} value={contractStatusOption.value}>
+                  {contractStatusOption.label}
+                </MenuItem>
+              ))}
             </TextField>
 
             <TextField

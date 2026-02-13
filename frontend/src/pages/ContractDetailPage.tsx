@@ -26,6 +26,12 @@ import { TargetDateBadge } from '../components/TargetDateBadge';
 import { BurnDownChart } from '../components/BurnDownChart';
 import { getContractTypeShortLabel } from '../utils/contractTypes';
 import { AxiosError } from 'axios';
+import { formatContractStatusLabel, getContractStatusChipColor } from '../utils/contractStatus';
+import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
+import {
+  formatDeliverableLifecycleStatusLabel,
+  getDeliverableLifecycleStatusChipColor,
+} from '../utils/deliverableStatus';
 
 export function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -145,7 +151,11 @@ export function ContractDetailPage() {
                     Status
                   </Typography>
                   <Box sx={{ mt: 0.5 }}>
-                    <Chip label={contract.status} size="small" />
+                    <Chip
+                      label={formatContractStatusLabel(contract.status)}
+                      size="small"
+                      color={getContractStatusChipColor(contract.status)}
+                    />
                   </Box>
                 </Box>
                 <Box>
@@ -358,7 +368,11 @@ export function ContractDetailPage() {
               >
                 <TableCell>{deliverable.name}</TableCell>
                 <TableCell>
-                  <Chip label={deliverable.status} size="small" />
+                  <Chip
+                    label={formatDeliverableLifecycleStatusLabel(deliverable.status)}
+                    size="small"
+                    color={getDeliverableLifecycleStatusChipColor(deliverable.status)}
+                  />
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -372,7 +386,11 @@ export function ContractDetailPage() {
                 <TableCell align="right">{parseFloat(deliverable.variance_hours).toFixed(1)}</TableCell>
                 <TableCell>
                   {deliverable.latest_status_update ? (
-                    <Chip label={deliverable.latest_status_update.status} size="small" />
+                    <Chip
+                      label={formatDeliverableStatusLabel(deliverable.latest_status_update.status)}
+                      size="small"
+                      color={getDeliverableStatusChipColor(deliverable.latest_status_update.status)}
+                    />
                   ) : (
                     'N/A'
                   )}
