@@ -16,6 +16,8 @@ import {
   Chip,
   Button,
   Stack,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import { ArrowBack, Add, Edit } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -38,6 +40,7 @@ export function ContractDetailPage() {
   const navigate = useNavigate();
   const [contract, setContract] = useState<Contract | null>(null);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -103,6 +106,17 @@ export function ContractDetailPage() {
         </Typography>
       )}
 
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)}>
+          <Tab label="Basic Info" />
+          <Tab label="Burn Down" />
+          <Tab label="Staff Assignments" />
+          <Tab label="Deliverables" />
+        </Tabs>
+      </Box>
+
+      {activeTab === 0 && (
+        <>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 3 }}>
         <Card sx={{ flex: 1 }}>
           <CardContent>
@@ -256,12 +270,18 @@ export function ContractDetailPage() {
           </CardContent>
         </Card>
       </Stack>
+        </>
+      )}
 
-      <Box sx={{ mb: 3 }}>
-        <BurnDownChart contract={contract} />
-      </Box>
+      {activeTab === 1 && (
+        <Box sx={{ mb: 3 }}>
+          <BurnDownChart contract={contract} />
+        </Box>
+      )}
 
-      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
+      {activeTab === 2 && (
+        <>
+      <Typography variant="h5" gutterBottom sx={{ mt: 2 }}>
         Staff Assignments
       </Typography>
 
@@ -337,8 +357,12 @@ export function ContractDetailPage() {
           </TableBody>
         </Table>
       </TableContainer>
+        </>
+      )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
+      {activeTab === 3 && (
+        <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 2 }}>
         <Typography variant="h5">Deliverables</Typography>
         <Button
           variant="contained"
@@ -422,6 +446,8 @@ export function ContractDetailPage() {
           </TableBody>
         </Table>
       </TableContainer>
+        </>
+      )}
     </Box>
   );
 }
