@@ -486,6 +486,7 @@ export function DashboardPage() {
                 const assignedPerWeek = toNumber(contract.assigned_budget_hours_per_week);
                 const burn4Week = toNumber(contract.actual_burn_rate);
                 const variancePerWeek = burn4Week - assignedPerWeek;
+                const overBudgetHours = Math.max(0, toNumber(contract.spent_hours) - toNumber(contract.budget_hours));
 
                 const projectedFinish = getProjectedFinishDate(contract);
                 const finishVariance = getFinishVariance(projectedFinish, contract.end_date);
@@ -521,7 +522,16 @@ export function DashboardPage() {
                         </Box>
                       </TableCell>
                       <TableCell align="right">{toNumber(contract.budget_hours).toFixed(1)}</TableCell>
-                      <TableCell align="right">{toNumber(contract.spent_hours).toFixed(1)}</TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: 1.2 }}>
+                          <Typography variant="body2">{toNumber(contract.spent_hours).toFixed(1)}</Typography>
+                          {overBudgetHours > 0 && (
+                            <Typography variant="caption" sx={{ color: 'error.main' }}>
+                              +{overBudgetHours.toFixed(1)}
+                            </Typography>
+                          )}
+                        </Box>
+                      </TableCell>
                       <TableCell align="right">{assignedPerWeek.toFixed(1)}</TableCell>
                       <TableCell align="right">{burn4Week.toFixed(1)}</TableCell>
                       <TableCell
