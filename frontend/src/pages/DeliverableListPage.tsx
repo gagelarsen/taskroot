@@ -238,6 +238,7 @@ export function DeliverableListPage() {
               <TableCell align="right">Assigned Budget</TableCell>
               <TableCell align="right">Spent</TableCell>
               <TableCell align="right">Variance</TableCell>
+              <TableCell align="right">% Complete</TableCell>
               <TableCell>Flags</TableCell>
             </TableRow>
           </TableHead>
@@ -283,6 +284,7 @@ export function DeliverableListPage() {
                     {parseFloat(deliverable.variance_hours).toFixed(1)}
                   </Box>
                 </TableCell>
+                <TableCell align="right">{parseFloat(deliverable.estimated_percent_complete).toFixed(0)}%</TableCell>
                 <TableCell>
                   <Stack direction="row" spacing={0.5}>
                     {deliverable.is_overassigned && <Chip label="Overassigned" size="small" color="warning" />}
@@ -295,7 +297,7 @@ export function DeliverableListPage() {
             ))}
             {deliverables.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={10} align="center">
                   No deliverables found
                 </TableCell>
               </TableRow>

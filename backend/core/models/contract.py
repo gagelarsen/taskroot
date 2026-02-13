@@ -139,6 +139,29 @@ class Contract(models.Model):
             total += deliverable.get_actual_burn_rate(weeks=weeks)
         return total
 
+    def get_estimated_percent_complete(self) -> Decimal:
+        """
+        Estimated completion percent for this contract from all deliverable tasks.
+
+        Uses budget-weighted average when task budget_hours exist.
+        Falls back to simple average when all task budgets are zero.
+        Returns Decimal("0") when no tasks exist.
+        """
+        tasks = []
+        for deliverable in self.deliverables.all():
+            tasks.extend(list(deliverable.tasks.all()))
+
+        if not tasks:
+            return Decimal("0")
+
+        total_budget_hours = sum((task.budget_hours for task in tasks), Decimal("0"))
+        if total_budget_hours > 0:
+            weighted_sum = sum((task.percent_complete * task.budget_hours for task in tasks), Decimal("0"))
+            return weighted_sum / total_budget_hours
+
+        total_percent = sum((task.percent_complete for task in tasks), Decimal("0"))
+        return total_percent / Decimal(str(len(tasks)))
+
     # Health flags
 
     def is_over_budget(self) -> bool:

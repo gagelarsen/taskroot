@@ -18,10 +18,11 @@ import {
   Chip,
   Button,
   Stack,
+  Menu,
 } from '@mui/material';
 import { ArrowBack, Add, Edit, Delete, Save, Close } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { deliverablesApi, timeEntriesApi, statusUpdatesApi } from '../api/client';
+import { deliverablesApi, timeEntriesApi, statusUpdatesApi, tasksApi } from '../api/client';
 import type { Deliverable, TimeEntry, DeliverableStatusUpdate } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
@@ -56,6 +57,14 @@ export function DeliverableDetailPage() {
   } | null>(null);
   const [savingEditedStatusUpdateId, setSavingEditedStatusUpdateId] = useState<number | null>(null);
   const [deletingStatusUpdateId, setDeletingStatusUpdateId] = useState<number | null>(null);
+  const [taskQuickUpdateError, setTaskQuickUpdateError] = useState('');
+  const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
+  const [taskContextMenu, setTaskContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    taskId: number;
+    currentPercentComplete: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -202,6 +211,38 @@ export function DeliverableDetailPage() {
     }
   };
 
+  const handleTaskContextMenu = (event: React.MouseEvent, taskId: number, currentPercentComplete: number) => {
+    event.preventDefault();
+    setTaskQuickUpdateError('');
+    setTaskContextMenu({
+      mouseX: event.clientX + 2,
+      mouseY: event.clientY - 6,
+      taskId,
+      currentPercentComplete,
+    });
+  };
+
+  const handleCloseTaskContextMenu = () => {
+    setTaskContextMenu(null);
+  };
+
+  const handleQuickSetTaskPercent = async (percentComplete: number) => {
+    if (!taskContextMenu) return;
+
+    setUpdatingTaskId(taskContextMenu.taskId);
+    setTaskQuickUpdateError('');
+
+    try {
+      await tasksApi.update(taskContextMenu.taskId, { percent_complete: percentComplete.toString() });
+      await loadData();
+      handleCloseTaskContextMenu();
+    } catch (err) {
+      setTaskQuickUpdateError(getApiErrorMessage(err, 'Failed to update task % complete'));
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -277,6 +318,14 @@ export function DeliverableDetailPage() {
                 color={getDeliverableLifecycleStatusChipColor(deliverable.status)}
               />
             </Box>
+          </CardContent>
+        </Card>
+        <Card sx={{ flex: 1 }}>
+          <CardContent>
+            <Typography color="text.secondary" gutterBottom>
+              % Complete
+            </Typography>
+            <Typography variant="h5">{parseFloat(deliverable.estimated_percent_complete).toFixed(1)}%</Typography>
           </CardContent>
         </Card>
       </Stack>
@@ -476,6 +525,7 @@ export function DeliverableDetailPage() {
               <TableCell>Title</TableCell>
               <TableCell>Assignee</TableCell>
               <TableCell align="right">Budget Hours</TableCell>
+              <TableCell align="right">% Complete</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Updated At</TableCell>
               <TableCell align="right">Actions</TableCell>
@@ -484,10 +534,15 @@ export function DeliverableDetailPage() {
           <TableBody>
             {deliverable.tasks && deliverable.tasks.length > 0 ? (
               deliverable.tasks.map((task) => (
-                <TableRow key={task.id} hover>
+                <TableRow
+                  key={task.id}
+                  hover
+                  onContextMenu={(event) => handleTaskContextMenu(event, task.id, parseFloat(task.percent_complete))}
+                >
                   <TableCell>{task.title}</TableCell>
                   <TableCell>{task.assignee_name || 'Unassigned'}</TableCell>
                   <TableCell align="right">{parseFloat(task.budget_hours).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(task.percent_complete).toFixed(0)}%</TableCell>
                   <TableCell>
                     <Chip
                       label={formatTaskStatusLabel(task.status)}
@@ -509,7 +564,7 @@ export function DeliverableDetailPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   <Typography color="text.secondary">No tasks</Typography>
                 </TableCell>
               </TableRow>
@@ -517,6 +572,34 @@ export function DeliverableDetailPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {taskQuickUpdateError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {taskQuickUpdateError}
+        </Alert>
+      )}
+
+      <Menu
+        open={taskContextMenu !== null}
+        onClose={handleCloseTaskContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          taskContextMenu !== null
+            ? { top: taskContextMenu.mouseY, left: taskContextMenu.mouseX }
+            : undefined
+        }
+      >
+        {[0, 25, 50, 75, 100].map((value) => (
+          <MenuItem
+            key={value}
+            selected={taskContextMenu?.currentPercentComplete === value}
+            disabled={updatingTaskId === taskContextMenu?.taskId}
+            onClick={() => void handleQuickSetTaskPercent(value)}
+          >
+            Set to {value}%
+          </MenuItem>
+        ))}
+      </Menu>
 
       <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
         Status Updates

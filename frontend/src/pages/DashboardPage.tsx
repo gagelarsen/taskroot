@@ -469,6 +469,7 @@ export function DashboardPage() {
                 {renderSortableHeader('assigned_per_week', 'Assigned Hours / Week', 'right')}
                 {renderSortableHeader('burn_4wk', 'Burn (4wk avg)', 'right')}
                 {renderSortableHeader('variance_per_week', 'Variance Hrs / Week', 'right')}
+                <TableCell align="right">% Complete</TableCell>
                 {renderSortableHeader('projected_lateness_days', 'Projected Contract Finish')}
                 <TableCell>Flags</TableCell>
               </TableRow>
@@ -492,9 +493,8 @@ export function DashboardPage() {
                 const overHours = isOverHours(contract);
 
                 return (
-                  <>
+                  <Fragment key={contract.id}>
                     <TableRow
-                      key={contract.id}
                       hover
                       onClick={() => navigate(`/contracts/${contract.id}`)}
                       sx={{ cursor: 'pointer' }}
@@ -534,6 +534,7 @@ export function DashboardPage() {
                         {variancePerWeek > 0 ? '+' : ''}
                         {variancePerWeek.toFixed(1)}
                       </TableCell>
+                      <TableCell align="right">{toNumber(contract.estimated_percent_complete).toFixed(0)}%</TableCell>
                       <TableCell>
                         {overHours ? (
                           <Chip label="Over Hours" color="error" size="small" />
@@ -559,7 +560,7 @@ export function DashboardPage() {
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell colSpan={9} sx={{ py: 0, borderBottom: isExpanded ? undefined : 0 }}>
+                      <TableCell colSpan={10} sx={{ py: 0, borderBottom: isExpanded ? undefined : 0 }}>
                         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                           <Box sx={{ p: 2, bgcolor: 'background.default' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -596,12 +597,12 @@ export function DashboardPage() {
                               <Table size="small">
                                 <TableHead>
                                   <TableRow>
-                                    <TableCell>Deliverable</TableCell>
-                                    <TableCell>Latest Status</TableCell>
-                                    <TableCell>Latest Report</TableCell>
-                                    <TableCell>Latest Summary</TableCell>
-                                    <TableCell>Update Health</TableCell>
-                                    <TableCell align="right">Actions</TableCell>
+                                    <TableCell sx={{ width: 320 }}>Deliverable</TableCell>
+                                    <TableCell align="right" sx={{ width: 90, whiteSpace: 'nowrap' }}>% Complete</TableCell>
+                                    <TableCell sx={{ width: 120, whiteSpace: 'nowrap' }}>Latest Status</TableCell>
+                                    <TableCell sx={{ width: 260 }}>Latest Summary</TableCell>
+                                    <TableCell sx={{ width: 150, whiteSpace: 'nowrap' }}>Update Health</TableCell>
+                                    <TableCell align="right" sx={{ width: 110, whiteSpace: 'nowrap' }}>Actions</TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -618,7 +619,17 @@ export function DashboardPage() {
                                           onClick={() => navigate(`/deliverables/${deliverable.id}`)}
                                           sx={{ cursor: 'pointer' }}
                                         >
-                                          <TableCell>{deliverable.name || `Deliverable #${deliverable.id}`}</TableCell>
+                                          <TableCell sx={{ width: 320, maxWidth: 320 }}>
+                                            <Typography
+                                              variant="body2"
+                                              sx={{ whiteSpace: 'normal', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                                            >
+                                              {deliverable.name || `Deliverable #${deliverable.id}`}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                                            {toNumber(deliverable.estimated_percent_complete).toFixed(0)}%
+                                          </TableCell>
                                           <TableCell>
                                             {latestStatusUpdate ? (
                                               <Chip
@@ -632,31 +643,37 @@ export function DashboardPage() {
                                               </Typography>
                                             )}
                                           </TableCell>
-                                          <TableCell>
-                                            {latestStatusUpdate ? latestStatusUpdate.period_end : '—'}
-                                          </TableCell>
-                                          <TableCell>
+                                          <TableCell sx={{ width: 260, maxWidth: 260 }}>
                                             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
                                               {latestStatusUpdate?.summary || 'No summary'}
                                             </Typography>
                                           </TableCell>
-                                          <TableCell>
-                                            {isStale ? (
-                                              <Chip
-                                                label={
-                                                  latestStatusUpdate
-                                                    ? `Stale (${getDaysSince(latestStatusUpdate.period_end)}d)`
-                                                    : 'No recent update'
-                                                }
-                                                size="small"
-                                                color="warning"
-                                                variant="outlined"
-                                              />
-                                            ) : (
-                                              <Chip label="Current" size="small" color="success" variant="outlined" />
-                                            )}
+                                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                                              {isStale ? (
+                                                <Chip
+                                                  label={
+                                                    latestStatusUpdate
+                                                      ? `Stale (${getDaysSince(latestStatusUpdate.period_end)}d)`
+                                                      : 'No recent update'
+                                                  }
+                                                  size="small"
+                                                  color="warning"
+                                                  variant="outlined"
+                                                />
+                                              ) : (
+                                                <Chip label="Current" size="small" color="success" variant="outlined" />
+                                              )}
+                                              <Typography variant="caption" color="text.secondary">
+                                                {latestStatusUpdate ? formatDate(new Date(latestStatusUpdate.period_end)) : 'No report date'}
+                                              </Typography>
+                                            </Box>
                                           </TableCell>
-                                          <TableCell align="right" onClick={(event) => event.stopPropagation()}>
+                                          <TableCell
+                                            align="right"
+                                            sx={{ whiteSpace: 'nowrap' }}
+                                            onClick={(event) => event.stopPropagation()}
+                                          >
                                             <Button
                                               size="small"
                                               variant="outlined"
@@ -756,12 +773,12 @@ export function DashboardPage() {
                         </Collapse>
                       </TableCell>
                     </TableRow>
-                  </>
+                  </Fragment>
                 );
               })}
               {sortedContracts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     No contracts found for current filters
                   </TableCell>
                 </TableRow>

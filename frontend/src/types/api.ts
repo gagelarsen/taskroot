@@ -29,6 +29,7 @@ export interface Contract {
   unspent_budget_hours: string;
   estimated_burn_rate: string;
   actual_burn_rate: string;
+  estimated_percent_complete: string;
 
   // Health flags
   is_over_budget: boolean;
@@ -53,6 +54,7 @@ export interface Task {
   assignee_name: string | null;
   title: string;
   budget_hours: string;
+  percent_complete: string;
   status: 'todo' | 'in_progress' | 'done' | 'blocked';
   created_at: string;
   updated_at: string;
@@ -82,6 +84,7 @@ export interface Deliverable {
   variance_hours: string;
   estimated_burn_rate: string;
   actual_burn_rate: string;
+  estimated_percent_complete: string;
 
   // Health flags
   is_over_budget: boolean;

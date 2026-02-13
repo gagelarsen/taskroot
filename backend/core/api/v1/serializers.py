@@ -44,6 +44,7 @@ class ContractSerializer(serializers.ModelSerializer):
     unspent_budget_hours = serializers.SerializerMethodField()
     estimated_burn_rate = serializers.SerializerMethodField()
     actual_burn_rate = serializers.SerializerMethodField()
+    estimated_percent_complete = serializers.SerializerMethodField()
 
     # Health flags (read-only)
     is_over_budget = serializers.SerializerMethodField()
@@ -74,6 +75,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "unspent_budget_hours",
             "estimated_burn_rate",
             "actual_burn_rate",
+            "estimated_percent_complete",
             "is_over_budget",
             "is_overassigned",
         ]
@@ -92,6 +94,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "unspent_budget_hours",
             "estimated_burn_rate",
             "actual_burn_rate",
+            "estimated_percent_complete",
             "is_over_budget",
             "is_overassigned",
         ]
@@ -156,6 +159,15 @@ class ContractSerializer(serializers.ModelSerializer):
     def get_actual_burn_rate(self, obj):
         return obj.get_actual_burn_rate(weeks=4)
 
+    @extend_schema_field(
+        serializers.FloatField(
+            read_only=True,
+            help_text="Estimated completion percentage (0-100) rolled up from tasks across deliverables",
+        )
+    )
+    def get_estimated_percent_complete(self, obj):
+        return obj.get_estimated_percent_complete()
+
     @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if spent hours exceed budget"))
     def get_is_over_budget(self, obj):
         return obj.is_over_budget()
@@ -188,7 +200,17 @@ class TaskNestedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ["id", "title", "assignee", "assignee_name", "budget_hours", "status", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "title",
+            "assignee",
+            "assignee_name",
+            "budget_hours",
+            "percent_complete",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_assignee_name(self, obj):
@@ -210,6 +232,7 @@ class DeliverableSerializer(serializers.ModelSerializer):
     variance_hours = serializers.SerializerMethodField()
     estimated_burn_rate = serializers.SerializerMethodField()
     actual_burn_rate = serializers.SerializerMethodField()
+    estimated_percent_complete = serializers.SerializerMethodField()
 
     # Health flags (read-only)
     is_over_budget = serializers.SerializerMethodField()
@@ -248,6 +271,7 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "variance_hours",
             "estimated_burn_rate",
             "actual_burn_rate",
+            "estimated_percent_complete",
             "is_over_budget",
             "is_overassigned",
             "is_missing_budget",
@@ -272,6 +296,7 @@ class DeliverableSerializer(serializers.ModelSerializer):
             "variance_hours",
             "estimated_burn_rate",
             "actual_burn_rate",
+            "estimated_percent_complete",
             "is_over_budget",
             "is_overassigned",
             "is_missing_budget",
@@ -352,6 +377,15 @@ class DeliverableSerializer(serializers.ModelSerializer):
         return obj.get_actual_burn_rate(weeks=4)
 
     @extend_schema_field(
+        serializers.FloatField(
+            read_only=True,
+            help_text="Estimated completion percentage (0-100) rolled up from tasks",
+        )
+    )
+    def get_estimated_percent_complete(self, obj):
+        return obj.get_estimated_percent_complete()
+
+    @extend_schema_field(
         serializers.BooleanField(read_only=True, help_text="True if spent hours exceed deliverable budget")
     )
     def get_is_over_budget(self, obj):
@@ -406,6 +440,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "assignee",  # nullable FK id
             "title",
             "budget_hours",
+            "percent_complete",
             "status",
             "created_at",
             "updated_at",

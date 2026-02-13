@@ -205,6 +205,7 @@ export function ContractsListPage() {
                 <TableCell align="right">Budget Hours</TableCell>
                 <TableCell align="right">Assigned/Week</TableCell>
                 <TableCell align="right">Spent/Week</TableCell>
+                <TableCell align="right">% Complete</TableCell>
                 <TableCell align="right">Remaining</TableCell>
                 <TableCell>Flags</TableCell>
               </TableRow>
@@ -239,6 +240,7 @@ export function ContractsListPage() {
                   <TableCell align="right">{parseFloat(contract.budget_hours).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.assigned_budget_hours_per_week).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.spent_hours_per_week).toFixed(1)}</TableCell>
+                  <TableCell align="right">{parseFloat(contract.estimated_percent_complete).toFixed(0)}%</TableCell>
                   <TableCell align="right">{parseFloat(contract.remaining_budget_hours).toFixed(1)}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
@@ -250,7 +252,7 @@ export function ContractsListPage() {
               ))}
               {contracts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                    <TableCell colSpan={11} align="center">
                     No contracts found
                   </TableCell>
                 </TableRow>

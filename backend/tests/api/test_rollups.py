@@ -15,6 +15,7 @@ from core.models import (
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
     Staff,
+    Task,
 )
 
 
@@ -489,6 +490,56 @@ class TestContractRollups:
 
 
 @pytest.mark.django_db
+class TestCompletionRollups:
+    """Test % complete rollups from tasks to deliverables and contracts."""
+
+    def test_deliverable_estimated_percent_complete_weighted_by_task_budget(self, deliverable):
+        Task.objects.create(
+            deliverable=deliverable,
+            title="Task A",
+            budget_hours=Decimal("10.00"),
+            percent_complete=Decimal("50.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+        Task.objects.create(
+            deliverable=deliverable,
+            title="Task B",
+            budget_hours=Decimal("30.00"),
+            percent_complete=Decimal("100.00"),
+            status=Task.Status.DONE,
+        )
+
+        # Weighted: (10*50 + 30*100) / 40 = 87.5
+        assert deliverable.get_estimated_percent_complete() == Decimal("87.5")
+
+    def test_contract_estimated_percent_complete_rolls_up_all_tasks(self, contract):
+        d1 = Deliverable.objects.create(contract=contract, name="D1", status=Deliverable.Status.IN_PROGRESS)
+        d2 = Deliverable.objects.create(contract=contract, name="D2", status=Deliverable.Status.IN_PROGRESS)
+
+        Task.objects.create(
+            deliverable=d1,
+            title="Task 1",
+            budget_hours=Decimal("20.00"),
+            percent_complete=Decimal("25.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+        Task.objects.create(
+            deliverable=d2,
+            title="Task 2",
+            budget_hours=Decimal("80.00"),
+            percent_complete=Decimal("75.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+
+        # Weighted: (20*25 + 80*75) / 100 = 65
+        assert contract.get_estimated_percent_complete() == Decimal("65")
+
+    def test_estimated_percent_complete_zero_when_no_tasks(self, contract, deliverable):
+        assert deliverable.get_estimated_percent_complete() == Decimal("0")
+        assert contract.get_estimated_percent_complete() == Decimal("0")
+
+
+@pytest.mark.django_db
 class TestLatestStatusUpdate:
     """Test latest status update exposure."""
 
@@ -567,12 +618,14 @@ class TestRollupsInAPI:
         assert "is_missing_budget" in data
         assert "is_missing_lead" in data
         assert "latest_status_update" in data
+        assert "estimated_percent_complete" in data
 
         # Check values (API returns floats, not strings)
         assert data["assigned_budget_hours"] == 40.0
         assert data["spent_hours"] == 10.0
         assert data["is_overassigned"] is False
         assert data["is_missing_lead"] is False
+        assert data["estimated_percent_complete"] == 0.0
 
     def test_contract_api_includes_rollup_fields(self, admin_user, admin_profile, contract, staff_member):
         """Contract API should include all rollup fields."""
@@ -611,6 +664,7 @@ class TestRollupsInAPI:
         assert "assigned_budget_hours_per_week" in data
         assert "spent_hours_per_week" in data
         assert "remaining_budget_hours" in data
+        assert "estimated_percent_complete" in data
         assert "is_over_budget" in data
         assert "is_overassigned" in data
 
@@ -618,6 +672,7 @@ class TestRollupsInAPI:
         assert data["assigned_budget_hours"] == 100.0
         assert data["spent_hours"] == 50.0
         assert data["remaining_budget_hours"] == 950.0
+        assert data["estimated_percent_complete"] == 0.0
         assert data["is_over_budget"] is False
 
     def test_health_filters_work(self, admin_user, admin_profile, contract, staff_member):

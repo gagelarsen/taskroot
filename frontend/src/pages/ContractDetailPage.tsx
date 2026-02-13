@@ -236,6 +236,12 @@ export function ContractDetailPage() {
               </Box>
               <Box>
                 <Typography variant="caption" color="text.secondary">
+                  % Complete
+                </Typography>
+                <Typography>{parseFloat(contract.estimated_percent_complete).toFixed(1)}%</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
                   Health Flags
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
@@ -354,6 +360,7 @@ export function ContractDetailPage() {
               <TableCell align="right">Assigned Budget</TableCell>
               <TableCell align="right">Spent</TableCell>
               <TableCell align="right">Variance</TableCell>
+              <TableCell align="right">% Complete</TableCell>
               <TableCell>Latest Status</TableCell>
               <TableCell>Flags</TableCell>
             </TableRow>
@@ -384,6 +391,7 @@ export function ContractDetailPage() {
                 <TableCell align="right">{parseFloat(deliverable.assigned_budget_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.spent_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.variance_hours).toFixed(1)}</TableCell>
+                <TableCell align="right">{parseFloat(deliverable.estimated_percent_complete).toFixed(0)}%</TableCell>
                 <TableCell>
                   {deliverable.latest_status_update ? (
                     <Chip
@@ -406,7 +414,7 @@ export function ContractDetailPage() {
             ))}
             {deliverables.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={10} align="center">
                   No deliverables found
                 </TableCell>
               </TableRow>

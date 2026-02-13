@@ -29,6 +29,7 @@ export function TaskEditPage() {
   const [task, setTask] = useState<Partial<Task>>({
     title: '',
     budget_hours: '0',
+    percent_complete: '0',
     status: 'todo',
     assignee: null,
     deliverable: deliverableParam ? parseInt(deliverableParam) : 0,
@@ -76,6 +77,7 @@ export function TaskEditPage() {
       const payload = {
         title: task.title,
         budget_hours: task.budget_hours,
+        percent_complete: task.percent_complete,
         status: task.status,
         deliverable: task.deliverable,
         assignee: task.assignee || null,
@@ -166,6 +168,16 @@ export function TaskEditPage() {
               required
               fullWidth
               inputProps={{ min: 0, step: 0.5 }}
+            />
+
+            <TextField
+              label="% Complete"
+              type="number"
+              value={task.percent_complete || '0'}
+              onChange={(e) => setTask({ ...task, percent_complete: e.target.value })}
+              required
+              fullWidth
+              inputProps={{ min: 0, max: 100, step: 1 }}
             />
 
             <TextField
