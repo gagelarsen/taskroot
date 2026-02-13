@@ -42,8 +42,6 @@ import {
 } from '../utils/deliverableStatus';
 import { formatTaskStatusLabel, getTaskStatusChipColor } from '../utils/taskStatus';
 
-const DELIVERABLE_DETAIL_TAB_STORAGE_KEY = 'deliverable_detail_active_tab';
-
 export function DeliverableDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -74,11 +72,7 @@ export function DeliverableDetailPage() {
     taskId: number;
     currentPercentComplete: number;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState(() => {
-    const storedTab = localStorage.getItem(DELIVERABLE_DETAIL_TAB_STORAGE_KEY);
-    const parsedTab = storedTab ? Number.parseInt(storedTab, 10) : 0;
-    return Number.isInteger(parsedTab) && parsedTab >= 0 && parsedTab <= 3 ? parsedTab : 0;
-  });
+  const [activeTab, setActiveTab] = useState(0);
   const [timeEntriesExpanded, setTimeEntriesExpanded] = useState(false);
   const [newTimeEntry, setNewTimeEntry] = useState({
     entry_date: new Date().toISOString().split('T')[0],
@@ -166,10 +160,6 @@ export function DeliverableDetailPage() {
 
     void loadStaffMembers();
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem(DELIVERABLE_DETAIL_TAB_STORAGE_KEY, activeTab.toString());
-  }, [activeTab]);
 
   const handleCreateStatusUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
