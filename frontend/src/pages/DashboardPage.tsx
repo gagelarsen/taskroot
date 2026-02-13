@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
+  Button,
   Chip,
+  Collapse,
   CircularProgress,
+  FormControlLabel,
+  IconButton,
   MenuItem,
   Paper,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -16,12 +21,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { contractsApi } from '../api/client';
-import type { Contract } from '../types/api';
+import { contractsApi, deliverablesApi, statusUpdatesApi } from '../api/client';
+import type { Contract, Deliverable, DeliverableStatusUpdate } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
 import { formatContractStatusLabel } from '../utils/contractStatus';
+import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
 
 type ActivityFilter = 'all' | 'active' | 'inactive';
 type FlagFilter = 'all' | 'any' | 'over_budget' | 'overassigned' | 'over_expected';
@@ -108,8 +115,38 @@ function isOverHours(contract: Contract): boolean {
   return toNumber(contract.remaining_budget_hours) < 0;
 }
 
+function getDaysSince(dateValue: string): number {
+  const today = toDateOnly(new Date());
+  const updateDate = toDateOnly(new Date(dateValue));
+  return Math.floor((today.getTime() - updateDate.getTime()) / MS_PER_DAY);
+}
+
+function isStatusUpdateStale(deliverable: Deliverable): boolean {
+  if (!deliverable.latest_status_update) {
+    return true;
+  }
+
+  return getDaysSince(deliverable.latest_status_update.period_end) > 7;
+}
+
 export function DashboardPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [deliverablesByContract, setDeliverablesByContract] = useState<Record<number, Deliverable[]>>({});
+  const [loadingDeliverablesByContract, setLoadingDeliverablesByContract] = useState<Record<number, boolean>>({});
+  const [expandedContractIds, setExpandedContractIds] = useState<number[]>([]);
+  const [showStaleOnlyByContract, setShowStaleOnlyByContract] = useState<Record<number, boolean>>({});
+  const [quickAddDeliverableId, setQuickAddDeliverableId] = useState<number | null>(null);
+  const [quickAddStatusUpdate, setQuickAddStatusUpdate] = useState<{
+    period_end: string;
+    status: DeliverableStatusUpdate['status'];
+    summary: string;
+  }>({
+    period_end: new Date().toISOString().split('T')[0],
+    status: 'on_track',
+    summary: '',
+  });
+  const [savingQuickAddDeliverableId, setSavingQuickAddDeliverableId] = useState<number | null>(null);
+  const [quickAddErrorByDeliverableId, setQuickAddErrorByDeliverableId] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -140,6 +177,99 @@ export function DashboardPage() {
   useEffect(() => {
     loadContracts();
   }, [loadContracts]);
+
+  const loadContractDeliverables = useCallback(async (contractId: number, force = false) => {
+    if (!force && deliverablesByContract[contractId]) {
+      return;
+    }
+
+    setLoadingDeliverablesByContract((current) => ({ ...current, [contractId]: true }));
+    try {
+      const deliverables = await deliverablesApi.list({ contract_id: contractId, order_by: 'id', order_dir: 'desc' });
+      setDeliverablesByContract((current) => ({ ...current, [contractId]: deliverables }));
+    } catch {
+      setDeliverablesByContract((current) => ({ ...current, [contractId]: [] }));
+    } finally {
+      setLoadingDeliverablesByContract((current) => ({ ...current, [contractId]: false }));
+    }
+  }, [deliverablesByContract]);
+
+  const getApiErrorMessage = (err: unknown, fallbackMessage: string): string => {
+    if (!(err instanceof AxiosError)) {
+      return fallbackMessage;
+    }
+
+    const responseData = err.response?.data;
+    if (typeof responseData === 'string') {
+      return responseData;
+    }
+
+    if (responseData?.detail && typeof responseData.detail === 'string') {
+      return responseData.detail;
+    }
+
+    if (responseData && typeof responseData === 'object') {
+      for (const value of Object.values(responseData as Record<string, unknown>)) {
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
+          return value[0];
+        }
+        if (typeof value === 'string') {
+          return value;
+        }
+      }
+    }
+
+    return fallbackMessage;
+  };
+
+  const startQuickAddStatusUpdate = (deliverableId: number) => {
+    setQuickAddDeliverableId(deliverableId);
+    setQuickAddStatusUpdate({
+      period_end: new Date().toISOString().split('T')[0],
+      status: 'on_track',
+      summary: '',
+    });
+    setQuickAddErrorByDeliverableId((current) => ({ ...current, [deliverableId]: '' }));
+  };
+
+  const cancelQuickAddStatusUpdate = () => {
+    setQuickAddDeliverableId(null);
+  };
+
+  const saveQuickAddStatusUpdate = async (contractId: number, deliverableId: number) => {
+    setSavingQuickAddDeliverableId(deliverableId);
+    setQuickAddErrorByDeliverableId((current) => ({ ...current, [deliverableId]: '' }));
+
+    try {
+      await statusUpdatesApi.create({
+        deliverable: deliverableId,
+        period_end: quickAddStatusUpdate.period_end,
+        status: quickAddStatusUpdate.status,
+        summary: quickAddStatusUpdate.summary,
+      });
+
+      setQuickAddDeliverableId(null);
+      await loadContractDeliverables(contractId, true);
+    } catch (err) {
+      setQuickAddErrorByDeliverableId((current) => ({
+        ...current,
+        [deliverableId]: getApiErrorMessage(err, 'Failed to save status update'),
+      }));
+    } finally {
+      setSavingQuickAddDeliverableId(null);
+    }
+  };
+
+  const handleToggleContractDetails = async (contractId: number) => {
+    const isExpanded = expandedContractIds.includes(contractId);
+    if (isExpanded) {
+      setExpandedContractIds((current) => current.filter((id) => id !== contractId));
+      return;
+    }
+
+    setExpandedContractIds((current) => [...current, contractId]);
+    await loadContractDeliverables(contractId);
+  };
 
   const filteredContracts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -332,6 +462,7 @@ export function DashboardPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell sx={{ width: 56 }} />
                 {renderSortableHeader('name', 'Contract Name')}
                 {renderSortableHeader('budget_hours', 'Budget Hours', 'right')}
                 {renderSortableHeader('spent_hours', 'Hours Spent', 'right')}
@@ -344,6 +475,13 @@ export function DashboardPage() {
             </TableHead>
             <TableBody>
               {sortedContracts.map((contract) => {
+                const isExpanded = expandedContractIds.includes(contract.id);
+                const contractDeliverables = deliverablesByContract[contract.id] || [];
+                const loadingContractDeliverables = loadingDeliverablesByContract[contract.id];
+                const showStaleOnly = !!showStaleOnlyByContract[contract.id];
+                const visibleDeliverables = showStaleOnly
+                  ? contractDeliverables.filter((deliverable) => isStatusUpdateStale(deliverable))
+                  : contractDeliverables;
                 const assignedPerWeek = toNumber(contract.assigned_budget_hours_per_week);
                 const burn4Week = toNumber(contract.actual_burn_rate);
                 const variancePerWeek = burn4Week - assignedPerWeek;
@@ -354,65 +492,276 @@ export function DashboardPage() {
                 const overHours = isOverHours(contract);
 
                 return (
-                  <TableRow
-                    key={contract.id}
-                    hover
-                    onClick={() => navigate(`/contracts/${contract.id}`)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {contract.name || `Contract #${contract.id}`}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {contract.client_name} • {getContractTypeShortLabel(contract.contract_type)} • {formatContractStatusLabel(contract.status)}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell align="right">{toNumber(contract.budget_hours).toFixed(1)}</TableCell>
-                    <TableCell align="right">{toNumber(contract.spent_hours).toFixed(1)}</TableCell>
-                    <TableCell align="right">{assignedPerWeek.toFixed(1)}</TableCell>
-                    <TableCell align="right">{burn4Week.toFixed(1)}</TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{
-                        color: variancePerWeek > 0 ? 'error.main' : 'success.main',
-                        fontWeight: 500,
-                      }}
+                  <>
+                    <TableRow
+                      key={contract.id}
+                      hover
+                      onClick={() => navigate(`/contracts/${contract.id}`)}
+                      sx={{ cursor: 'pointer' }}
                     >
-                      {variancePerWeek > 0 ? '+' : ''}
-                      {variancePerWeek.toFixed(1)}
-                    </TableCell>
-                    <TableCell>
-                      {overHours ? (
-                        <Chip label="Over Hours" color="error" size="small" />
-                      ) : projectedFinish ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                          <Typography variant="body2">{formatDate(projectedFinish)}</Typography>
-                          <Chip label={projectionPill.label} color={projectionPill.color} size="small" />
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <IconButton
+                          size="small"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleToggleContractDetails(contract.id);
+                          }}
+                        >
+                          {isExpanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                        </IconButton>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {contract.name || `Contract #${contract.id}`}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {contract.client_name} • {getContractTypeShortLabel(contract.contract_type)} • {formatContractStatusLabel(contract.status)}
+                          </Typography>
                         </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Not enough assignment data
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                        {contract.is_over_budget && <Chip label="Over Budget" size="small" color="error" />}
-                        {contract.is_overassigned && <Chip label="Overassigned" size="small" color="warning" />}
-                        {hasOverExpectedFlag(contract) && (
-                          <Chip label="Over Expected" size="small" color="warning" variant="outlined" />
+                      </TableCell>
+                      <TableCell align="right">{toNumber(contract.budget_hours).toFixed(1)}</TableCell>
+                      <TableCell align="right">{toNumber(contract.spent_hours).toFixed(1)}</TableCell>
+                      <TableCell align="right">{assignedPerWeek.toFixed(1)}</TableCell>
+                      <TableCell align="right">{burn4Week.toFixed(1)}</TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          color: variancePerWeek > 0 ? 'error.main' : 'success.main',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {variancePerWeek > 0 ? '+' : ''}
+                        {variancePerWeek.toFixed(1)}
+                      </TableCell>
+                      <TableCell>
+                        {overHours ? (
+                          <Chip label="Over Hours" color="error" size="small" />
+                        ) : projectedFinish ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2">{formatDate(projectedFinish)}</Typography>
+                            <Chip label={projectionPill.label} color={projectionPill.color} size="small" />
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            Not enough assignment data
+                          </Typography>
                         )}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {contract.is_over_budget && <Chip label="Over Budget" size="small" color="error" />}
+                          {contract.is_overassigned && <Chip label="Overassigned" size="small" color="warning" />}
+                          {hasOverExpectedFlag(contract) && (
+                            <Chip label="Over Expected" size="small" color="warning" variant="outlined" />
+                          )}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={9} sx={{ py: 0, borderBottom: isExpanded ? undefined : 0 }}>
+                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                          <Box sx={{ p: 2, bgcolor: 'background.default' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                              <Typography variant="subtitle2">
+                                Deliverables
+                              </Typography>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    size="small"
+                                    checked={showStaleOnly}
+                                    onChange={(event) =>
+                                      setShowStaleOnlyByContract((current) => ({
+                                        ...current,
+                                        [contract.id]: event.target.checked,
+                                      }))
+                                    }
+                                  />
+                                }
+                                label="Show stale only"
+                                sx={{ mr: 0 }}
+                              />
+                            </Box>
+
+                            {loadingContractDeliverables ? (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                                <CircularProgress size={20} />
+                              </Box>
+                            ) : visibleDeliverables.length === 0 ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {showStaleOnly ? 'No stale deliverables found.' : 'No deliverables found.'}
+                              </Typography>
+                            ) : (
+                              <Table size="small">
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell>Deliverable</TableCell>
+                                    <TableCell>Latest Status</TableCell>
+                                    <TableCell>Latest Report</TableCell>
+                                    <TableCell>Latest Summary</TableCell>
+                                    <TableCell>Update Health</TableCell>
+                                    <TableCell align="right">Actions</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {visibleDeliverables.map((deliverable) => {
+                                    const latestStatusUpdate = deliverable.latest_status_update;
+                                    const isStale = isStatusUpdateStale(deliverable);
+                                    const isQuickAddOpen = quickAddDeliverableId === deliverable.id;
+                                    const quickAddError = quickAddErrorByDeliverableId[deliverable.id];
+
+                                    return (
+                                      <Fragment key={deliverable.id}>
+                                        <TableRow
+                                          hover
+                                          onClick={() => navigate(`/deliverables/${deliverable.id}`)}
+                                          sx={{ cursor: 'pointer' }}
+                                        >
+                                          <TableCell>{deliverable.name || `Deliverable #${deliverable.id}`}</TableCell>
+                                          <TableCell>
+                                            {latestStatusUpdate ? (
+                                              <Chip
+                                                label={formatDeliverableStatusLabel(latestStatusUpdate.status)}
+                                                size="small"
+                                                color={getDeliverableStatusChipColor(latestStatusUpdate.status)}
+                                              />
+                                            ) : (
+                                              <Typography variant="body2" color="text.secondary">
+                                                No status
+                                              </Typography>
+                                            )}
+                                          </TableCell>
+                                          <TableCell>
+                                            {latestStatusUpdate ? latestStatusUpdate.period_end : '—'}
+                                          </TableCell>
+                                          <TableCell>
+                                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                              {latestStatusUpdate?.summary || 'No summary'}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell>
+                                            {isStale ? (
+                                              <Chip
+                                                label={
+                                                  latestStatusUpdate
+                                                    ? `Stale (${getDaysSince(latestStatusUpdate.period_end)}d)`
+                                                    : 'No recent update'
+                                                }
+                                                size="small"
+                                                color="warning"
+                                                variant="outlined"
+                                              />
+                                            ) : (
+                                              <Chip label="Current" size="small" color="success" variant="outlined" />
+                                            )}
+                                          </TableCell>
+                                          <TableCell align="right" onClick={(event) => event.stopPropagation()}>
+                                            <Button
+                                              size="small"
+                                              variant="outlined"
+                                              onClick={() => startQuickAddStatusUpdate(deliverable.id)}
+                                            >
+                                              Add Update
+                                            </Button>
+                                          </TableCell>
+                                        </TableRow>
+                                        {isQuickAddOpen && (
+                                          <TableRow>
+                                            <TableCell colSpan={6}>
+                                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                {quickAddError && (
+                                                  <Alert severity="error" sx={{ py: 0 }}>
+                                                    {quickAddError}
+                                                  </Alert>
+                                                )}
+                                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                  <TextField
+                                                    label="Period End"
+                                                    type="date"
+                                                    size="small"
+                                                    value={quickAddStatusUpdate.period_end}
+                                                    onChange={(event) =>
+                                                      setQuickAddStatusUpdate((current) => ({
+                                                        ...current,
+                                                        period_end: event.target.value,
+                                                      }))
+                                                    }
+                                                    slotProps={{ inputLabel: { shrink: true } }}
+                                                  />
+                                                  <TextField
+                                                    label="Status"
+                                                    select
+                                                    size="small"
+                                                    value={quickAddStatusUpdate.status}
+                                                    onChange={(event) =>
+                                                      setQuickAddStatusUpdate((current) => ({
+                                                        ...current,
+                                                        status: event.target.value as DeliverableStatusUpdate['status'],
+                                                      }))
+                                                    }
+                                                    sx={{ minWidth: 170 }}
+                                                  >
+                                                    <MenuItem value="on_track">On Track</MenuItem>
+                                                    <MenuItem value="at_risk">At Risk</MenuItem>
+                                                    <MenuItem value="off_track">Off Track</MenuItem>
+                                                  </TextField>
+                                                  <TextField
+                                                    label="Summary"
+                                                    size="small"
+                                                    value={quickAddStatusUpdate.summary}
+                                                    onChange={(event) =>
+                                                      setQuickAddStatusUpdate((current) => ({
+                                                        ...current,
+                                                        summary: event.target.value,
+                                                      }))
+                                                    }
+                                                    onKeyDown={(event) => {
+                                                      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                                                        event.preventDefault();
+                                                        if (savingQuickAddDeliverableId !== deliverable.id) {
+                                                          void saveQuickAddStatusUpdate(contract.id, deliverable.id);
+                                                        }
+                                                      }
+                                                    }}
+                                                    multiline
+                                                    minRows={2}
+                                                    sx={{ flex: 1, minWidth: 300 }}
+                                                  />
+                                                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                    <Button
+                                                      variant="contained"
+                                                      size="small"
+                                                      onClick={() => saveQuickAddStatusUpdate(contract.id, deliverable.id)}
+                                                      disabled={savingQuickAddDeliverableId === deliverable.id}
+                                                    >
+                                                      {savingQuickAddDeliverableId === deliverable.id ? 'Saving...' : 'Save'}
+                                                    </Button>
+                                                    <Button size="small" onClick={cancelQuickAddStatusUpdate}>
+                                                      Cancel
+                                                    </Button>
+                                                  </Box>
+                                                </Box>
+                                              </Box>
+                                            </TableCell>
+                                          </TableRow>
+                                        )}
+                                      </Fragment>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </>
                 );
               })}
               {sortedContracts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={9} align="center">
                     No contracts found for current filters
                   </TableCell>
                 </TableRow>
