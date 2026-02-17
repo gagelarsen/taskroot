@@ -30,7 +30,6 @@ import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contr
 import { formatContractStatusLabel } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
 
-type ActivityFilter = 'all' | 'active' | 'inactive';
 type FlagFilter = 'all' | 'any' | 'over_budget' | 'overassigned' | 'over_expected';
 type SortDirection = 'asc' | 'desc';
 type SortKey =
@@ -151,7 +150,7 @@ export function DashboardPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [contractType, setContractType] = useState<'all' | Contract['contract_type']>('all');
-  const [activity, setActivity] = useState<ActivityFilter>('all');
+  const [showInactive, setShowInactive] = useState(false);
   const [flag, setFlag] = useState<FlagFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('projected_lateness_days');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -288,11 +287,7 @@ export function DashboardPage() {
         return false;
       }
 
-      if (activity === 'active' && contract.status !== 'active') {
-        return false;
-      }
-
-      if (activity === 'inactive' && contract.status === 'active') {
+      if (!showInactive && contract.status !== 'active') {
         return false;
       }
 
@@ -312,7 +307,7 @@ export function DashboardPage() {
 
       return true;
     });
-  }, [contracts, search, contractType, activity, flag]);
+  }, [contracts, search, contractType, showInactive, flag]);
 
   const sortedContracts = useMemo(() => {
     const valueForSort = (contract: Contract): string | number => {
@@ -421,18 +416,6 @@ export function DashboardPage() {
         </TextField>
         <TextField
           select
-          label="Activity"
-          size="small"
-          value={activity}
-          onChange={(event) => setActivity(event.target.value as ActivityFilter)}
-          sx={{ minWidth: 140 }}
-        >
-          <MenuItem value="all">All</MenuItem>
-          <MenuItem value="active">Active</MenuItem>
-          <MenuItem value="inactive">Inactive</MenuItem>
-        </TextField>
-        <TextField
-          select
           label="Flags"
           size="small"
           value={flag}
@@ -445,6 +428,17 @@ export function DashboardPage() {
           <MenuItem value="overassigned">Overassigned</MenuItem>
           <MenuItem value="over_expected">Over Expected</MenuItem>
         </TextField>
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={showInactive}
+              onChange={(event) => setShowInactive(event.target.checked)}
+            />
+          }
+          label="Show inactive"
+          sx={{ ml: 'auto' }}
+        />
       </Box>
 
       {error && (
