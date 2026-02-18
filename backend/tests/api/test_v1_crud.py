@@ -256,6 +256,53 @@ class TestV1CrudSmoke:
         assert r.status_code == 200
         assert any(item["id"] == update_id for item in r.data["results"])
 
+    def test_future_work_create_and_list(self, api_client):
+        payload = {"name": "Explore partner offering", "notes": "Need discovery", "tags": ["pipeline"]}
+        r = api_client.post("/api/v1/future-work/", payload, format="json")
+        assert r.status_code == 201, r.data
+        item_id = r.data["id"]
+
+        r = api_client.get("/api/v1/future-work/")
+        assert r.status_code == 200
+        assert any(item["id"] == item_id for item in r.data["results"])
+
+    def test_future_work_convert_to_initiative(self, api_client):
+        item = api_client.post(
+            "/api/v1/future-work/",
+            {"name": "Internal Training Program", "notes": "Launch in Q3", "tags": ["internal"]},
+            format="json",
+        ).data
+
+        r = api_client.post(f"/api/v1/future-work/{item['id']}/convert-to-initiative/", {}, format="json")
+        assert r.status_code == 200, r.data
+        assert r.data["future_work"]["is_converted"] is True
+        assert r.data["future_work"]["converted_to_type"] == "initiative"
+        assert r.data["initiative"]["name"] == "Internal Training Program"
+
+    def test_future_work_convert_to_contract(self, api_client):
+        item = api_client.post(
+            "/api/v1/future-work/",
+            {"name": "Potential New Client", "notes": "Pending proposal", "tags": ["pipeline"]},
+            format="json",
+        ).data
+
+        r = api_client.post(
+            f"/api/v1/future-work/{item['id']}/convert-to-contract/",
+            {
+                "start_date": "2026-04-01",
+                "end_date": "2026-10-31",
+                "budget_hours": "240",
+                "client_name": "Acme Corp",
+                "contract_type": "time_and_materials",
+                "status": "draft",
+            },
+            format="json",
+        )
+        assert r.status_code == 200, r.data
+        assert r.data["future_work"]["is_converted"] is True
+        assert r.data["future_work"]["converted_to_type"] == "contract"
+        assert r.data["contract"]["name"] == "Potential New Client"
+
 
 @pytest.mark.django_db
 class TestV1Validations:

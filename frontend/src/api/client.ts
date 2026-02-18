@@ -3,6 +3,7 @@ import type {
   ContractFilters,
   CreateDeliverableStatusUpdatePayload,
   DeliverableFilters,
+  FutureWorkFilters,
   InitiativeFilters,
   TimeEntryFilters,
   Staff,
@@ -293,5 +294,35 @@ export const initiativeWeeklyUpdatesApi = {
   },
   delete: async (id: number) => {
     await apiClient.delete(`/initiative-weekly-updates/${id}/`);
+  },
+};
+
+export const futureWorkApi = {
+  list: async (params?: FutureWorkFilters) => {
+    const response = await apiClient.get('/future-work/', { params });
+    return response.data.results || response.data;
+  },
+  get: async (id: number) => {
+    const response = await apiClient.get(`/future-work/${id}/`);
+    return response.data;
+  },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/future-work/', data);
+    return response.data;
+  },
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/future-work/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/future-work/${id}/`);
+  },
+  convertToInitiative: async (id: number, data?: unknown) => {
+    const response = await apiClient.post(`/future-work/${id}/convert-to-initiative/`, data || {});
+    return response.data;
+  },
+  convertToContract: async (id: number, data: unknown) => {
+    const response = await apiClient.post(`/future-work/${id}/convert-to-contract/`, data);
+    return response.data;
   },
 };

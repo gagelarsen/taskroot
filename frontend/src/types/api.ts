@@ -236,3 +236,28 @@ export interface InitiativeFilters {
   order_dir?: 'asc' | 'desc';
 }
 
+export interface FutureWork {
+  id: number;
+  name: string;
+  owner: number | null;
+  owner_name: string | null;
+  tags: string[];
+  target_date: string | null;
+  notes: string;
+  converted_to_type: 'initiative' | 'contract' | null;
+  converted_to_id: number | null;
+  converted_at: string | null;
+  is_converted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FutureWorkFilters {
+  owner_id?: number;
+  converted?: boolean;
+  tags?: string;
+  q?: string;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
+}
+

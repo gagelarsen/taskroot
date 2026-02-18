@@ -8,6 +8,7 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    FutureWork,
     Initiative,
     InitiativeWeeklyUpdate,
     Staff,
@@ -655,3 +656,105 @@ class InitiativeSerializer(serializers.ModelSerializer):
             normalized_tags.append(tag)
 
         return normalized_tags
+
+
+class FutureWorkSerializer(serializers.ModelSerializer):
+    owner_name = serializers.SerializerMethodField()
+    is_converted = serializers.SerializerMethodField()
+    tags = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), required=False)
+
+    class Meta:
+        model = FutureWork
+        fields = [
+            "id",
+            "name",
+            "owner",
+            "owner_name",
+            "tags",
+            "target_date",
+            "notes",
+            "converted_to_type",
+            "converted_to_id",
+            "converted_at",
+            "is_converted",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "owner_name",
+            "converted_to_type",
+            "converted_to_id",
+            "converted_at",
+            "is_converted",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_owner_name(self, obj):
+        if obj.owner:
+            return f"{obj.owner.first_name} {obj.owner.last_name}".strip()
+        return None
+
+    @extend_schema_field(
+        serializers.BooleanField(read_only=True, help_text="True when converted to initiative or contract")
+    )
+    def get_is_converted(self, obj):
+        return obj.is_converted()
+
+    def validate_tags(self, value):
+        if value is None:
+            return []
+
+        normalized_tags = []
+        seen = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError("Each tag must be a string.")
+            tag = item.strip()
+            if not tag:
+                continue
+            key = tag.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized_tags.append(tag)
+
+        return normalized_tags
+
+
+class FutureWorkToInitiativeSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=False, max_length=255)
+    owner = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.all(), required=False, allow_null=True)
+    status = serializers.ChoiceField(
+        choices=Initiative.Status.choices, required=False, default=Initiative.Status.ACTIVE
+    )
+    target_date = serializers.DateField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    tags = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), required=False)
+
+
+class FutureWorkToContractSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, allow_blank=False, max_length=255)
+    client_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+    budget_hours = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
+    contract_type = serializers.ChoiceField(
+        choices=Contract.ContractType.choices,
+        required=False,
+        default=Contract.ContractType.FIXED_COST,
+    )
+    status = serializers.ChoiceField(
+        choices=Contract.Status.choices,
+        required=False,
+        default=Contract.Status.DRAFT,
+    )
+    tags = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), required=False)
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date")
+        end_date = attrs.get("end_date")
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({"end_date": "End date must be on or after start date."})
+        return attrs

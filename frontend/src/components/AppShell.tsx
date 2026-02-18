@@ -22,6 +22,7 @@ import {
   People as StaffIcon,
   AssignmentInd as AssignmentsIcon,
   Checklist as InitiativesIcon,
+  WorkOutline as FutureWorkIcon,
   CloudUpload as BulkImportIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
@@ -52,6 +53,7 @@ export function AppShell({ children }: AppShellProps) {
     { text: 'Contracts', icon: <ContractsIcon />, path: '/contracts' },
     { text: 'Deliverables', icon: <DeliverablesIcon />, path: '/deliverables' },
     { text: 'Initiatives', icon: <InitiativesIcon />, path: '/initiatives' },
+    { text: 'Future Work', icon: <FutureWorkIcon />, path: '/future-work' },
     { text: 'Staff', icon: <StaffIcon />, path: '/staff' },
     { text: 'Assignments', icon: <AssignmentsIcon />, path: '/assignments' },
     { text: 'Bulk Import', icon: <BulkImportIcon />, path: '/bulk-import' },

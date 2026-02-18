@@ -1,6 +1,8 @@
+from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -11,6 +13,7 @@ from core.api.v1.filters import (
     DeliverableFilter,
     DeliverableStatusUpdateFilter,
     DeliverableTimeEntryFilter,
+    FutureWorkFilter,
     InitiativeFilter,
     InitiativeWeeklyUpdateFilter,
     StaffFilter,
@@ -31,6 +34,9 @@ from core.api.v1.serializers import (
     DeliverableSerializer,
     DeliverableStatusUpdateSerializer,
     DeliverableTimeEntrySerializer,
+    FutureWorkSerializer,
+    FutureWorkToContractSerializer,
+    FutureWorkToInitiativeSerializer,
     InitiativeSerializer,
     InitiativeWeeklyUpdateSerializer,
     StaffSerializer,
@@ -42,6 +48,7 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    FutureWork,
     Initiative,
     InitiativeWeeklyUpdate,
     Staff,
@@ -705,3 +712,115 @@ class InitiativeWeeklyUpdateViewSet(ModelViewSet):
 
     def get_queryset(self):
         return InitiativeWeeklyUpdate.objects.all().select_related("initiative", "created_by").order_by("-id")
+
+
+@extend_schema(tags=["future-work"])
+@extend_schema_view(
+    list=extend_schema(
+        summary="List future work",
+        description="List future work placeholders that can be converted to initiatives or contracts.",
+        parameters=[
+            OpenApiParameter("owner_id", OpenApiTypes.INT, description="Filter by owner staff ID"),
+            OpenApiParameter("converted", OpenApiTypes.BOOL, description="Filter converted status (true/false)"),
+            OpenApiParameter("tags", OpenApiTypes.STR, description="Filter by tags (comma-separated, matches any)"),
+            OpenApiParameter("q", OpenApiTypes.STR, description="Search by name or notes"),
+            OpenApiParameter(
+                "order_by", OpenApiTypes.STR, description="Field to order by", enum=["id", "name", "target_date"]
+            ),
+            OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),
+        ],
+    ),
+    create=extend_schema(summary="Create future work", description="Create a minimal future work placeholder."),
+    retrieve=extend_schema(summary="Get future work", description="Retrieve a single future work item by ID."),
+    update=extend_schema(summary="Update future work", description="Update a future work item."),
+    partial_update=extend_schema(
+        summary="Partially update future work", description="Partially update a future work item."
+    ),
+    destroy=extend_schema(summary="Delete future work", description="Delete a future work item."),
+)
+class FutureWorkViewSet(ModelViewSet):
+    permission_classes = [ReadOnlyForStaffOtherwiseManagerAdmin]
+    serializer_class = FutureWorkSerializer
+    filterset_class = FutureWorkFilter
+
+    search_fields = ["name", "notes"]
+    ordering_fields = ["id", "name", "target_date"]
+
+    def get_queryset(self):
+        return FutureWork.objects.all().select_related("owner").order_by("-id")
+
+    @extend_schema(
+        summary="Convert future work to initiative",
+        description="Create an initiative from this future work item and mark it as converted.",
+        request=FutureWorkToInitiativeSerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="convert-to-initiative")
+    def convert_to_initiative(self, request, pk=None):
+        future_work = self.get_object()
+        if future_work.is_converted():
+            return Response({"detail": "Future work item is already converted."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = FutureWorkToInitiativeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+
+        initiative = Initiative.objects.create(
+            name=payload.get("name") or future_work.name,
+            owner=payload.get("owner", future_work.owner),
+            status=payload.get("status", Initiative.Status.ACTIVE),
+            target_date=payload.get("target_date", future_work.target_date),
+            notes=payload.get("notes", future_work.notes),
+            tags=payload.get("tags", future_work.tags or []),
+        )
+
+        future_work.converted_to_type = FutureWork.ConvertedToType.INITIATIVE
+        future_work.converted_to_id = initiative.id
+        future_work.converted_at = timezone.now()
+        future_work.save(update_fields=["converted_to_type", "converted_to_id", "converted_at", "updated_at"])
+
+        return Response(
+            {
+                "future_work": FutureWorkSerializer(future_work, context={"request": request}).data,
+                "initiative": InitiativeSerializer(initiative, context={"request": request}).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Convert future work to contract",
+        description="Create a contract from this future work item and mark it as converted.",
+        request=FutureWorkToContractSerializer,
+    )
+    @action(detail=True, methods=["post"], url_path="convert-to-contract")
+    def convert_to_contract(self, request, pk=None):
+        future_work = self.get_object()
+        if future_work.is_converted():
+            return Response({"detail": "Future work item is already converted."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = FutureWorkToContractSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+
+        contract = Contract.objects.create(
+            name=payload.get("name") or future_work.name,
+            client_name=payload.get("client_name", ""),
+            start_date=payload["start_date"],
+            end_date=payload["end_date"],
+            budget_hours=payload["budget_hours"],
+            contract_type=payload.get("contract_type", Contract.ContractType.FIXED_COST),
+            status=payload.get("status", Contract.Status.DRAFT),
+            tags=payload.get("tags", future_work.tags or []),
+        )
+
+        future_work.converted_to_type = FutureWork.ConvertedToType.CONTRACT
+        future_work.converted_to_id = contract.id
+        future_work.converted_at = timezone.now()
+        future_work.save(update_fields=["converted_to_type", "converted_to_id", "converted_at", "updated_at"])
+
+        return Response(
+            {
+                "future_work": FutureWorkSerializer(future_work, context={"request": request}).data,
+                "contract": ContractSerializer(contract, context={"request": request}).data,
+            },
+            status=status.HTTP_200_OK,
+        )

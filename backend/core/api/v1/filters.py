@@ -7,6 +7,7 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    FutureWork,
     Initiative,
     InitiativeWeeklyUpdate,
     Staff,
@@ -327,3 +328,39 @@ class InitiativeWeeklyUpdateFilter(django_filters.FilterSet):
     class Meta:
         model = InitiativeWeeklyUpdate
         fields = ["initiative_id", "period_end_from", "period_end_to"]
+
+
+class FutureWorkFilter(django_filters.FilterSet):
+    owner_id = django_filters.NumberFilter(field_name="owner_id")
+    converted = django_filters.CharFilter(method="filter_converted")
+    tags = django_filters.CharFilter(method="filter_tags")
+
+    class Meta:
+        model = FutureWork
+        fields = ["owner_id", "converted", "tags"]
+
+    def filter_converted(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+
+        if b:
+            return queryset.filter(
+                converted_to_type__isnull=False, converted_to_id__isnull=False, converted_at__isnull=False
+            )
+
+        return queryset.filter(converted_to_type__isnull=True)
+
+    def filter_tags(self, queryset, name, value):
+        raw_tags = [part.strip() for part in (value or "").split(",")]
+        requested = {tag.lower() for tag in raw_tags if tag}
+        if not requested:
+            return queryset
+
+        matching_ids = []
+        for item in queryset:
+            item_tags = {str(tag).strip().lower() for tag in (item.tags or []) if str(tag).strip()}
+            if item_tags.intersection(requested):
+                matching_ids.append(item.pk)
+
+        return queryset.filter(pk__in=matching_ids)

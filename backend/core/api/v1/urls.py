@@ -15,6 +15,7 @@ router.register(
 )
 router.register(r"initiatives", views.InitiativeViewSet, basename="initiative")
 router.register(r"initiative-weekly-updates", views.InitiativeWeeklyUpdateViewSet, basename="initiative-weekly-update")
+router.register(r"future-work", views.FutureWorkViewSet, basename="future-work")
 
 # Reporting endpoints
 router.register(r"reports/contracts", report_views.ContractReportViewSet, basename="report-contract")
