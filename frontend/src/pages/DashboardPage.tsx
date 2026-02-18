@@ -555,6 +555,14 @@ export function DashboardPage() {
     return Array.from(new Set(allTags)).sort((left, right) => left.localeCompare(right));
   }, [contracts]);
 
+  const sortedStaffMembers = useMemo(() => {
+    return [...staffMembers].sort((left, right) => {
+      const leftName = `${left.first_name} ${left.last_name}`.trim().toLowerCase();
+      const rightName = `${right.first_name} ${right.last_name}`.trim().toLowerCase();
+      return leftName.localeCompare(rightName);
+    });
+  }, [staffMembers]);
+
   const filteredInitiatives = useMemo(() => {
     return initiatives.filter((initiative) => {
       if (!showInactive && initiative.status !== 'active') {
@@ -758,7 +766,7 @@ export function DashboardPage() {
           sx={{ minWidth: 220 }}
         >
           <MenuItem value="all">All Staff</MenuItem>
-          {staffMembers.map((staffMember) => (
+          {sortedStaffMembers.map((staffMember) => (
             <MenuItem key={staffMember.id} value={String(staffMember.id)}>
               {staffMember.first_name} {staffMember.last_name}
             </MenuItem>
@@ -1422,7 +1430,7 @@ export function DashboardPage() {
               fullWidth
             >
               <MenuItem value="">Select staff</MenuItem>
-              {staffMembers.map((staffMember) => (
+              {sortedStaffMembers.map((staffMember) => (
                 <MenuItem key={staffMember.id} value={String(staffMember.id)}>
                   {staffMember.first_name} {staffMember.last_name}
                 </MenuItem>
