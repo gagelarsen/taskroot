@@ -11,6 +11,8 @@ from core.api.v1.filters import (
     DeliverableFilter,
     DeliverableStatusUpdateFilter,
     DeliverableTimeEntryFilter,
+    InitiativeFilter,
+    InitiativeWeeklyUpdateFilter,
     StaffFilter,
     TaskFilter,
 )
@@ -29,6 +31,8 @@ from core.api.v1.serializers import (
     DeliverableSerializer,
     DeliverableStatusUpdateSerializer,
     DeliverableTimeEntrySerializer,
+    InitiativeSerializer,
+    InitiativeWeeklyUpdateSerializer,
     StaffSerializer,
     TaskSerializer,
 )
@@ -38,6 +42,8 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    Initiative,
+    InitiativeWeeklyUpdate,
     Staff,
     Task,
 )
@@ -628,3 +634,73 @@ class DeliverableStatusUpdateViewSet(ModelViewSet):
             .select_related("deliverable", "deliverable__contract", "created_by")
             .order_by("-id")
         )
+
+
+@extend_schema(tags=["initiatives"])
+@extend_schema_view(
+    list=extend_schema(
+        summary="List initiatives",
+        description="List non-contract initiatives with weekly update health.",
+        parameters=[
+            OpenApiParameter("status", OpenApiTypes.STR, description="Filter by initiative status"),
+            OpenApiParameter("owner_id", OpenApiTypes.INT, description="Filter by owner staff ID"),
+            OpenApiParameter("stale", OpenApiTypes.BOOL, description="Filter by stale weekly update status"),
+            OpenApiParameter("q", OpenApiTypes.STR, description="Search by initiative name or notes"),
+            OpenApiParameter(
+                "order_by", OpenApiTypes.STR, description="Field to order by", enum=["id", "name", "target_date"]
+            ),
+            OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),
+        ],
+    ),
+    create=extend_schema(summary="Create initiative", description="Create a non-contract initiative."),
+    retrieve=extend_schema(summary="Get initiative", description="Retrieve a single initiative by ID."),
+    update=extend_schema(summary="Update initiative", description="Update an initiative."),
+    partial_update=extend_schema(summary="Partially update initiative", description="Partially update an initiative."),
+    destroy=extend_schema(summary="Delete initiative", description="Delete an initiative."),
+)
+class InitiativeViewSet(ModelViewSet):
+    permission_classes = [ReadOnlyForStaffOtherwiseManagerAdmin]
+    serializer_class = InitiativeSerializer
+    filterset_class = InitiativeFilter
+
+    search_fields = ["name", "notes"]
+    ordering_fields = ["id", "name", "target_date"]
+
+    def get_queryset(self):
+        return Initiative.objects.all().select_related("owner").prefetch_related("weekly_updates").order_by("-id")
+
+
+@extend_schema(tags=["initiative-weekly-updates"])
+@extend_schema_view(
+    list=extend_schema(
+        summary="List initiative weekly updates",
+        description="List weekly updates for initiatives.",
+        parameters=[
+            OpenApiParameter("initiative_id", OpenApiTypes.INT, description="Filter by initiative ID"),
+            OpenApiParameter("period_end_from", OpenApiTypes.DATE, description="Filter updates on or after this date"),
+            OpenApiParameter("period_end_to", OpenApiTypes.DATE, description="Filter updates on or before this date"),
+            OpenApiParameter("order_by", OpenApiTypes.STR, description="Field to order by", enum=["period_end", "id"]),
+            OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),
+        ],
+    ),
+    create=extend_schema(
+        summary="Create initiative weekly update", description="Create a weekly progress update for an initiative."
+    ),
+    retrieve=extend_schema(
+        summary="Get initiative weekly update", description="Retrieve a single initiative weekly update by ID."
+    ),
+    update=extend_schema(summary="Update initiative weekly update", description="Update a weekly update."),
+    partial_update=extend_schema(
+        summary="Partially update initiative weekly update", description="Partially update a weekly update."
+    ),
+    destroy=extend_schema(summary="Delete initiative weekly update", description="Delete a weekly update."),
+)
+class InitiativeWeeklyUpdateViewSet(ModelViewSet):
+    permission_classes = [ReadOnlyForStaffOtherwiseManagerAdmin]
+    serializer_class = InitiativeWeeklyUpdateSerializer
+    filterset_class = InitiativeWeeklyUpdateFilter
+
+    ordering_fields = ["period_end", "id"]
+
+    def get_queryset(self):
+        return InitiativeWeeklyUpdate.objects.all().select_related("initiative", "created_by").order_by("-id")

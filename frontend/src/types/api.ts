@@ -199,3 +199,38 @@ export interface TimeEntryFilters {
   order_dir?: 'asc' | 'desc';
 }
 
+export interface InitiativeWeeklyUpdate {
+  id: number;
+  initiative: number;
+  period_end: string;
+  percent_complete: string;
+  summary: string;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Initiative {
+  id: number;
+  name: string;
+  owner: number | null;
+  owner_name: string | null;
+  status: 'active' | 'on_hold' | 'completed';
+  target_date: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  current_percent_complete: string;
+  latest_update: InitiativeWeeklyUpdate | null;
+  is_update_stale: boolean;
+}
+
+export interface InitiativeFilters {
+  status?: 'active' | 'on_hold' | 'completed';
+  owner_id?: number;
+  stale?: boolean;
+  q?: string;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
+}
+

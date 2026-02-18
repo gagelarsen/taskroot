@@ -13,6 +13,8 @@ router.register(r"deliverable-time-entries", views.DeliverableTimeEntryViewSet, 
 router.register(
     r"deliverable-status-updates", views.DeliverableStatusUpdateViewSet, basename="deliverable-status-update"
 )
+router.register(r"initiatives", views.InitiativeViewSet, basename="initiative")
+router.register(r"initiative-weekly-updates", views.InitiativeWeeklyUpdateViewSet, basename="initiative-weekly-update")
 
 # Reporting endpoints
 router.register(r"reports/contracts", report_views.ContractReportViewSet, basename="report-contract")

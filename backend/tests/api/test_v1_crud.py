@@ -211,6 +211,40 @@ class TestV1CrudSmoke:
         assert r.status_code == 200
         assert any(item["id"] == status_id for item in r.data["results"])
 
+    def test_initiative_create_and_list(self, api_client):
+        payload = {"name": "Internal Process Improvement", "status": "active", "notes": "Ops work"}
+        r = api_client.post("/api/v1/initiatives/", payload, format="json")
+        assert r.status_code == 201, r.data
+        initiative_id = r.data["id"]
+
+        r = api_client.get("/api/v1/initiatives/")
+        assert r.status_code == 200
+        assert any(item["id"] == initiative_id for item in r.data["results"])
+
+    def test_initiative_weekly_update_create_and_list(self, api_client):
+        initiative = api_client.post(
+            "/api/v1/initiatives/",
+            {"name": "Enablement Program", "status": "active"},
+            format="json",
+        ).data
+
+        r = api_client.post(
+            "/api/v1/initiative-weekly-updates/",
+            {
+                "initiative": initiative["id"],
+                "period_end": "2026-02-13",
+                "percent_complete": "35.0",
+                "summary": "Pilot completed",
+            },
+            format="json",
+        )
+        assert r.status_code == 201, r.data
+        update_id = r.data["id"]
+
+        r = api_client.get(f"/api/v1/initiative-weekly-updates/?initiative_id={initiative['id']}")
+        assert r.status_code == 200
+        assert any(item["id"] == update_id for item in r.data["results"])
+
 
 @pytest.mark.django_db
 class TestV1Validations:

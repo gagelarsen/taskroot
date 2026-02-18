@@ -7,6 +7,8 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    Initiative,
+    InitiativeWeeklyUpdate,
     Staff,
     Task,
 )
@@ -270,3 +272,35 @@ class StaffFilter(django_filters.FilterSet):
     class Meta:
         model = Staff
         fields = ["status", "role"]
+
+
+class InitiativeFilter(django_filters.FilterSet):
+    status = django_filters.CharFilter(field_name="status")
+    owner_id = django_filters.NumberFilter(field_name="owner_id")
+    stale = django_filters.CharFilter(method="filter_stale")
+
+    class Meta:
+        model = Initiative
+        fields = ["status", "owner_id", "stale"]
+
+    def filter_stale(self, queryset, name, value):
+        b = _parse_bool(value)
+        if b is None:
+            return queryset
+        if b:
+            return queryset.filter(
+                pk__in=[initiative.pk for initiative in queryset if initiative.is_update_stale(days=7)]
+            )
+        return queryset.filter(
+            pk__in=[initiative.pk for initiative in queryset if not initiative.is_update_stale(days=7)]
+        )
+
+
+class InitiativeWeeklyUpdateFilter(django_filters.FilterSet):
+    initiative_id = django_filters.NumberFilter(field_name="initiative_id")
+    period_end_from = django_filters.DateFilter(field_name="period_end", lookup_expr="gte")
+    period_end_to = django_filters.DateFilter(field_name="period_end", lookup_expr="lte")
+
+    class Meta:
+        model = InitiativeWeeklyUpdate
+        fields = ["initiative_id", "period_end_from", "period_end_to"]

@@ -3,6 +3,7 @@ import type {
   ContractFilters,
   CreateDeliverableStatusUpdatePayload,
   DeliverableFilters,
+  InitiativeFilters,
   TimeEntryFilters,
   Staff,
 } from '../types/api';
@@ -243,5 +244,54 @@ export const assignmentsApi = {
   },
   delete: async (id: number) => {
     await apiClient.delete(`/deliverable-assignments/${id}/`);
+  },
+};
+
+// Initiatives API
+export const initiativesApi = {
+  list: async (params?: InitiativeFilters) => {
+    const response = await apiClient.get('/initiatives/', { params });
+    return response.data.results || response.data;
+  },
+  get: async (id: number) => {
+    const response = await apiClient.get(`/initiatives/${id}/`);
+    return response.data;
+  },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/initiatives/', data);
+    return response.data;
+  },
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/initiatives/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/initiatives/${id}/`);
+  },
+};
+
+interface InitiativeUpdateFilters {
+  initiative_id?: number;
+  period_end_from?: string;
+  period_end_to?: string;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
+}
+
+export const initiativeWeeklyUpdatesApi = {
+  list: async (params?: InitiativeUpdateFilters) => {
+    const response = await apiClient.get('/initiative-weekly-updates/', { params });
+    return response.data.results || response.data;
+  },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/initiative-weekly-updates/', data);
+    return response.data;
+  },
+  update: async (id: number, data: unknown) => {
+    const response = await apiClient.patch(`/initiative-weekly-updates/${id}/`, data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/initiative-weekly-updates/${id}/`);
   },
 };

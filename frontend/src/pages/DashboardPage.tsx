@@ -24,8 +24,8 @@ import {
 import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { contractsApi, deliverablesApi, statusUpdatesApi } from '../api/client';
-import type { Contract, Deliverable, DeliverableStatusUpdate } from '../types/api';
+import { contractsApi, deliverablesApi, initiativeWeeklyUpdatesApi, initiativesApi, statusUpdatesApi } from '../api/client';
+import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
 import { formatContractStatusLabel } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
@@ -147,6 +147,8 @@ export function DashboardPage() {
   const [savingQuickAddDeliverableId, setSavingQuickAddDeliverableId] = useState<number | null>(null);
   const [quickAddErrorByDeliverableId, setQuickAddErrorByDeliverableId] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
+  const [initiatives, setInitiatives] = useState<Initiative[]>([]);
+  const [loadingInitiatives, setLoadingInitiatives] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [contractType, setContractType] = useState<'all' | Contract['contract_type']>('all');
@@ -155,6 +157,13 @@ export function DashboardPage() {
   const [flag, setFlag] = useState<FlagFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('projected_lateness_days');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [initiativeQuickUpdateId, setInitiativeQuickUpdateId] = useState<number | null>(null);
+  const [initiativeQuickUpdate, setInitiativeQuickUpdate] = useState({
+    period_end: new Date().toISOString().split('T')[0],
+    percent_complete: '0',
+    summary: '',
+  });
+  const [savingInitiativeQuickUpdateId, setSavingInitiativeQuickUpdateId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const loadContracts = useCallback(async () => {
@@ -177,6 +186,22 @@ export function DashboardPage() {
   useEffect(() => {
     loadContracts();
   }, [loadContracts]);
+
+  const loadInitiatives = useCallback(async () => {
+    setLoadingInitiatives(true);
+    try {
+      const data = await initiativesApi.list({ order_by: 'id', order_dir: 'desc' });
+      setInitiatives(data);
+    } catch {
+      setInitiatives([]);
+    } finally {
+      setLoadingInitiatives(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadInitiatives();
+  }, [loadInitiatives]);
 
   const loadContractDeliverables = useCallback(async (contractId: number, force = false) => {
     if (!force && deliverablesByContract[contractId]) {
@@ -393,6 +418,31 @@ export function DashboardPage() {
       </TableSortLabel>
     </TableCell>
   );
+
+  const startInitiativeQuickUpdate = (initiative: Initiative) => {
+    setInitiativeQuickUpdateId(initiative.id);
+    setInitiativeQuickUpdate({
+      period_end: new Date().toISOString().split('T')[0],
+      percent_complete: initiative.current_percent_complete || '0',
+      summary: '',
+    });
+  };
+
+  const saveInitiativeQuickUpdate = async (initiativeId: number) => {
+    setSavingInitiativeQuickUpdateId(initiativeId);
+    try {
+      await initiativeWeeklyUpdatesApi.create({
+        initiative: initiativeId,
+        period_end: initiativeQuickUpdate.period_end,
+        percent_complete: initiativeQuickUpdate.percent_complete,
+        summary: initiativeQuickUpdate.summary,
+      });
+      setInitiativeQuickUpdateId(null);
+      await loadInitiatives();
+    } finally {
+      setSavingInitiativeQuickUpdateId(null);
+    }
+  };
 
   return (
     <Box>
@@ -819,6 +869,135 @@ export function DashboardPage() {
           </Table>
         </TableContainer>
       )}
+
+      <Box sx={{ mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Typography variant="h6">Initiatives (Non-contract)</Typography>
+          <Button size="small" onClick={() => navigate('/initiatives')}>Open Initiatives</Button>
+        </Box>
+
+        {loadingInitiatives ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <CircularProgress size={20} />
+          </Box>
+        ) : initiatives.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">No initiatives yet.</Typography>
+        ) : (
+          <TableContainer component={Paper}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Initiative</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">% Complete</TableCell>
+                  <TableCell>Latest Update</TableCell>
+                  <TableCell>Update Health</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {initiatives.map((initiative) => {
+                  const latest = initiative.latest_update;
+                  const isQuickOpen = initiativeQuickUpdateId === initiative.id;
+                  return (
+                    <Fragment key={initiative.id}>
+                      <TableRow>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{initiative.name}</Typography>
+                          <Typography variant="caption" color="text.secondary">{initiative.owner_name || 'Unassigned'}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={initiative.status === 'on_hold' ? 'On Hold' : initiative.status === 'completed' ? 'Completed' : 'Active'}
+                            color={initiative.status === 'completed' ? 'success' : initiative.status === 'on_hold' ? 'warning' : 'primary'}
+                          />
+                        </TableCell>
+                        <TableCell align="right">{toNumber(initiative.current_percent_complete).toFixed(0)}%</TableCell>
+                        <TableCell>
+                          {latest ? (
+                            <Typography variant="body2">{formatDate(new Date(latest.period_end))}</Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">No updates</Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {initiative.is_update_stale ? (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label={latest ? `Stale (${getDaysSince(latest.period_end)}d)` : 'No recent update'}
+                            />
+                          ) : (
+                            <Chip size="small" color="success" variant="outlined" label="Current" />
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button size="small" variant="outlined" onClick={() => startInitiativeQuickUpdate(initiative)}>
+                            Add Weekly Update
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {isQuickOpen && (
+                        <TableRow>
+                          <TableCell colSpan={6}>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <TextField
+                                label="Period End"
+                                type="date"
+                                size="small"
+                                value={initiativeQuickUpdate.period_end}
+                                onChange={(event) =>
+                                  setInitiativeQuickUpdate((current) => ({ ...current, period_end: event.target.value }))
+                                }
+                                slotProps={{ inputLabel: { shrink: true } }}
+                              />
+                              <TextField
+                                label="% Complete"
+                                type="number"
+                                size="small"
+                                value={initiativeQuickUpdate.percent_complete}
+                                onChange={(event) =>
+                                  setInitiativeQuickUpdate((current) => ({ ...current, percent_complete: event.target.value }))
+                                }
+                                inputProps={{ min: 0, max: 100, step: 1 }}
+                                sx={{ width: 140 }}
+                              />
+                              <TextField
+                                label="Summary"
+                                size="small"
+                                value={initiativeQuickUpdate.summary}
+                                onChange={(event) =>
+                                  setInitiativeQuickUpdate((current) => ({ ...current, summary: event.target.value }))
+                                }
+                                sx={{ flex: 1, minWidth: 280 }}
+                              />
+                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  onClick={() => saveInitiativeQuickUpdate(initiative.id)}
+                                  disabled={savingInitiativeQuickUpdateId === initiative.id}
+                                >
+                                  {savingInitiativeQuickUpdateId === initiative.id ? 'Saving...' : 'Save'}
+                                </Button>
+                                <Button size="small" onClick={() => setInitiativeQuickUpdateId(null)}>
+                                  Cancel
+                                </Button>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
     </Box>
   );
 }

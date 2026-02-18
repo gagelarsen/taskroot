@@ -8,6 +8,8 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    Initiative,
+    InitiativeWeeklyUpdate,
     Staff,
     Task,
 )
@@ -551,3 +553,83 @@ class DeliverableStatusUpdateSerializer(serializers.ModelSerializer):
                 message="A status update for this deliverable and period_end already exists.",
             )
         ]
+
+
+class InitiativeWeeklyUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InitiativeWeeklyUpdate
+        fields = [
+            "id",
+            "initiative",
+            "period_end",
+            "percent_complete",
+            "summary",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        validators = [
+            UniqueTogetherValidator(
+                queryset=InitiativeWeeklyUpdate.objects.all(),
+                fields=["initiative", "period_end"],
+                message="A weekly update for this initiative and period_end already exists.",
+            )
+        ]
+
+
+class InitiativeSerializer(serializers.ModelSerializer):
+    owner_name = serializers.SerializerMethodField()
+    current_percent_complete = serializers.SerializerMethodField()
+    latest_update = serializers.SerializerMethodField()
+    is_update_stale = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Initiative
+        fields = [
+            "id",
+            "name",
+            "owner",
+            "owner_name",
+            "status",
+            "target_date",
+            "notes",
+            "created_at",
+            "updated_at",
+            "current_percent_complete",
+            "latest_update",
+            "is_update_stale",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "owner_name",
+            "current_percent_complete",
+            "latest_update",
+            "is_update_stale",
+        ]
+
+    def get_owner_name(self, obj):
+        if obj.owner:
+            return f"{obj.owner.first_name} {obj.owner.last_name}".strip()
+        return None
+
+    @extend_schema_field(
+        serializers.FloatField(read_only=True, help_text="Current completion percentage from the latest weekly update")
+    )
+    def get_current_percent_complete(self, obj):
+        return obj.get_current_percent_complete()
+
+    @extend_schema_field(InitiativeWeeklyUpdateSerializer(allow_null=True))
+    def get_latest_update(self, obj):
+        latest = obj.get_latest_update()
+        if not latest:
+            return None
+        return InitiativeWeeklyUpdateSerializer(latest).data
+
+    @extend_schema_field(
+        serializers.BooleanField(read_only=True, help_text="True if latest weekly update is older than 7 days")
+    )
+    def get_is_update_stale(self, obj):
+        return obj.is_update_stale(days=7)

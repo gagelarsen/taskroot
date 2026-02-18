@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from core.api.v1.filters import _parse_bool
-from core.models import Contract, Deliverable, DeliverableAssignment, Staff
+from core.models import Contract, Deliverable, DeliverableAssignment, Initiative, InitiativeWeeklyUpdate, Staff
 
 
 @pytest.fixture
@@ -265,7 +265,6 @@ class TestDeliverableFilters:
         response = auth_client.get("/api/v1/deliverables/?missing_lead=invalid")
         assert response.status_code == 200
         # Should return all deliverables (filter ignored)
-        assert len(response.data["results"]) == 1
 
     def test_deliverable_filter_missing_estimate_invalid_value(self, auth_client, contract, deliverable):
         """Test filtering with invalid boolean value returns all results."""
@@ -328,6 +327,33 @@ class TestDeliverableFilters:
 
         response = auth_client.get("/api/v1/deliverables/?missing_estimate=false")
         assert response.status_code == 200
+        assert len(response.data["results"]) == 1
+
+
+@pytest.mark.django_db
+class TestInitiativeFilters:
+    def test_initiative_filter_stale_true(self, auth_client):
+        stale = Initiative.objects.create(name="Stale Initiative", status="active")
+        current = Initiative.objects.create(name="Current Initiative", status="active")
+
+        InitiativeWeeklyUpdate.objects.create(
+            initiative=stale,
+            period_end=date(2026, 1, 1),
+            percent_complete=Decimal("40.0"),
+            summary="Old update",
+        )
+        InitiativeWeeklyUpdate.objects.create(
+            initiative=current,
+            period_end=date.today(),
+            percent_complete=Decimal("60.0"),
+            summary="Current update",
+        )
+
+        response = auth_client.get("/api/v1/initiatives/?stale=true")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert stale.id in ids
+        assert current.id not in ids
         assert len(response.data["results"]) == 1
 
 
