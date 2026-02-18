@@ -185,7 +185,7 @@ export function DashboardPage() {
   const [flag, setFlag] = useState<FlagFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('projected_lateness_days');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [initiativeQuickUpdateId, setInitiativeQuickUpdateId] = useState<number | null>(null);
+  const [initiativeQuickUpdateDialogInitiative, setInitiativeQuickUpdateDialogInitiative] = useState<Initiative | null>(null);
   const [initiativeQuickUpdate, setInitiativeQuickUpdate] = useState({
     period_end: new Date().toISOString().split('T')[0],
     percent_complete: '0',
@@ -208,7 +208,8 @@ export function DashboardPage() {
     target_date: '',
     notes: '',
   });
-  const [savingInitiativeQuickUpdateId, setSavingInitiativeQuickUpdateId] = useState<number | null>(null);
+  const [savingInitiativeQuickUpdate, setSavingInitiativeQuickUpdate] = useState(false);
+  const [initiativeQuickUpdateError, setInitiativeQuickUpdateError] = useState('');
   const [savingInitiativeStatusId, setSavingInitiativeStatusId] = useState<number | null>(null);
   const navigate = useNavigate();
 
@@ -668,7 +669,8 @@ export function DashboardPage() {
   );
 
   const startInitiativeQuickUpdate = (initiative: Initiative) => {
-    setInitiativeQuickUpdateId(initiative.id);
+    setInitiativeQuickUpdateDialogInitiative(initiative);
+    setInitiativeQuickUpdateError('');
     setInitiativeQuickUpdate({
       period_end: new Date().toISOString().split('T')[0],
       percent_complete: initiative.current_percent_complete || '0',
@@ -751,19 +753,26 @@ export function DashboardPage() {
     }
   };
 
-  const saveInitiativeQuickUpdate = async (initiativeId: number) => {
-    setSavingInitiativeQuickUpdateId(initiativeId);
+  const saveInitiativeQuickUpdate = async () => {
+    if (!initiativeQuickUpdateDialogInitiative) {
+      return;
+    }
+
+    setSavingInitiativeQuickUpdate(true);
+    setInitiativeQuickUpdateError('');
     try {
       await initiativeWeeklyUpdatesApi.create({
-        initiative: initiativeId,
+        initiative: initiativeQuickUpdateDialogInitiative.id,
         period_end: initiativeQuickUpdate.period_end,
         percent_complete: initiativeQuickUpdate.percent_complete,
         summary: initiativeQuickUpdate.summary,
       });
-      setInitiativeQuickUpdateId(null);
+      setInitiativeQuickUpdateDialogInitiative(null);
       await loadInitiatives();
+    } catch (err) {
+      setInitiativeQuickUpdateError(getApiErrorMessage(err, 'Failed to save weekly update'));
     } finally {
-      setSavingInitiativeQuickUpdateId(null);
+      setSavingInitiativeQuickUpdate(false);
     }
   };
 
@@ -1212,7 +1221,6 @@ export function DashboardPage() {
               <TableBody>
                 {filteredInitiatives.map((initiative) => {
                   const latest = initiative.latest_update;
-                  const isQuickOpen = initiativeQuickUpdateId === initiative.id;
                   return (
                     <Fragment key={initiative.id}>
                       <TableRow onContextMenu={(event) => openInitiativeContextMenu(event, initiative)}>
@@ -1262,57 +1270,6 @@ export function DashboardPage() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                      {isQuickOpen && (
-                        <TableRow>
-                          <TableCell colSpan={6}>
-                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                              <TextField
-                                label="Period End"
-                                type="date"
-                                size="small"
-                                value={initiativeQuickUpdate.period_end}
-                                onChange={(event) =>
-                                  setInitiativeQuickUpdate((current) => ({ ...current, period_end: event.target.value }))
-                                }
-                                slotProps={{ inputLabel: { shrink: true } }}
-                              />
-                              <TextField
-                                label="% Complete"
-                                type="number"
-                                size="small"
-                                value={initiativeQuickUpdate.percent_complete}
-                                onChange={(event) =>
-                                  setInitiativeQuickUpdate((current) => ({ ...current, percent_complete: event.target.value }))
-                                }
-                                inputProps={{ min: 0, max: 100, step: 1 }}
-                                sx={{ width: 140 }}
-                              />
-                              <TextField
-                                label="Summary"
-                                size="small"
-                                value={initiativeQuickUpdate.summary}
-                                onChange={(event) =>
-                                  setInitiativeQuickUpdate((current) => ({ ...current, summary: event.target.value }))
-                                }
-                                sx={{ flex: 1, minWidth: 280 }}
-                              />
-                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  onClick={() => saveInitiativeQuickUpdate(initiative.id)}
-                                  disabled={savingInitiativeQuickUpdateId === initiative.id}
-                                >
-                                  {savingInitiativeQuickUpdateId === initiative.id ? 'Saving...' : 'Save'}
-                                </Button>
-                                <Button size="small" onClick={() => setInitiativeQuickUpdateId(null)}>
-                                  Cancel
-                                </Button>
-                              </Box>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      )}
                     </Fragment>
                   );
                 })}
@@ -1510,6 +1467,107 @@ export function DashboardPage() {
             }
           >
             {!!quickAddDialogDeliverable && savingQuickAddDeliverableId === quickAddDialogDeliverable.id ? 'Saving...' : 'Save Update'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!initiativeQuickUpdateDialogInitiative}
+        onClose={() => {
+          if (savingInitiativeQuickUpdate) {
+            return;
+          }
+          setInitiativeQuickUpdateDialogInitiative(null);
+          setInitiativeQuickUpdateError('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Add Initiative Weekly Update</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {initiativeQuickUpdateError && <Alert severity="error">{initiativeQuickUpdateError}</Alert>}
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Initiative
+              </Typography>
+              <Typography variant="body2">
+                {initiativeQuickUpdateDialogInitiative?.name || ''}
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Previous update
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                {initiativeQuickUpdateDialogInitiative?.latest_update ? (
+                  <>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      {formatDate(new Date(initiativeQuickUpdateDialogInitiative.latest_update.period_end))} • {toNumber(initiativeQuickUpdateDialogInitiative.latest_update.percent_complete).toFixed(0)}%
+                    </Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {initiativeQuickUpdateDialogInitiative.latest_update.summary || 'No summary'}
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No previous update
+                  </Typography>
+                )}
+              </Paper>
+            </Box>
+
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+              <TextField
+                label="Period End"
+                type="date"
+                size="small"
+                value={initiativeQuickUpdate.period_end}
+                onChange={(event) =>
+                  setInitiativeQuickUpdate((current) => ({ ...current, period_end: event.target.value }))
+                }
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="% Complete"
+                type="number"
+                size="small"
+                value={initiativeQuickUpdate.percent_complete}
+                onChange={(event) =>
+                  setInitiativeQuickUpdate((current) => ({ ...current, percent_complete: event.target.value }))
+                }
+                inputProps={{ min: 0, max: 100, step: 1 }}
+                sx={{ width: 160 }}
+              />
+            </Stack>
+
+            <TextField
+              label="Summary"
+              size="small"
+              value={initiativeQuickUpdate.summary}
+              onChange={(event) =>
+                setInitiativeQuickUpdate((current) => ({ ...current, summary: event.target.value }))
+              }
+              multiline
+              minRows={3}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setInitiativeQuickUpdateDialogInitiative(null);
+              setInitiativeQuickUpdateError('');
+            }}
+            disabled={savingInitiativeQuickUpdate}
+          >
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={() => void saveInitiativeQuickUpdate()} disabled={savingInitiativeQuickUpdate}>
+            {savingInitiativeQuickUpdate ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
