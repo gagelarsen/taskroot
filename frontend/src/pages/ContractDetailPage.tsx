@@ -187,6 +187,22 @@ export function ContractDetailPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
+                    Tags
+                  </Typography>
+                  <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                    {contract.tags?.length ? (
+                      contract.tags.map((tag) => (
+                        <Chip key={tag} size="small" variant="outlined" label={tag} />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        None
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
                     Start Date
                   </Typography>
                   <Typography>{contract.start_date}</Typography>

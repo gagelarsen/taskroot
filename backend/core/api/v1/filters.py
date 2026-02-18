@@ -26,6 +26,7 @@ def _parse_bool(value: str | None):
 class ContractFilter(django_filters.FilterSet):
     status = django_filters.CharFilter(field_name="status")
     contract_type = django_filters.CharFilter(field_name="contract_type")
+    tags = django_filters.CharFilter(method="filter_tags")
 
     start_date_from = django_filters.DateFilter(field_name="start_date", lookup_expr="gte")
     start_date_to = django_filters.DateFilter(field_name="start_date", lookup_expr="lte")
@@ -41,6 +42,7 @@ class ContractFilter(django_filters.FilterSet):
         fields = [
             "status",
             "contract_type",
+            "tags",
             "start_date_from",
             "start_date_to",
             "end_date_from",
@@ -68,6 +70,20 @@ class ContractFilter(django_filters.FilterSet):
             return queryset.filter(pk__in=[c.pk for c in queryset if c.is_over_expected()])
         else:
             return queryset.filter(pk__in=[c.pk for c in queryset if not c.is_over_expected()])
+
+    def filter_tags(self, queryset, name, value):
+        raw_tags = [part.strip() for part in (value or "").split(",")]
+        requested = {tag.lower() for tag in raw_tags if tag}
+        if not requested:
+            return queryset
+
+        matching_ids = []
+        for contract in queryset:
+            contract_tags = {str(tag).strip().lower() for tag in (contract.tags or []) if str(tag).strip()}
+            if contract_tags.intersection(requested):
+                matching_ids.append(contract.pk)
+
+        return queryset.filter(pk__in=matching_ids)
 
 
 class DeliverableFilter(django_filters.FilterSet):

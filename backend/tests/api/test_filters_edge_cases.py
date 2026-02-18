@@ -167,6 +167,33 @@ class TestContractFilters:
         # Should return contracts not over expected
         assert len(response.data["results"]) == 1
 
+    def test_contract_filter_tags_matches_any(self, auth_client):
+        contract_a = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("100.0"),
+            status="active",
+            tags=["Urgent", "Finance"],
+        )
+        _ = Contract.objects.create(
+            start_date=date(2026, 2, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("100.0"),
+            status="active",
+            tags=["Internal"],
+        )
+
+        response = auth_client.get("/api/v1/contracts/?tags=finance,other")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert contract_a.id in ids
+        assert len(ids) == 1
+
+    def test_contract_filter_tags_empty_value_returns_all(self, auth_client, contract):
+        response = auth_client.get("/api/v1/contracts/?tags=")
+        assert response.status_code == 200
+        assert len(response.data["results"]) == 1
+
 
 @pytest.mark.django_db
 class TestDeliverableFilters:

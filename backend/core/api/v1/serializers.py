@@ -32,6 +32,7 @@ class StaffSerializer(serializers.ModelSerializer):
 
 class ContractSerializer(serializers.ModelSerializer):
     contract_type_display = serializers.CharField(source="get_contract_type_display", read_only=True)
+    tags = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), required=False)
 
     # Computed rollup fields (read-only)
     assigned_budget_hours = serializers.SerializerMethodField()
@@ -62,6 +63,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "contract_type",
             "contract_type_display",
             "status",
+            "tags",
             "created_at",
             "updated_at",
             # Computed fields
@@ -177,6 +179,26 @@ class ContractSerializer(serializers.ModelSerializer):
     )
     def get_is_overassigned(self, obj):
         return obj.is_overassigned()
+
+    def validate_tags(self, value):
+        if value is None:
+            return []
+
+        normalized_tags = []
+        seen = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError("Each tag must be a string.")
+            tag = item.strip()
+            if not tag:
+                continue
+            key = tag.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized_tags.append(tag)
+
+        return normalized_tags
 
 
 class DeliverableAssignmentNestedSerializer(serializers.ModelSerializer):

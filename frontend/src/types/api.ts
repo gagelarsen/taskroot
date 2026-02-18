@@ -9,6 +9,7 @@ export interface Contract {
   id: number;
   name: string;
   client_name: string;
+  tags: string[];
   contract_type: 'fixed_cost' | 'time_and_materials';
   contract_type_display?: string;
   start_date: string;
@@ -159,6 +160,7 @@ export interface DeliverableAssignment {
 export interface ContractFilters {
   status?: string;
   contract_type?: 'fixed_cost' | 'time_and_materials';
+  tags?: string;
   start_date_from?: string;
   start_date_to?: string;
   end_date_from?: string;

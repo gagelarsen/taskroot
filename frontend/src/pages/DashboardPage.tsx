@@ -150,6 +150,7 @@ export function DashboardPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [contractType, setContractType] = useState<'all' | Contract['contract_type']>('all');
+  const [tagFilter, setTagFilter] = useState('all');
   const [showInactive, setShowInactive] = useState(false);
   const [flag, setFlag] = useState<FlagFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('projected_lateness_days');
@@ -287,6 +288,13 @@ export function DashboardPage() {
         return false;
       }
 
+      if (tagFilter !== 'all') {
+        const contractTags = (contract.tags || []).map((tag) => tag.toLowerCase());
+        if (!contractTags.includes(tagFilter.toLowerCase())) {
+          return false;
+        }
+      }
+
       if (!showInactive && contract.status !== 'active') {
         return false;
       }
@@ -307,7 +315,12 @@ export function DashboardPage() {
 
       return true;
     });
-  }, [contracts, search, contractType, showInactive, flag]);
+  }, [contracts, search, contractType, tagFilter, showInactive, flag]);
+
+  const availableTags = useMemo(() => {
+    const allTags = contracts.flatMap((contract) => contract.tags || []);
+    return Array.from(new Set(allTags)).sort((left, right) => left.localeCompare(right));
+  }, [contracts]);
 
   const sortedContracts = useMemo(() => {
     const valueForSort = (contract: Contract): string | number => {
@@ -427,6 +440,21 @@ export function DashboardPage() {
           <MenuItem value="over_budget">Over Budget</MenuItem>
           <MenuItem value="overassigned">Overassigned</MenuItem>
           <MenuItem value="over_expected">Over Expected</MenuItem>
+        </TextField>
+        <TextField
+          select
+          label="Tag"
+          size="small"
+          value={tagFilter}
+          onChange={(event) => setTagFilter(event.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="all">All Tags</MenuItem>
+          {availableTags.map((tag) => (
+            <MenuItem key={tag} value={tag}>
+              {tag}
+            </MenuItem>
+          ))}
         </TextField>
         <FormControlLabel
           control={

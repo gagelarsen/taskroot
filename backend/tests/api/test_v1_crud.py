@@ -74,6 +74,17 @@ class TestV1CrudSmoke:
         assert r.data["contract_type"] == "time_and_materials"
         assert r.data["contract_type_display"] == "Time and Materials"
 
+    def test_contract_create_and_update_tags(self, api_client, contract_payload):
+        payload = {**contract_payload, "tags": ["Urgent", "Internal", "urgent", "  "]}
+        r = api_client.post("/api/v1/contracts/", payload, format="json")
+        assert r.status_code == 201, r.data
+        contract_id = r.data["id"]
+        assert r.data["tags"] == ["Urgent", "Internal"]
+
+        r = api_client.patch(f"/api/v1/contracts/{contract_id}/", {"tags": ["Client-A"]}, format="json")
+        assert r.status_code == 200, r.data
+        assert r.data["tags"] == ["Client-A"]
+
     def test_deliverable_create_and_list(self, api_client, contract_payload):
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
         r = api_client.post(

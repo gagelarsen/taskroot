@@ -35,6 +35,7 @@ export function ContractEditPage() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -42,6 +43,7 @@ export function ContractEditPage() {
         try {
           const contractData = await contractsApi.get(parseInt(id));
           setContract(contractData);
+          setTagsInput((contractData.tags || []).join(', '));
         } catch (err) {
           if (err instanceof AxiosError) {
             setError(err.response?.data?.detail || 'Failed to load contract');
@@ -63,6 +65,11 @@ export function ContractEditPage() {
     setError('');
 
     try {
+      const parsedTags = tagsInput
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
       const payload = {
         name: contract.name,
         client_name: contract.client_name,
@@ -71,6 +78,7 @@ export function ContractEditPage() {
         status: contract.status,
         start_date: contract.start_date,
         end_date: contract.end_date,
+        tags: parsedTags,
       };
 
       if (isNew) {
@@ -139,6 +147,14 @@ export function ContractEditPage() {
               value={contract.client_name || ''}
               onChange={(e) => setContract({ ...contract, client_name: e.target.value })}
               required
+              fullWidth
+            />
+
+            <TextField
+              label="Tags"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              helperText="Comma-separated (example: urgent, internal)"
               fullWidth
             />
 

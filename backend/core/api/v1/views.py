@@ -78,6 +78,11 @@ from core.models import (
                 description="Filter by contract type",
                 enum=["fixed_cost", "time_and_materials"],
             ),
+            OpenApiParameter(
+                "tags",
+                OpenApiTypes.STR,
+                description="Filter by one or more tags (comma-separated, matches any)",
+            ),
         ],
     ),
     create=extend_schema(

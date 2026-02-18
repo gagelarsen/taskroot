@@ -51,6 +51,7 @@ export function ContractsListPage() {
   const [formData, setFormData] = useState({
     name: '',
     client_name: '',
+    tags: '',
     contract_type: 'fixed_cost' as Contract['contract_type'],
     budget_hours: '0',
     status: 'draft' as Contract['status'],
@@ -96,6 +97,7 @@ export function ContractsListPage() {
     setFormData({
       name: '',
       client_name: '',
+      tags: '',
       contract_type: 'fixed_cost',
       budget_hours: '0',
       status: 'draft',
@@ -114,7 +116,12 @@ export function ContractsListPage() {
     setSaving(true);
     setError('');
     try {
-      await contractsApi.create(formData);
+      const tags = formData.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
+      await contractsApi.create({ ...formData, tags });
       setDialogOpen(false);
       await loadContracts();
     } catch (err) {
@@ -279,6 +286,14 @@ export function ContractsListPage() {
               value={formData.client_name}
               onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
               required
+              fullWidth
+            />
+
+            <TextField
+              label="Tags"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              helperText="Comma-separated (example: urgent, internal)"
               fullWidth
             />
 

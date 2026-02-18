@@ -31,6 +31,7 @@ class Contract(models.Model):
         default=ContractType.FIXED_COST,
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    tags = models.JSONField(default=list, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
