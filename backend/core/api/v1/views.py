@@ -644,6 +644,7 @@ class DeliverableStatusUpdateViewSet(ModelViewSet):
         parameters=[
             OpenApiParameter("status", OpenApiTypes.STR, description="Filter by initiative status"),
             OpenApiParameter("owner_id", OpenApiTypes.INT, description="Filter by owner staff ID"),
+            OpenApiParameter("tags", OpenApiTypes.STR, description="Filter by tags (comma-separated, matches any)"),
             OpenApiParameter("stale", OpenApiTypes.BOOL, description="Filter by stale weekly update status"),
             OpenApiParameter("q", OpenApiTypes.STR, description="Search by initiative name or notes"),
             OpenApiParameter(

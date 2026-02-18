@@ -21,7 +21,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Add, Edit } from '@mui/icons-material';
 import { AxiosError } from 'axios';
 import { initiativeWeeklyUpdatesApi, initiativesApi, staffApi } from '../api/client';
 import type { Initiative, Staff } from '../types/api';
@@ -43,14 +43,17 @@ export function InitiativesPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Initiative['status']>('all');
+  const [tagFilter, setTagFilter] = useState('all');
   const [showStaleOnly, setShowStaleOnly] = useState(false);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [savingForm, setSavingForm] = useState(false);
+  const [editingInitiativeId, setEditingInitiativeId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     owner: '',
     status: 'active' as Initiative['status'],
+    tags: '',
     target_date: '',
     notes: '',
   });
@@ -101,35 +104,86 @@ export function InitiativesPage() {
       if (statusFilter !== 'all' && initiative.status !== statusFilter) {
         return false;
       }
+      if (tagFilter !== 'all') {
+        const tags = (initiative.tags || []).map((tag) => tag.toLowerCase());
+        if (!tags.includes(tagFilter.toLowerCase())) {
+          return false;
+        }
+      }
       if (showStaleOnly && !initiative.is_update_stale) {
         return false;
       }
       return true;
     });
-  }, [initiatives, search, statusFilter, showStaleOnly]);
+  }, [initiatives, search, statusFilter, tagFilter, showStaleOnly]);
 
-  const handleCreate = async () => {
-    setCreating(true);
+  const availableTags = useMemo(() => {
+    const allTags = initiatives.flatMap((initiative) => initiative.tags || []);
+    return Array.from(new Set(allTags)).sort((left, right) => left.localeCompare(right));
+  }, [initiatives]);
+
+  const openCreateDialog = () => {
+    setEditingInitiativeId(null);
+    setFormData({
+      name: '',
+      owner: '',
+      status: 'active',
+      tags: '',
+      target_date: '',
+      notes: '',
+    });
+    setFormOpen(true);
+  };
+
+  const openEditDialog = (initiative: Initiative) => {
+    setEditingInitiativeId(initiative.id);
+    setFormData({
+      name: initiative.name,
+      owner: initiative.owner ? String(initiative.owner) : '',
+      status: initiative.status,
+      tags: (initiative.tags || []).join(', '),
+      target_date: initiative.target_date || '',
+      notes: initiative.notes || '',
+    });
+    setFormOpen(true);
+  };
+
+  const handleSaveInitiative = async () => {
+    setSavingForm(true);
     setError('');
     try {
-      await initiativesApi.create({
+      const tags = formData.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
+      const payload = {
         name: formData.name,
         owner: formData.owner ? Number(formData.owner) : null,
         status: formData.status,
+        tags,
         target_date: formData.target_date || null,
         notes: formData.notes,
-      });
-      setCreateOpen(false);
-      setFormData({ name: '', owner: '', status: 'active', target_date: '', notes: '' });
+      };
+
+      if (editingInitiativeId) {
+        await initiativesApi.update(editingInitiativeId, payload);
+      } else {
+        await initiativesApi.create(payload);
+      }
+
+      setFormOpen(false);
+      setEditingInitiativeId(null);
+      setFormData({ name: '', owner: '', status: 'active', tags: '', target_date: '', notes: '' });
       await loadData();
     } catch (err) {
       if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to create initiative');
+        setError(err.response?.data?.detail || 'Failed to save initiative');
       } else {
-        setError('Failed to create initiative');
+        setError('Failed to save initiative');
       }
     } finally {
-      setCreating(false);
+      setSavingForm(false);
     }
   };
 
@@ -210,7 +264,7 @@ export function InitiativesPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4">Initiatives</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setCreateOpen(true)}>
+        <Button variant="contained" startIcon={<Add />} onClick={openCreateDialog}>
           Add Initiative
         </Button>
       </Box>
@@ -239,6 +293,21 @@ export function InitiativesPage() {
           <MenuItem value="active">Active</MenuItem>
           <MenuItem value="on_hold">On Hold</MenuItem>
           <MenuItem value="completed">Completed</MenuItem>
+        </TextField>
+        <TextField
+          select
+          label="Tag"
+          size="small"
+          value={tagFilter}
+          onChange={(event) => setTagFilter(event.target.value)}
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="all">All Tags</MenuItem>
+          {availableTags.map((tag) => (
+            <MenuItem key={tag} value={tag}>
+              {tag}
+            </MenuItem>
+          ))}
         </TextField>
         <TextField
           select
@@ -286,6 +355,13 @@ export function InitiativesPage() {
                     <TableRow>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{initiative.name}</Typography>
+                        {!!initiative.tags?.length && (
+                          <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {initiative.tags.map((tag) => (
+                              <Chip key={`${initiative.id}-${tag}`} size="small" variant="outlined" label={tag} />
+                            ))}
+                          </Box>
+                        )}
                         {initiative.target_date && (
                           <Typography variant="caption" color="text.secondary">
                             Target: {initiative.target_date}
@@ -335,9 +411,14 @@ export function InitiativesPage() {
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        <Button size="small" variant="outlined" onClick={() => openQuickUpdate(initiative)}>
-                          Add Weekly Update
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Button size="small" variant="outlined" startIcon={<Edit />} onClick={() => openEditDialog(initiative)}>
+                            Edit
+                          </Button>
+                          <Button size="small" variant="outlined" onClick={() => openQuickUpdate(initiative)}>
+                            Add Weekly Update
+                          </Button>
+                        </Box>
                       </TableCell>
                     </TableRow>
                     {isQuickOpen && (
@@ -398,8 +479,8 @@ export function InitiativesPage() {
         </TableContainer>
       )}
 
-      <Dialog open={createOpen} onClose={() => !creating && setCreateOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Initiative</DialogTitle>
+      <Dialog open={formOpen} onClose={() => !savingForm && setFormOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingInitiativeId ? 'Edit Initiative' : 'Add Initiative'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -437,6 +518,13 @@ export function InitiativesPage() {
               <MenuItem value="completed">Completed</MenuItem>
             </TextField>
             <TextField
+              label="Tags"
+              value={formData.tags}
+              onChange={(event) => setFormData((current) => ({ ...current, tags: event.target.value }))}
+              helperText="Comma-separated (example: internal, ops)"
+              fullWidth
+            />
+            <TextField
               label="Target Date"
               type="date"
               value={formData.target_date}
@@ -455,9 +543,9 @@ export function InitiativesPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
-          <Button onClick={handleCreate} variant="contained" disabled={creating || !formData.name.trim()}>
-            {creating ? 'Saving...' : 'Save'}
+          <Button onClick={() => setFormOpen(false)} disabled={savingForm}>Cancel</Button>
+          <Button onClick={handleSaveInitiative} variant="contained" disabled={savingForm || !formData.name.trim()}>
+            {savingForm ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>

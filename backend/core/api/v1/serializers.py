@@ -583,6 +583,7 @@ class InitiativeSerializer(serializers.ModelSerializer):
     current_percent_complete = serializers.SerializerMethodField()
     latest_update = serializers.SerializerMethodField()
     is_update_stale = serializers.SerializerMethodField()
+    tags = serializers.ListField(child=serializers.CharField(max_length=50, allow_blank=True), required=False)
 
     class Meta:
         model = Initiative
@@ -592,6 +593,7 @@ class InitiativeSerializer(serializers.ModelSerializer):
             "owner",
             "owner_name",
             "status",
+            "tags",
             "target_date",
             "notes",
             "created_at",
@@ -633,3 +635,23 @@ class InitiativeSerializer(serializers.ModelSerializer):
     )
     def get_is_update_stale(self, obj):
         return obj.is_update_stale(days=7)
+
+    def validate_tags(self, value):
+        if value is None:
+            return []
+
+        normalized_tags = []
+        seen = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError("Each tag must be a string.")
+            tag = item.strip()
+            if not tag:
+                continue
+            key = tag.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized_tags.append(tag)
+
+        return normalized_tags

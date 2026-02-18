@@ -277,11 +277,12 @@ class StaffFilter(django_filters.FilterSet):
 class InitiativeFilter(django_filters.FilterSet):
     status = django_filters.CharFilter(field_name="status")
     owner_id = django_filters.NumberFilter(field_name="owner_id")
+    tags = django_filters.CharFilter(method="filter_tags")
     stale = django_filters.CharFilter(method="filter_stale")
 
     class Meta:
         model = Initiative
-        fields = ["status", "owner_id", "stale"]
+        fields = ["status", "owner_id", "tags", "stale"]
 
     def filter_stale(self, queryset, name, value):
         b = _parse_bool(value)
@@ -294,6 +295,20 @@ class InitiativeFilter(django_filters.FilterSet):
         return queryset.filter(
             pk__in=[initiative.pk for initiative in queryset if not initiative.is_update_stale(days=7)]
         )
+
+    def filter_tags(self, queryset, name, value):
+        raw_tags = [part.strip() for part in (value or "").split(",")]
+        requested = {tag.lower() for tag in raw_tags if tag}
+        if not requested:
+            return queryset
+
+        matching_ids = []
+        for initiative in queryset:
+            initiative_tags = {str(tag).strip().lower() for tag in (initiative.tags or []) if str(tag).strip()}
+            if initiative_tags.intersection(requested):
+                matching_ids.append(initiative.pk)
+
+        return queryset.filter(pk__in=matching_ids)
 
 
 class InitiativeWeeklyUpdateFilter(django_filters.FilterSet):

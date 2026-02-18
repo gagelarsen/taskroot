@@ -14,6 +14,9 @@ from core.models import (
     DeliverableAssignment,
     DeliverableStatusUpdate,
     DeliverableTimeEntry,
+    Initiative,
+    InitiativeWeeklyUpdate,
+    Task,
 )
 
 
@@ -488,6 +491,65 @@ class TestCSVExports:
 
         response = client.get("/api/v1/exports/contract-burn.csv?contract_id=99999")
         assert response.status_code == 404
+
+    def test_contracts_deliverables_tasks_csv_exports(self, admin_user, admin_profile):
+        contract = Contract.objects.create(
+            name="Export Contract",
+            client_name="Client Co",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("500.00"),
+            status="active",
+            tags=["Internal"],
+        )
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="Export Deliverable",
+            status="in_progress",
+            budget_hours=Decimal("120.00"),
+        )
+        Task.objects.create(
+            deliverable=deliverable,
+            title="Export Task",
+            budget_hours=Decimal("10.00"),
+            percent_complete=Decimal("20.00"),
+            status="todo",
+            assignee=admin_profile,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        for endpoint in ["contracts.csv", "deliverables.csv", "tasks.csv"]:
+            response = client.get(f"/api/v1/exports/{endpoint}")
+            assert response.status_code == 200
+            assert response["Content-Type"] == "text/csv"
+
+    def test_initiatives_csv_exports(self, admin_user, admin_profile):
+        initiative = Initiative.objects.create(
+            name="Export Initiative",
+            owner=admin_profile,
+            status="active",
+            tags=["Ops"],
+        )
+        InitiativeWeeklyUpdate.objects.create(
+            initiative=initiative,
+            period_end=date(2026, 2, 14),
+            percent_complete=Decimal("45.00"),
+            summary="Progressing",
+            created_by=admin_profile,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get("/api/v1/exports/initiatives.csv")
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/csv"
+
+        response = client.get(f"/api/v1/exports/initiative-weekly-updates.csv?initiative_id={initiative.id}")
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/csv"
 
 
 @pytest.mark.django_db

@@ -20,6 +20,7 @@ class Initiative(models.Model):
         related_name="initiatives",
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    tags = models.JSONField(default=list, blank=True)
     target_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, default="")
 

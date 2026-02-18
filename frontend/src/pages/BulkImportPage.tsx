@@ -1,5 +1,5 @@
-import { Alert, Box, Button, Card, CardContent, LinearProgress, Paper, Stack, Typography } from '@mui/material';
-import { UploadFile } from '@mui/icons-material';
+import { Alert, Box, Button, Card, CardContent, LinearProgress, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Download, UploadFile } from '@mui/icons-material';
 import { useState } from 'react';
 import { apiClient } from '../api/client';
 
@@ -27,6 +27,60 @@ export function BulkImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'data' | 'time-entries'>('data');
+  const [exportError, setExportError] = useState('');
+  const [exportingKey, setExportingKey] = useState<string | null>(null);
+  const [contractBurnId, setContractBurnId] = useState('');
+
+  const downloadBlob = (blob: Blob, fileName: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const fileNameFromDisposition = (contentDisposition: string | undefined, fallback: string) => {
+    if (!contentDisposition) {
+      return fallback;
+    }
+
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      return decodeURIComponent(utf8Match[1]);
+    }
+
+    const basicMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+    return basicMatch?.[1] || fallback;
+  };
+
+  const handleExport = async (key: string, endpoint: string, fallbackFileName: string) => {
+    setExportError('');
+    setExportingKey(key);
+    try {
+      const response = await apiClient.get(endpoint, { responseType: 'blob' });
+      const contentDisposition = response.headers['content-disposition'] as string | undefined;
+      const fileName = fileNameFromDisposition(contentDisposition, fallbackFileName);
+      downloadBlob(response.data, fileName);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: unknown } };
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const parsed = JSON.parse(text) as { error?: string; detail?: string };
+          setExportError(parsed.error || parsed.detail || 'Failed to export CSV');
+        } catch {
+          setExportError('Failed to export CSV');
+        }
+      } else {
+        setExportError('Failed to export CSV');
+      }
+    } finally {
+      setExportingKey(null);
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,6 +128,105 @@ export function BulkImportPage() {
       </Typography>
 
       <Stack spacing={3}>
+        {/* CSV Exports */}
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              CSV Exports
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Download data in CSV format for stakeholder spreadsheets.
+            </Typography>
+
+            {exportError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {exportError}
+              </Alert>
+            )}
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() => handleExport('contracts', '/exports/contracts.csv', 'contracts.csv')}
+                disabled={!!exportingKey}
+              >
+                {exportingKey === 'contracts' ? 'Exporting...' : 'Export Contracts'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() => handleExport('deliverables', '/exports/deliverables.csv', 'deliverables.csv')}
+                disabled={!!exportingKey}
+              >
+                {exportingKey === 'deliverables' ? 'Exporting...' : 'Export Deliverables'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() => handleExport('tasks', '/exports/tasks.csv', 'tasks.csv')}
+                disabled={!!exportingKey}
+              >
+                {exportingKey === 'tasks' ? 'Exporting...' : 'Export Tasks'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() => handleExport('initiatives', '/exports/initiatives.csv', 'initiatives.csv')}
+                disabled={!!exportingKey}
+              >
+                {exportingKey === 'initiatives' ? 'Exporting...' : 'Export Initiatives'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() =>
+                  handleExport(
+                    'initiative-updates',
+                    '/exports/initiative-weekly-updates.csv',
+                    'initiative_weekly_updates.csv'
+                  )
+                }
+                disabled={!!exportingKey}
+              >
+                {exportingKey === 'initiative-updates' ? 'Exporting...' : 'Export Initiative Updates'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() => handleExport('time-entries', '/exports/time-entries.csv', 'time_entries.csv')}
+                disabled={!!exportingKey}
+              >
+                {exportingKey === 'time-entries' ? 'Exporting...' : 'Export Time Entries'}
+              </Button>
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
+              <TextField
+                label="Contract ID"
+                size="small"
+                value={contractBurnId}
+                onChange={(event) => setContractBurnId(event.target.value)}
+                sx={{ maxWidth: 220 }}
+              />
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={() =>
+                  handleExport(
+                    'contract-burn',
+                    `/exports/contract-burn.csv?contract_id=${encodeURIComponent(contractBurnId)}`,
+                    'contract_burn.csv'
+                  )
+                }
+                disabled={!contractBurnId.trim() || !!exportingKey}
+              >
+                {exportingKey === 'contract-burn' ? 'Exporting...' : 'Export Contract Burn'}
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+
         {/* Import Type Selection */}
         <Card>
           <CardContent>

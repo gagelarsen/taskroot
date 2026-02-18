@@ -221,6 +221,17 @@ class TestV1CrudSmoke:
         assert r.status_code == 200
         assert any(item["id"] == initiative_id for item in r.data["results"])
 
+    def test_initiative_create_and_update_tags(self, api_client):
+        payload = {"name": "Internal Ops", "status": "active", "tags": ["Internal", "Ops", "internal", " "]}
+        r = api_client.post("/api/v1/initiatives/", payload, format="json")
+        assert r.status_code == 201, r.data
+        initiative_id = r.data["id"]
+        assert r.data["tags"] == ["Internal", "Ops"]
+
+        r = api_client.patch(f"/api/v1/initiatives/{initiative_id}/", {"tags": ["Strategy"]}, format="json")
+        assert r.status_code == 200, r.data
+        assert r.data["tags"] == ["Strategy"]
+
     def test_initiative_weekly_update_create_and_list(self, api_client):
         initiative = api_client.post(
             "/api/v1/initiatives/",

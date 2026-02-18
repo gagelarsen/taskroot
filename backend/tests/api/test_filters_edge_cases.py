@@ -356,6 +356,16 @@ class TestInitiativeFilters:
         assert current.id not in ids
         assert len(response.data["results"]) == 1
 
+    def test_initiative_filter_tags_matches_any(self, auth_client):
+        tagged = Initiative.objects.create(name="Tagged Initiative", status="active", tags=["Internal", "Ops"])
+        _ = Initiative.objects.create(name="Other Initiative", status="active", tags=["Client"])
+
+        response = auth_client.get("/api/v1/initiatives/?tags=ops,finance")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert tagged.id in ids
+        assert len(ids) == 1
+
 
 @pytest.mark.django_db
 class TestTaskFilters:

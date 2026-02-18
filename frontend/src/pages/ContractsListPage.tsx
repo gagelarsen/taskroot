@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -92,6 +92,11 @@ export function ContractsListPage() {
     { value: 'budget_hours', label: 'Budget' },
   ];
 
+  const availableTags = useMemo(() => {
+    const tags = contracts.flatMap((contract) => contract.tags || []);
+    return Array.from(new Set(tags)).sort((left, right) => left.localeCompare(right));
+  }, [contracts]);
+
   const handleOpenCreateDialog = () => {
     setError('');
     setFormData({
@@ -183,6 +188,27 @@ export function ContractsListPage() {
           {CONTRACT_TYPE_OPTIONS.map((contractTypeOption) => (
             <MenuItem key={contractTypeOption.value} value={contractTypeOption.value}>
               {contractTypeOption.label}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          label="Tag"
+          variant="outlined"
+          size="small"
+          value={filters.tags || ''}
+          onChange={(e) =>
+            setFilters({
+              ...filters,
+              tags: e.target.value || undefined,
+            })
+          }
+          sx={{ minWidth: 180 }}
+        >
+          <MenuItem value="">All Tags</MenuItem>
+          {availableTags.map((tag) => (
+            <MenuItem key={tag} value={tag}>
+              {tag}
             </MenuItem>
           ))}
         </TextField>

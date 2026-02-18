@@ -25,6 +25,15 @@ router.register(r"reports/staff", report_views.StaffReportViewSet, basename="rep
 export_patterns = [
     path("exports/time-entries.csv", export_views.TimeEntriesCSVExport.as_view(), name="export-time-entries"),
     path("exports/contract-burn.csv", export_views.ContractBurnCSVExport.as_view(), name="export-contract-burn"),
+    path("exports/contracts.csv", export_views.ContractsCSVExport.as_view(), name="export-contracts"),
+    path("exports/deliverables.csv", export_views.DeliverablesCSVExport.as_view(), name="export-deliverables"),
+    path("exports/tasks.csv", export_views.TasksCSVExport.as_view(), name="export-tasks"),
+    path("exports/initiatives.csv", export_views.InitiativesCSVExport.as_view(), name="export-initiatives"),
+    path(
+        "exports/initiative-weekly-updates.csv",
+        export_views.InitiativeWeeklyUpdatesCSVExport.as_view(),
+        name="export-initiative-weekly-updates",
+    ),
 ]
 
 # Bulk import endpoints

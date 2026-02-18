@@ -213,6 +213,7 @@ export interface InitiativeWeeklyUpdate {
 export interface Initiative {
   id: number;
   name: string;
+  tags: string[];
   owner: number | null;
   owner_name: string | null;
   status: 'active' | 'on_hold' | 'completed';
@@ -228,6 +229,7 @@ export interface Initiative {
 export interface InitiativeFilters {
   status?: 'active' | 'on_hold' | 'completed';
   owner_id?: number;
+  tags?: string;
   stale?: boolean;
   q?: string;
   order_by?: string;
