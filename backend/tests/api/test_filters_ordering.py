@@ -101,6 +101,30 @@ def test_deliverables_filter_staff_id(client, data):
 
 
 @pytest.mark.django_db
+def test_deliverables_filter_staff_id_excludes_zero_hour_assignments(client, data):
+    s1, _ = data["staff"]
+    _, _, d3 = data["deliverables"]
+
+    DeliverableAssignment.objects.create(deliverable=d3, staff=s1, budget_hours="0.0", is_lead=False)
+
+    r = client.get(f"/api/v1/deliverables/?staff_id={s1.id}")
+    assert r.status_code == 200
+    assert d3.id not in _ids(r.data["results"])
+
+
+@pytest.mark.django_db
+def test_deliverables_filter_staff_id_includes_zero_hour_lead_assignments(client, data):
+    s1, _ = data["staff"]
+    _, _, d3 = data["deliverables"]
+
+    DeliverableAssignment.objects.create(deliverable=d3, staff=s1, budget_hours="0.0", is_lead=True)
+
+    r = client.get(f"/api/v1/deliverables/?staff_id={s1.id}")
+    assert r.status_code == 200
+    assert d3.id in _ids(r.data["results"])
+
+
+@pytest.mark.django_db
 def test_deliverables_filter_lead_only_true(client, data):
     d1, d2, d3 = data["deliverables"]
 

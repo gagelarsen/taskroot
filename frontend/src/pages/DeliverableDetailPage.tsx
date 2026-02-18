@@ -515,12 +515,19 @@ export function DeliverableDetailPage() {
                   Health Flags
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                  {(() => {
+                    const isComplete = parseFloat(deliverable.estimated_percent_complete) >= 100;
+                    return (
+                      <>
                   {deliverable.is_over_budget && <StatusBadge type="over_budget" />}
                   {deliverable.is_missing_lead && <StatusBadge type="missing_lead" />}
-                  {deliverable.is_missing_budget && <StatusBadge type="missing_budget" />}
-                  {!deliverable.is_over_budget && !deliverable.is_missing_lead && !deliverable.is_missing_budget && (
+                  {!isComplete && deliverable.is_missing_budget && <StatusBadge type="missing_budget" />}
+                  {!deliverable.is_over_budget && !deliverable.is_missing_lead && (isComplete || !deliverable.is_missing_budget) && (
                     <StatusBadge type="on_track" />
                   )}
+                      </>
+                    );
+                  })()}
                 </Box>
               </Box>
             </Box>

@@ -243,7 +243,9 @@ export function DeliverableListPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {deliverables.map((deliverable) => (
+            {deliverables.map((deliverable) => {
+              const isComplete = parseFloat(deliverable.estimated_percent_complete) >= 100;
+              return (
               <TableRow
                 key={deliverable.id}
                 hover
@@ -289,12 +291,14 @@ export function DeliverableListPage() {
                   <Stack direction="row" spacing={0.5}>
                     {deliverable.is_overassigned && <Chip label="Overassigned" size="small" color="warning" />}
                     {deliverable.is_over_budget && <Chip label="Over Budget" size="small" color="error" />}
-                    {deliverable.is_missing_budget && <Chip label="Missing Budget" size="small" color="info" />}
+                    {!isComplete && deliverable.is_missing_budget && <Chip label="Missing Budget" size="small" color="info" />}
                     {deliverable.is_missing_lead && <Chip label="Missing Lead" size="small" color="info" />}
+                    {(deliverable.assignments?.length || 0) === 0 && <Chip label="Unassigned" size="small" color="info" variant="outlined" />}
                   </Stack>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
             {deliverables.length === 0 && (
               <TableRow>
                 <TableCell colSpan={10} align="center">

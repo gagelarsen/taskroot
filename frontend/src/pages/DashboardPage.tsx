@@ -6,10 +6,16 @@ import {
   Chip,
   Collapse,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   IconButton,
+  Menu,
   MenuItem,
   Paper,
+  Stack,
   Switch,
   Table,
   TableBody,
@@ -24,8 +30,8 @@ import {
 import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { contractsApi, deliverablesApi, initiativeWeeklyUpdatesApi, initiativesApi, staffApi, statusUpdatesApi } from '../api/client';
-import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative, Staff } from '../types/api';
+import { assignmentsApi, contractsApi, deliverablesApi, initiativeWeeklyUpdatesApi, initiativesApi, staffApi, statusUpdatesApi, tasksApi } from '../api/client';
+import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative, Staff, Task } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
 import { formatContractStatusLabel } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
@@ -128,13 +134,21 @@ function isStatusUpdateStale(deliverable: Deliverable): boolean {
   return getDaysSince(deliverable.latest_status_update.period_end) > 7;
 }
 
+function getAssignedStaffNames(deliverable: Deliverable): string[] {
+  return (deliverable.assignments || []).map((assignment) => assignment.staff_name || `Staff #${assignment.staff}`);
+}
+
 export function DashboardPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [deliverablesByContract, setDeliverablesByContract] = useState<Record<number, Deliverable[]>>({});
   const [loadingDeliverablesByContract, setLoadingDeliverablesByContract] = useState<Record<number, boolean>>({});
   const [expandedContractIds, setExpandedContractIds] = useState<number[]>([]);
   const [showStaleOnlyByContract, setShowStaleOnlyByContract] = useState<Record<number, boolean>>({});
-  const [quickAddDeliverableId, setQuickAddDeliverableId] = useState<number | null>(null);
+  const [quickAddDialogDeliverable, setQuickAddDialogDeliverable] = useState<Deliverable | null>(null);
+  const [quickAddDialogContractId, setQuickAddDialogContractId] = useState<number | null>(null);
+  const [quickAddTasks, setQuickAddTasks] = useState<Task[]>([]);
+  const [loadingQuickAddTasks, setLoadingQuickAddTasks] = useState(false);
+  const [taskPercentById, setTaskPercentById] = useState<Record<number, string>>({});
   const [quickAddStatusUpdate, setQuickAddStatusUpdate] = useState<{
     period_end: string;
     status: DeliverableStatusUpdate['status'];
@@ -145,7 +159,16 @@ export function DashboardPage() {
     summary: '',
   });
   const [savingQuickAddDeliverableId, setSavingQuickAddDeliverableId] = useState<number | null>(null);
-  const [quickAddErrorByDeliverableId, setQuickAddErrorByDeliverableId] = useState<Record<number, string>>({});
+  const [quickAddError, setQuickAddError] = useState('');
+  const [unassignedMenuDeliverableId, setUnassignedMenuDeliverableId] = useState<number | null>(null);
+  const [unassignedMenuPosition, setUnassignedMenuPosition] = useState<{ mouseX: number; mouseY: number } | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigningDeliverableId, setAssigningDeliverableId] = useState<number | null>(null);
+  const [assigningStaffId, setAssigningStaffId] = useState('');
+  const [assigningBudgetHours, setAssigningBudgetHours] = useState('0');
+  const [assigningIsLead, setAssigningIsLead] = useState(false);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [assignDialogError, setAssignDialogError] = useState('');
   const [loading, setLoading] = useState(true);
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [staffMembers, setStaffMembers] = useState<Staff[]>([]);
@@ -290,25 +313,165 @@ export function DashboardPage() {
     return fallbackMessage;
   };
 
-  const startQuickAddStatusUpdate = (deliverableId: number) => {
-    setQuickAddDeliverableId(deliverableId);
+  const startQuickAddStatusUpdate = async (contractId: number, deliverable: Deliverable) => {
+    setQuickAddDialogContractId(contractId);
+    setQuickAddDialogDeliverable(deliverable);
     setQuickAddStatusUpdate({
       period_end: new Date().toISOString().split('T')[0],
       status: 'on_track',
       summary: '',
     });
-    setQuickAddErrorByDeliverableId((current) => ({ ...current, [deliverableId]: '' }));
+    setQuickAddError('');
+    setQuickAddTasks([]);
+    setTaskPercentById({});
+    setLoadingQuickAddTasks(true);
+
+    try {
+      const tasks: Task[] = await tasksApi.list({
+        deliverable_id: deliverable.id,
+        order_by: 'id',
+        order_dir: 'asc',
+      });
+      setQuickAddTasks(tasks);
+      setTaskPercentById(
+        tasks.reduce((current: Record<number, string>, task: Task) => {
+          current[task.id] = task.percent_complete || '0';
+          return current;
+        }, {})
+      );
+    } catch {
+      setQuickAddError('Failed to load tasks for this deliverable');
+    } finally {
+      setLoadingQuickAddTasks(false);
+    }
   };
 
   const cancelQuickAddStatusUpdate = () => {
-    setQuickAddDeliverableId(null);
+    setQuickAddDialogContractId(null);
+    setQuickAddDialogDeliverable(null);
+    setQuickAddTasks([]);
+    setTaskPercentById({});
+    setQuickAddError('');
+  };
+
+  const openUnassignedMenu = (event: React.MouseEvent, deliverableId: number) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setUnassignedMenuDeliverableId(deliverableId);
+    setUnassignedMenuPosition({ mouseX: event.clientX + 2, mouseY: event.clientY - 6 });
+  };
+
+  const closeUnassignedMenu = () => {
+    setUnassignedMenuPosition(null);
+  };
+
+  const openEditDeliverableFromMenu = () => {
+    if (!unassignedMenuDeliverableId) {
+      closeUnassignedMenu();
+      return;
+    }
+    const deliverableId = unassignedMenuDeliverableId;
+    closeUnassignedMenu();
+    navigate(`/deliverables/${deliverableId}/edit`);
+  };
+
+  const openAssignDialogFromMenu = () => {
+    if (!unassignedMenuDeliverableId) {
+      closeUnassignedMenu();
+      return;
+    }
+    setAssigningDeliverableId(unassignedMenuDeliverableId);
+    setAssigningStaffId('');
+    setAssigningBudgetHours('0');
+    setAssigningIsLead(false);
+    setAssignDialogError('');
+    setAssignDialogOpen(true);
+    closeUnassignedMenu();
+  };
+
+  const closeAssignDialog = () => {
+    if (savingAssignment) {
+      return;
+    }
+    setAssignDialogOpen(false);
+    setAssigningDeliverableId(null);
+    setAssignDialogError('');
+  };
+
+  const saveAssignment = async () => {
+    if (!assigningDeliverableId) {
+      return;
+    }
+    if (!assigningStaffId) {
+      setAssignDialogError('Staff member is required');
+      return;
+    }
+
+    setSavingAssignment(true);
+    setAssignDialogError('');
+    try {
+      await assignmentsApi.create({
+        deliverable: assigningDeliverableId,
+        staff: Number(assigningStaffId),
+        budget_hours: assigningBudgetHours,
+        is_lead: assigningIsLead,
+      });
+
+      if (quickAddDialogDeliverable?.id === assigningDeliverableId) {
+        const selectedStaff = staffMembers.find((staffMember) => staffMember.id === Number(assigningStaffId));
+        if (selectedStaff) {
+          setQuickAddDialogDeliverable((current) => {
+            if (!current || current.id !== assigningDeliverableId) {
+              return current;
+            }
+            return {
+              ...current,
+              assignments: [
+                ...(current.assignments || []),
+                {
+                  id: -Date.now(),
+                  deliverable: assigningDeliverableId,
+                  staff: selectedStaff.id,
+                  staff_name: `${selectedStaff.first_name} ${selectedStaff.last_name}`,
+                  budget_hours: assigningBudgetHours,
+                  is_lead: assigningIsLead,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+              ],
+            };
+          });
+        }
+      }
+
+      if (quickAddDialogContractId) {
+        await loadContractDeliverables(quickAddDialogContractId, true);
+      }
+      closeAssignDialog();
+    } catch (err) {
+      setAssignDialogError(getApiErrorMessage(err, 'Failed to save assignment'));
+    } finally {
+      setSavingAssignment(false);
+    }
   };
 
   const saveQuickAddStatusUpdate = async (contractId: number, deliverableId: number) => {
     setSavingQuickAddDeliverableId(deliverableId);
-    setQuickAddErrorByDeliverableId((current) => ({ ...current, [deliverableId]: '' }));
+    setQuickAddError('');
 
     try {
+      const taskUpdates = quickAddTasks.filter((task) => (taskPercentById[task.id] || '0') !== task.percent_complete);
+
+      if (taskUpdates.length > 0) {
+        await Promise.all(
+          taskUpdates.map((task) =>
+            tasksApi.update(task.id, {
+              percent_complete: taskPercentById[task.id] || '0',
+            })
+          )
+        );
+      }
+
       await statusUpdatesApi.create({
         deliverable: deliverableId,
         period_end: quickAddStatusUpdate.period_end,
@@ -316,13 +479,11 @@ export function DashboardPage() {
         summary: quickAddStatusUpdate.summary,
       });
 
-      setQuickAddDeliverableId(null);
+      cancelQuickAddStatusUpdate();
       await loadContractDeliverables(contractId, true);
+      await loadContracts();
     } catch (err) {
-      setQuickAddErrorByDeliverableId((current) => ({
-        ...current,
-        [deliverableId]: getApiErrorMessage(err, 'Failed to save status update'),
-      }));
+      setQuickAddError(getApiErrorMessage(err, 'Failed to save status update'));
     } finally {
       setSavingQuickAddDeliverableId(null);
     }
@@ -791,14 +952,14 @@ export function DashboardPage() {
                                   {visibleDeliverables.map((deliverable) => {
                                     const latestStatusUpdate = deliverable.latest_status_update;
                                     const isStale = isStatusUpdateStale(deliverable);
-                                    const isQuickAddOpen = quickAddDeliverableId === deliverable.id;
-                                    const quickAddError = quickAddErrorByDeliverableId[deliverable.id];
+                                    const isUnassigned = (deliverable.assignments?.length || 0) === 0;
 
                                     return (
                                       <Fragment key={deliverable.id}>
                                         <TableRow
                                           hover
                                           onClick={() => navigate(`/deliverables/${deliverable.id}`)}
+                                          onContextMenu={(event) => openUnassignedMenu(event, deliverable.id)}
                                           sx={{ cursor: 'pointer' }}
                                         >
                                           <TableCell sx={{ width: 320, maxWidth: 320 }}>
@@ -846,6 +1007,14 @@ export function DashboardPage() {
                                               ) : (
                                                 <Chip label="Current" size="small" color="success" variant="outlined" />
                                               )}
+                                              {isUnassigned && (
+                                                <Chip
+                                                  label="Unassigned"
+                                                  size="small"
+                                                  color="info"
+                                                  variant="outlined"
+                                                />
+                                              )}
                                               <Typography variant="caption" color="text.secondary">
                                                 {latestStatusUpdate ? formatDate(new Date(latestStatusUpdate.period_end)) : 'No report date'}
                                               </Typography>
@@ -859,92 +1028,14 @@ export function DashboardPage() {
                                             <Button
                                               size="small"
                                               variant="outlined"
-                                              onClick={() => startQuickAddStatusUpdate(deliverable.id)}
+                                              onClick={() => {
+                                                void startQuickAddStatusUpdate(contract.id, deliverable);
+                                              }}
                                             >
                                               Add Update
                                             </Button>
                                           </TableCell>
                                         </TableRow>
-                                        {isQuickAddOpen && (
-                                          <TableRow>
-                                            <TableCell colSpan={6}>
-                                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                                {quickAddError && (
-                                                  <Alert severity="error" sx={{ py: 0 }}>
-                                                    {quickAddError}
-                                                  </Alert>
-                                                )}
-                                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                                  <TextField
-                                                    label="Period End"
-                                                    type="date"
-                                                    size="small"
-                                                    value={quickAddStatusUpdate.period_end}
-                                                    onChange={(event) =>
-                                                      setQuickAddStatusUpdate((current) => ({
-                                                        ...current,
-                                                        period_end: event.target.value,
-                                                      }))
-                                                    }
-                                                    slotProps={{ inputLabel: { shrink: true } }}
-                                                  />
-                                                  <TextField
-                                                    label="Status"
-                                                    select
-                                                    size="small"
-                                                    value={quickAddStatusUpdate.status}
-                                                    onChange={(event) =>
-                                                      setQuickAddStatusUpdate((current) => ({
-                                                        ...current,
-                                                        status: event.target.value as DeliverableStatusUpdate['status'],
-                                                      }))
-                                                    }
-                                                    sx={{ minWidth: 170 }}
-                                                  >
-                                                    <MenuItem value="on_track">On Track</MenuItem>
-                                                    <MenuItem value="at_risk">At Risk</MenuItem>
-                                                    <MenuItem value="off_track">Off Track</MenuItem>
-                                                  </TextField>
-                                                  <TextField
-                                                    label="Summary"
-                                                    size="small"
-                                                    value={quickAddStatusUpdate.summary}
-                                                    onChange={(event) =>
-                                                      setQuickAddStatusUpdate((current) => ({
-                                                        ...current,
-                                                        summary: event.target.value,
-                                                      }))
-                                                    }
-                                                    onKeyDown={(event) => {
-                                                      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                                                        event.preventDefault();
-                                                        if (savingQuickAddDeliverableId !== deliverable.id) {
-                                                          void saveQuickAddStatusUpdate(contract.id, deliverable.id);
-                                                        }
-                                                      }
-                                                    }}
-                                                    multiline
-                                                    minRows={2}
-                                                    sx={{ flex: 1, minWidth: 300 }}
-                                                  />
-                                                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                                    <Button
-                                                      variant="contained"
-                                                      size="small"
-                                                      onClick={() => saveQuickAddStatusUpdate(contract.id, deliverable.id)}
-                                                      disabled={savingQuickAddDeliverableId === deliverable.id}
-                                                    >
-                                                      {savingQuickAddDeliverableId === deliverable.id ? 'Saving...' : 'Save'}
-                                                    </Button>
-                                                    <Button size="small" onClick={cancelQuickAddStatusUpdate}>
-                                                      Cancel
-                                                    </Button>
-                                                  </Box>
-                                                </Box>
-                                              </Box>
-                                            </TableCell>
-                                          </TableRow>
-                                        )}
                                       </Fragment>
                                     );
                                   })}
@@ -1109,6 +1200,256 @@ export function DashboardPage() {
           </TableContainer>
         )}
       </Box>
+
+      <Dialog
+        open={!!quickAddDialogDeliverable}
+        onClose={() => {
+          if (savingQuickAddDeliverableId === quickAddDialogDeliverable?.id) {
+            return;
+          }
+          cancelQuickAddStatusUpdate();
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Add Deliverable Update
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {quickAddError && (
+              <Alert severity="error">{quickAddError}</Alert>
+            )}
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Deliverable
+              </Typography>
+              <Typography variant="body2">
+                {quickAddDialogDeliverable?.name || (quickAddDialogDeliverable ? `Deliverable #${quickAddDialogDeliverable.id}` : '')}
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Assigned to
+              </Typography>
+              {quickAddDialogDeliverable && getAssignedStaffNames(quickAddDialogDeliverable).length > 0 ? (
+                <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
+                  {getAssignedStaffNames(quickAddDialogDeliverable).map((name) => (
+                    <Chip key={name} size="small" variant="outlined" label={name} />
+                  ))}
+                </Stack>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Chip
+                    label="Unassigned"
+                    size="small"
+                    color="info"
+                    variant="outlined"
+                    onContextMenu={(event) => {
+                      if (quickAddDialogDeliverable) {
+                        openUnassignedMenu(event, quickAddDialogDeliverable.id);
+                      }
+                    }}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    No staff assigned
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                Previous update
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                {quickAddDialogDeliverable?.latest_status_update ? (
+                  <>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      {formatDate(new Date(quickAddDialogDeliverable.latest_status_update.period_end))} • {formatDeliverableStatusLabel(quickAddDialogDeliverable.latest_status_update.status)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {quickAddDialogDeliverable.latest_status_update.summary || 'No summary'}
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No previous update
+                  </Typography>
+                )}
+              </Paper>
+            </Box>
+
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+              <TextField
+                label="Period End"
+                type="date"
+                size="small"
+                value={quickAddStatusUpdate.period_end}
+                onChange={(event) =>
+                  setQuickAddStatusUpdate((current) => ({
+                    ...current,
+                    period_end: event.target.value,
+                  }))
+                }
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                label="Status"
+                select
+                size="small"
+                value={quickAddStatusUpdate.status}
+                onChange={(event) =>
+                  setQuickAddStatusUpdate((current) => ({
+                    ...current,
+                    status: event.target.value as DeliverableStatusUpdate['status'],
+                  }))
+                }
+                sx={{ minWidth: 170 }}
+              >
+                <MenuItem value="on_track">On Track</MenuItem>
+                <MenuItem value="at_risk">At Risk</MenuItem>
+                <MenuItem value="off_track">Off Track</MenuItem>
+              </TextField>
+            </Stack>
+
+            <TextField
+              label="Summary"
+              size="small"
+              value={quickAddStatusUpdate.summary}
+              onChange={(event) =>
+                setQuickAddStatusUpdate((current) => ({
+                  ...current,
+                  summary: event.target.value,
+                }))
+              }
+              multiline
+              minRows={3}
+              fullWidth
+            />
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Tasks (% complete)
+              </Typography>
+              {loadingQuickAddTasks ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                  <CircularProgress size={20} />
+                </Box>
+              ) : quickAddTasks.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No tasks for this deliverable.
+                </Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {quickAddTasks.map((task) => (
+                    <Stack key={task.id} direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
+                      <Typography variant="body2" sx={{ flex: 1 }}>
+                        {task.title}
+                      </Typography>
+                      <TextField
+                        label="% Complete"
+                        type="number"
+                        size="small"
+                        value={taskPercentById[task.id] ?? task.percent_complete}
+                        onChange={(event) =>
+                          setTaskPercentById((current) => ({
+                            ...current,
+                            [task.id]: event.target.value,
+                          }))
+                        }
+                        inputProps={{ min: 0, max: 100, step: 1 }}
+                        sx={{ width: 140 }}
+                      />
+                    </Stack>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={cancelQuickAddStatusUpdate}
+            disabled={savingQuickAddDeliverableId === quickAddDialogDeliverable?.id}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (quickAddDialogContractId && quickAddDialogDeliverable) {
+                void saveQuickAddStatusUpdate(quickAddDialogContractId, quickAddDialogDeliverable.id);
+              }
+            }}
+            disabled={
+              !!quickAddDialogDeliverable && savingQuickAddDeliverableId === quickAddDialogDeliverable.id
+            }
+          >
+            {!!quickAddDialogDeliverable && savingQuickAddDeliverableId === quickAddDialogDeliverable.id ? 'Saving...' : 'Save Update'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Menu
+        open={!!unassignedMenuPosition}
+        onClose={closeUnassignedMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          unassignedMenuPosition
+            ? { top: unassignedMenuPosition.mouseY, left: unassignedMenuPosition.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={openEditDeliverableFromMenu}>Edit deliverable</MenuItem>
+        <MenuItem onClick={openAssignDialogFromMenu}>Assign staff</MenuItem>
+      </Menu>
+
+      <Dialog open={assignDialogOpen} onClose={closeAssignDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Assign Staff</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {assignDialogError && <Alert severity="error">{assignDialogError}</Alert>}
+            <TextField
+              select
+              label="Staff"
+              size="small"
+              value={assigningStaffId}
+              onChange={(event) => setAssigningStaffId(event.target.value)}
+              required
+              fullWidth
+            >
+              <MenuItem value="">Select staff</MenuItem>
+              {staffMembers.map((staffMember) => (
+                <MenuItem key={staffMember.id} value={String(staffMember.id)}>
+                  {staffMember.first_name} {staffMember.last_name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Budget Hours"
+              type="number"
+              size="small"
+              value={assigningBudgetHours}
+              onChange={(event) => setAssigningBudgetHours(event.target.value)}
+              inputProps={{ min: 0, step: 0.5 }}
+              fullWidth
+            />
+            <FormControlLabel
+              control={<Switch checked={assigningIsLead} onChange={(event) => setAssigningIsLead(event.target.checked)} />}
+              label="Lead assignment"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeAssignDialog} disabled={savingAssignment}>Cancel</Button>
+          <Button onClick={saveAssignment} variant="contained" disabled={savingAssignment || !assigningStaffId}>
+            {savingAssignment ? 'Saving...' : 'Save Assignment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

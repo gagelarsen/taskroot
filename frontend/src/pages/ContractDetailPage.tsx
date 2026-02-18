@@ -406,7 +406,9 @@ export function ContractDetailPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {deliverables.map((deliverable) => (
+            {deliverables.map((deliverable) => {
+              const isComplete = parseFloat(deliverable.estimated_percent_complete) >= 100;
+              return (
               <TableRow
                 key={deliverable.id}
                 hover
@@ -447,11 +449,13 @@ export function ContractDetailPage() {
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                     {deliverable.is_over_budget && <StatusBadge type="over_budget" />}
                     {deliverable.is_missing_lead && <StatusBadge type="missing_lead" />}
-                    {deliverable.is_missing_budget && <StatusBadge type="missing_budget" />}
+                    {!isComplete && deliverable.is_missing_budget && <StatusBadge type="missing_budget" />}
+                    {(deliverable.assignments?.length || 0) === 0 && <StatusBadge type="unassigned" />}
                   </Box>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
             {deliverables.length === 0 && (
               <TableRow>
                 <TableCell colSpan={10} align="center">

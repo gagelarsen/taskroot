@@ -1,5 +1,5 @@
 import django_filters
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Q
 
 from core.models import (
     Contract,
@@ -123,9 +123,17 @@ class DeliverableFilter(django_filters.FilterSet):
         ]
 
     def filter_staff_id(self, queryset, name, value):
-        # Deliverables where the given staff member is assigned
+        # Deliverables where the given staff member is assigned and either:
+        # - has positive budgeted hours, or
+        # - is the lead (retain visibility even at 0 hours)
         # NumberFilter ensures value is valid or method isn't called
-        return queryset.filter(assignments__staff_id=value).distinct()
+        return (
+            queryset.filter(
+                assignments__staff_id=value,
+            )
+            .filter(Q(assignments__budget_hours__gt=0) | Q(assignments__is_lead=True))
+            .distinct()
+        )
 
     def filter_lead_only(self, queryset, name, value):
         b = _parse_bool(value)
