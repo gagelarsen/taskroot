@@ -24,8 +24,8 @@ import {
 import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { contractsApi, deliverablesApi, initiativeWeeklyUpdatesApi, initiativesApi, statusUpdatesApi } from '../api/client';
-import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative } from '../types/api';
+import { contractsApi, deliverablesApi, initiativeWeeklyUpdatesApi, initiativesApi, staffApi, statusUpdatesApi } from '../api/client';
+import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative, Staff } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
 import { formatContractStatusLabel } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
@@ -148,11 +148,15 @@ export function DashboardPage() {
   const [quickAddErrorByDeliverableId, setQuickAddErrorByDeliverableId] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
+  const [staffMembers, setStaffMembers] = useState<Staff[]>([]);
   const [loadingInitiatives, setLoadingInitiatives] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [contractType, setContractType] = useState<'all' | Contract['contract_type']>('all');
   const [tagFilter, setTagFilter] = useState('all');
+  const [staffFilterId, setStaffFilterId] = useState<'all' | number>('all');
+  const [selectedStaffContractIds, setSelectedStaffContractIds] = useState<number[]>([]);
+  const [selectedStaffDeliverableIds, setSelectedStaffDeliverableIds] = useState<number[]>([]);
   const [showInactive, setShowInactive] = useState(false);
   const [flag, setFlag] = useState<FlagFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('projected_lateness_days');
@@ -203,6 +207,44 @@ export function DashboardPage() {
   useEffect(() => {
     void loadInitiatives();
   }, [loadInitiatives]);
+
+  const loadStaff = useCallback(async () => {
+    try {
+      const data = await staffApi.list({ order_by: 'id', order_dir: 'asc' });
+      setStaffMembers(data);
+    } catch {
+      setStaffMembers([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStaff();
+  }, [loadStaff]);
+
+  const loadSelectedStaffAssignments = useCallback(async () => {
+    if (staffFilterId === 'all') {
+      setSelectedStaffContractIds([]);
+      setSelectedStaffDeliverableIds([]);
+      return;
+    }
+
+    try {
+      const staffDeliverables: Deliverable[] = await deliverablesApi.list({
+        staff_id: staffFilterId,
+        order_by: 'id',
+        order_dir: 'desc',
+      });
+      setSelectedStaffContractIds(Array.from(new Set(staffDeliverables.map((deliverable) => deliverable.contract))));
+      setSelectedStaffDeliverableIds(staffDeliverables.map((deliverable) => deliverable.id));
+    } catch {
+      setSelectedStaffContractIds([]);
+      setSelectedStaffDeliverableIds([]);
+    }
+  }, [staffFilterId]);
+
+  useEffect(() => {
+    void loadSelectedStaffAssignments();
+  }, [loadSelectedStaffAssignments]);
 
   const loadContractDeliverables = useCallback(async (contractId: number, force = false) => {
     if (!force && deliverablesByContract[contractId]) {
@@ -314,6 +356,10 @@ export function DashboardPage() {
         return false;
       }
 
+      if (staffFilterId !== 'all' && !selectedStaffContractIds.includes(contract.id)) {
+        return false;
+      }
+
       if (tagFilter !== 'all') {
         const contractTags = (contract.tags || []).map((tag) => tag.toLowerCase());
         if (!contractTags.includes(tagFilter.toLowerCase())) {
@@ -341,12 +387,19 @@ export function DashboardPage() {
 
       return true;
     });
-  }, [contracts, search, contractType, tagFilter, showInactive, flag]);
+  }, [contracts, search, contractType, tagFilter, staffFilterId, selectedStaffContractIds, showInactive, flag]);
 
   const availableTags = useMemo(() => {
     const allTags = contracts.flatMap((contract) => contract.tags || []);
     return Array.from(new Set(allTags)).sort((left, right) => left.localeCompare(right));
   }, [contracts]);
+
+  const filteredInitiatives = useMemo(() => {
+    if (staffFilterId === 'all') {
+      return initiatives;
+    }
+    return initiatives.filter((initiative) => initiative.owner === staffFilterId);
+  }, [initiatives, staffFilterId]);
 
   const sortedContracts = useMemo(() => {
     const valueForSort = (contract: Contract): string | number => {
@@ -526,6 +579,23 @@ export function DashboardPage() {
             </MenuItem>
           ))}
         </TextField>
+        <TextField
+          select
+          label="Staff"
+          size="small"
+          value={staffFilterId === 'all' ? 'all' : String(staffFilterId)}
+          onChange={(event) =>
+            setStaffFilterId(event.target.value === 'all' ? 'all' : Number(event.target.value))
+          }
+          sx={{ minWidth: 220 }}
+        >
+          <MenuItem value="all">All Staff</MenuItem>
+          {staffMembers.map((staffMember) => (
+            <MenuItem key={staffMember.id} value={String(staffMember.id)}>
+              {staffMember.first_name} {staffMember.last_name}
+            </MenuItem>
+          ))}
+        </TextField>
         <FormControlLabel
           control={
             <Switch
@@ -572,9 +642,12 @@ export function DashboardPage() {
                 const contractDeliverables = deliverablesByContract[contract.id] || [];
                 const loadingContractDeliverables = loadingDeliverablesByContract[contract.id];
                 const showStaleOnly = !!showStaleOnlyByContract[contract.id];
+                const staffScopedDeliverables = staffFilterId === 'all'
+                  ? contractDeliverables
+                  : contractDeliverables.filter((deliverable) => selectedStaffDeliverableIds.includes(deliverable.id));
                 const visibleDeliverables = showStaleOnly
-                  ? contractDeliverables.filter((deliverable) => isStatusUpdateStale(deliverable))
-                  : contractDeliverables;
+                  ? staffScopedDeliverables.filter((deliverable) => isStatusUpdateStale(deliverable))
+                  : staffScopedDeliverables;
                 const assignedPerWeek = toNumber(contract.assigned_budget_hours_per_week);
                 const burn4Week = toNumber(contract.actual_burn_rate);
                 const variancePerWeek = burn4Week - assignedPerWeek;
@@ -900,8 +973,10 @@ export function DashboardPage() {
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
             <CircularProgress size={20} />
           </Box>
-        ) : initiatives.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No initiatives yet.</Typography>
+        ) : filteredInitiatives.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {staffFilterId === 'all' ? 'No initiatives yet.' : 'No initiatives assigned to this staff member.'}
+          </Typography>
         ) : (
           <TableContainer component={Paper}>
             <Table size="small">
@@ -916,7 +991,7 @@ export function DashboardPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {initiatives.map((initiative) => {
+                {filteredInitiatives.map((initiative) => {
                   const latest = initiative.latest_update;
                   const isQuickOpen = initiativeQuickUpdateId === initiative.id;
                   return (
