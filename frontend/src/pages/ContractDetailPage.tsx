@@ -18,6 +18,8 @@ import {
   Stack,
   Tabs,
   Tab,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { ArrowBack, Add, Edit } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -40,6 +42,7 @@ export function ContractDetailPage() {
   const navigate = useNavigate();
   const [contract, setContract] = useState<Contract | null>(null);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
+  const [showCompleteDeliverables, setShowCompleteDeliverables] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,6 +84,10 @@ export function ContractDetailPage() {
   if (error || !contract) {
     return <Alert severity="error">{error || 'Contract not found'}</Alert>;
   }
+
+  const visibleDeliverables = showCompleteDeliverables
+    ? deliverables
+    : deliverables.filter((deliverable) => parseFloat(deliverable.estimated_percent_complete) < 100);
 
   return (
     <Box>
@@ -380,13 +387,25 @@ export function ContractDetailPage() {
         <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 2 }}>
         <Typography variant="h5">Deliverables</Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => navigate(`/deliverables/new?contract=${contract.id}`)}
-        >
-          Create Deliverable
-        </Button>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={showCompleteDeliverables}
+                onChange={(event) => setShowCompleteDeliverables(event.target.checked)}
+              />
+            }
+            label="Show complete"
+          />
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => navigate(`/deliverables/new?contract=${contract.id}`)}
+          >
+            Create Deliverable
+          </Button>
+        </Stack>
       </Box>
 
       <TableContainer component={Paper}>
@@ -406,7 +425,7 @@ export function ContractDetailPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {deliverables.map((deliverable) => {
+            {visibleDeliverables.map((deliverable) => {
               const isComplete = parseFloat(deliverable.estimated_percent_complete) >= 100;
               return (
               <TableRow
@@ -456,7 +475,7 @@ export function ContractDetailPage() {
               </TableRow>
               );
             })}
-            {deliverables.length === 0 && (
+            {visibleDeliverables.length === 0 && (
               <TableRow>
                 <TableCell colSpan={10} align="center">
                   No deliverables found

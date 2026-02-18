@@ -20,6 +20,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +45,7 @@ export function DeliverableListPage() {
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showComplete, setShowComplete] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     contract: 0,
@@ -52,6 +55,10 @@ export function DeliverableListPage() {
     target_completion_date: '',
   });
   const navigate = useNavigate();
+
+  const visibleDeliverables = showComplete
+    ? deliverables
+    : deliverables.filter((deliverable) => parseFloat(deliverable.estimated_percent_complete) < 100);
 
   // Load contracts for the filter dropdown
   useEffect(() => {
@@ -224,6 +231,16 @@ export function DeliverableListPage() {
           <MenuItem value="asc">Ascending</MenuItem>
           <MenuItem value="desc">Descending</MenuItem>
         </TextField>
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={showComplete}
+              onChange={(event) => setShowComplete(event.target.checked)}
+            />
+          }
+          label="Show complete"
+        />
       </Stack>
 
       <TableContainer component={Paper}>
@@ -243,7 +260,7 @@ export function DeliverableListPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {deliverables.map((deliverable) => {
+            {visibleDeliverables.map((deliverable) => {
               const isComplete = parseFloat(deliverable.estimated_percent_complete) >= 100;
               return (
               <TableRow
@@ -299,7 +316,7 @@ export function DeliverableListPage() {
               </TableRow>
               );
             })}
-            {deliverables.length === 0 && (
+            {visibleDeliverables.length === 0 && (
               <TableRow>
                 <TableCell colSpan={10} align="center">
                   No deliverables found

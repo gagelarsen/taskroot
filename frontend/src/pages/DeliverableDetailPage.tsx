@@ -66,6 +66,7 @@ export function DeliverableDetailPage() {
   const [deletingStatusUpdateId, setDeletingStatusUpdateId] = useState<number | null>(null);
   const [taskQuickUpdateError, setTaskQuickUpdateError] = useState('');
   const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
   const [taskContextMenu, setTaskContextMenu] = useState<{
     mouseX: number;
     mouseY: number;
@@ -277,6 +278,26 @@ export function DeliverableDetailPage() {
       setTaskQuickUpdateError(getApiErrorMessage(err, 'Failed to update task % complete'));
     } finally {
       setUpdatingTaskId(null);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    const confirmed = window.confirm('Delete this task?');
+    if (!confirmed) return;
+
+    setDeletingTaskId(taskId);
+    setTaskQuickUpdateError('');
+
+    try {
+      await tasksApi.delete(taskId);
+      if (taskContextMenu?.taskId === taskId) {
+        handleCloseTaskContextMenu();
+      }
+      await loadData();
+    } catch (err) {
+      setTaskQuickUpdateError(getApiErrorMessage(err, 'Failed to delete task'));
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -1053,13 +1074,25 @@ export function DeliverableDetailPage() {
                   </TableCell>
                   <TableCell>{new Date(task.updated_at).toLocaleDateString()}</TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      startIcon={<Edit />}
-                      onClick={() => navigate(`/tasks/${task.id}`)}
-                    >
-                      Edit
-                    </Button>
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Button
+                        size="small"
+                        startIcon={<Edit />}
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                        disabled={deletingTaskId === task.id}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        startIcon={<Delete />}
+                        onClick={() => void handleDeleteTask(task.id)}
+                        disabled={deletingTaskId === task.id}
+                      >
+                        {deletingTaskId === task.id ? 'Deleting...' : 'Delete'}
+                      </Button>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))

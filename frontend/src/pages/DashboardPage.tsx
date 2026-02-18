@@ -144,6 +144,7 @@ export function DashboardPage() {
   const [loadingDeliverablesByContract, setLoadingDeliverablesByContract] = useState<Record<number, boolean>>({});
   const [expandedContractIds, setExpandedContractIds] = useState<number[]>([]);
   const [showStaleOnlyByContract, setShowStaleOnlyByContract] = useState<Record<number, boolean>>({});
+  const [showCompleteByContract, setShowCompleteByContract] = useState<Record<number, boolean>>({});
   const [quickAddDialogDeliverable, setQuickAddDialogDeliverable] = useState<Deliverable | null>(null);
   const [quickAddDialogContractId, setQuickAddDialogContractId] = useState<number | null>(null);
   const [quickAddTasks, setQuickAddTasks] = useState<Task[]>([]);
@@ -189,6 +190,23 @@ export function DashboardPage() {
     period_end: new Date().toISOString().split('T')[0],
     percent_complete: '0',
     summary: '',
+  });
+  const [initiativeContextMenu, setInitiativeContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+    initiative: Initiative;
+  } | null>(null);
+  const [initiativeEditDialogOpen, setInitiativeEditDialogOpen] = useState(false);
+  const [editingInitiativeId, setEditingInitiativeId] = useState<number | null>(null);
+  const [savingInitiativeEdit, setSavingInitiativeEdit] = useState(false);
+  const [initiativeEditError, setInitiativeEditError] = useState('');
+  const [initiativeFormData, setInitiativeFormData] = useState({
+    name: '',
+    owner: '',
+    status: 'active' as Initiative['status'],
+    tags: '',
+    target_date: '',
+    notes: '',
   });
   const [savingInitiativeQuickUpdateId, setSavingInitiativeQuickUpdateId] = useState<number | null>(null);
   const [savingInitiativeStatusId, setSavingInitiativeStatusId] = useState<number | null>(null);
@@ -658,6 +676,81 @@ export function DashboardPage() {
     });
   };
 
+  const openInitiativeContextMenu = (event: React.MouseEvent, initiative: Initiative) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setInitiativeContextMenu({
+      mouseX: event.clientX + 2,
+      mouseY: event.clientY - 6,
+      initiative,
+    });
+  };
+
+  const closeInitiativeContextMenu = () => {
+    setInitiativeContextMenu(null);
+  };
+
+  const openEditInitiativeDialogFromMenu = () => {
+    if (!initiativeContextMenu) {
+      return;
+    }
+
+    const initiative = initiativeContextMenu.initiative;
+    setEditingInitiativeId(initiative.id);
+    setInitiativeFormData({
+      name: initiative.name,
+      owner: initiative.owner ? String(initiative.owner) : '',
+      status: initiative.status,
+      tags: (initiative.tags || []).join(', '),
+      target_date: initiative.target_date || '',
+      notes: initiative.notes || '',
+    });
+    setInitiativeEditError('');
+    setInitiativeEditDialogOpen(true);
+    closeInitiativeContextMenu();
+  };
+
+  const closeInitiativeEditDialog = () => {
+    if (savingInitiativeEdit) {
+      return;
+    }
+    setInitiativeEditDialogOpen(false);
+    setEditingInitiativeId(null);
+    setInitiativeEditError('');
+  };
+
+  const saveInitiativeEdit = async () => {
+    if (!editingInitiativeId) {
+      return;
+    }
+
+    setSavingInitiativeEdit(true);
+    setInitiativeEditError('');
+
+    try {
+      const tags = initiativeFormData.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
+      await initiativesApi.update(editingInitiativeId, {
+        name: initiativeFormData.name,
+        owner: initiativeFormData.owner ? Number(initiativeFormData.owner) : null,
+        status: initiativeFormData.status,
+        tags,
+        target_date: initiativeFormData.target_date || null,
+        notes: initiativeFormData.notes,
+      });
+
+      closeInitiativeEditDialog();
+      await loadInitiatives();
+    } catch (err) {
+      setInitiativeEditError(getApiErrorMessage(err, 'Failed to save initiative'));
+    } finally {
+      setSavingInitiativeEdit(false);
+    }
+  };
+
   const saveInitiativeQuickUpdate = async (initiativeId: number) => {
     setSavingInitiativeQuickUpdateId(initiativeId);
     try {
@@ -818,12 +911,16 @@ export function DashboardPage() {
                 const contractDeliverables = deliverablesByContract[contract.id] || [];
                 const loadingContractDeliverables = loadingDeliverablesByContract[contract.id];
                 const showStaleOnly = !!showStaleOnlyByContract[contract.id];
+                const showComplete = showCompleteByContract[contract.id] ?? true;
                 const staffScopedDeliverables = staffFilterId === 'all'
                   ? contractDeliverables
                   : contractDeliverables.filter((deliverable) => selectedStaffDeliverableIds.includes(deliverable.id));
+                const activeCompleteFilterDeliverables = showComplete
+                  ? staffScopedDeliverables
+                  : staffScopedDeliverables.filter((deliverable) => toNumber(deliverable.estimated_percent_complete) < 100);
                 const visibleDeliverables = showStaleOnly
-                  ? staffScopedDeliverables.filter((deliverable) => isStatusUpdateStale(deliverable))
-                  : staffScopedDeliverables;
+                  ? activeCompleteFilterDeliverables.filter((deliverable) => isStatusUpdateStale(deliverable))
+                  : activeCompleteFilterDeliverables;
                 const assignedPerWeek = toNumber(contract.assigned_budget_hours_per_week);
                 const burn4Week = toNumber(contract.actual_burn_rate);
                 const variancePerWeek = burn4Week - assignedPerWeek;
@@ -932,6 +1029,22 @@ export function DashboardPage() {
                                   />
                                 }
                                 label="Show stale only"
+                                sx={{ mr: 0 }}
+                              />
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    size="small"
+                                    checked={showComplete}
+                                    onChange={(event) =>
+                                      setShowCompleteByContract((current) => ({
+                                        ...current,
+                                        [contract.id]: event.target.checked,
+                                      }))
+                                    }
+                                  />
+                                }
+                                label="Show complete"
                                 sx={{ mr: 0 }}
                               />
                             </Box>
@@ -1102,7 +1215,7 @@ export function DashboardPage() {
                   const isQuickOpen = initiativeQuickUpdateId === initiative.id;
                   return (
                     <Fragment key={initiative.id}>
-                      <TableRow>
+                      <TableRow onContextMenu={(event) => openInitiativeContextMenu(event, initiative)}>
                         <TableCell>
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>{initiative.name}</Typography>
                           <Typography variant="caption" color="text.secondary">{initiative.owner_name || 'Unassigned'}</Typography>
@@ -1414,6 +1527,125 @@ export function DashboardPage() {
         <MenuItem onClick={openEditDeliverableFromMenu}>Edit deliverable</MenuItem>
         <MenuItem onClick={openAssignDialogFromMenu}>Assign staff</MenuItem>
       </Menu>
+
+      <Menu
+        open={initiativeContextMenu !== null}
+        onClose={closeInitiativeContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          initiativeContextMenu !== null
+            ? { top: initiativeContextMenu.mouseY, left: initiativeContextMenu.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={openEditInitiativeDialogFromMenu}>Edit initiative</MenuItem>
+      </Menu>
+
+      <Dialog open={initiativeEditDialogOpen} onClose={closeInitiativeEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Initiative</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {initiativeEditError && <Alert severity="error">{initiativeEditError}</Alert>}
+            <TextField
+              label="Name"
+              value={initiativeFormData.name}
+              onChange={(event) =>
+                setInitiativeFormData((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
+              required
+              fullWidth
+            />
+            <TextField
+              select
+              label="Owner"
+              value={initiativeFormData.owner}
+              onChange={(event) =>
+                setInitiativeFormData((current) => ({
+                  ...current,
+                  owner: event.target.value,
+                }))
+              }
+              fullWidth
+            >
+              <MenuItem value="">Unassigned</MenuItem>
+              {sortedStaffMembers.map((staffMember) => (
+                <MenuItem key={staffMember.id} value={String(staffMember.id)}>
+                  {staffMember.first_name} {staffMember.last_name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Status"
+              value={initiativeFormData.status}
+              onChange={(event) =>
+                setInitiativeFormData((current) => ({
+                  ...current,
+                  status: event.target.value as Initiative['status'],
+                }))
+              }
+              fullWidth
+            >
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="on_hold">On Hold</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+            </TextField>
+            <TextField
+              label="Tags"
+              value={initiativeFormData.tags}
+              onChange={(event) =>
+                setInitiativeFormData((current) => ({
+                  ...current,
+                  tags: event.target.value,
+                }))
+              }
+              helperText="Comma-separated (example: internal, ops)"
+              fullWidth
+            />
+            <TextField
+              label="Target Date"
+              type="date"
+              value={initiativeFormData.target_date}
+              onChange={(event) =>
+                setInitiativeFormData((current) => ({
+                  ...current,
+                  target_date: event.target.value,
+                }))
+              }
+              slotProps={{ inputLabel: { shrink: true } }}
+              fullWidth
+            />
+            <TextField
+              label="Notes"
+              multiline
+              minRows={3}
+              value={initiativeFormData.notes}
+              onChange={(event) =>
+                setInitiativeFormData((current) => ({
+                  ...current,
+                  notes: event.target.value,
+                }))
+              }
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeInitiativeEditDialog} disabled={savingInitiativeEdit}>Cancel</Button>
+          <Button
+            onClick={() => {
+              void saveInitiativeEdit();
+            }}
+            variant="contained"
+            disabled={savingInitiativeEdit || !initiativeFormData.name.trim()}
+          >
+            {savingInitiativeEdit ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={assignDialogOpen} onClose={closeAssignDialog} maxWidth="xs" fullWidth>
         <DialogTitle>Assign Staff</DialogTitle>
