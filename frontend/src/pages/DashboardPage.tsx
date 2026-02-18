@@ -164,6 +164,7 @@ export function DashboardPage() {
     summary: '',
   });
   const [savingInitiativeQuickUpdateId, setSavingInitiativeQuickUpdateId] = useState<number | null>(null);
+  const [savingInitiativeStatusId, setSavingInitiativeStatusId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const loadContracts = useCallback(async () => {
@@ -441,6 +442,25 @@ export function DashboardPage() {
       await loadInitiatives();
     } finally {
       setSavingInitiativeQuickUpdateId(null);
+    }
+  };
+
+  const updateInitiativeStatus = async (initiativeId: number, status: Initiative['status']) => {
+    setSavingInitiativeStatusId(initiativeId);
+    try {
+      await initiativesApi.update(initiativeId, { status });
+      setInitiatives((current) =>
+        current.map((initiative) =>
+          initiative.id === initiativeId
+            ? {
+                ...initiative,
+                status,
+              }
+            : initiative
+        )
+      );
+    } finally {
+      setSavingInitiativeStatusId(null);
     }
   };
 
@@ -907,11 +927,20 @@ export function DashboardPage() {
                           <Typography variant="caption" color="text.secondary">{initiative.owner_name || 'Unassigned'}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip
+                          <TextField
+                            select
                             size="small"
-                            label={initiative.status === 'on_hold' ? 'On Hold' : initiative.status === 'completed' ? 'Completed' : 'Active'}
-                            color={initiative.status === 'completed' ? 'success' : initiative.status === 'on_hold' ? 'warning' : 'primary'}
-                          />
+                            value={initiative.status}
+                            onChange={(event) =>
+                              void updateInitiativeStatus(initiative.id, event.target.value as Initiative['status'])
+                            }
+                            disabled={savingInitiativeStatusId === initiative.id}
+                            sx={{ minWidth: 130 }}
+                          >
+                            <MenuItem value="active">Active</MenuItem>
+                            <MenuItem value="on_hold">On Hold</MenuItem>
+                            <MenuItem value="completed">Completed</MenuItem>
+                          </TextField>
                         </TableCell>
                         <TableCell align="right">{toNumber(initiative.current_percent_complete).toFixed(0)}%</TableCell>
                         <TableCell>

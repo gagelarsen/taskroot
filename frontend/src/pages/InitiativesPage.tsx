@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -60,6 +60,7 @@ export function InitiativesPage() {
   const [quickUpdatePercent, setQuickUpdatePercent] = useState('0');
   const [quickUpdateSummary, setQuickUpdateSummary] = useState('');
   const [savingQuickUpdate, setSavingQuickUpdate] = useState(false);
+  const [savingStatusInitiativeId, setSavingStatusInitiativeId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -179,6 +180,32 @@ export function InitiativesPage() {
     }
   };
 
+  const updateInitiativeStatus = async (initiativeId: number, status: Initiative['status']) => {
+    setSavingStatusInitiativeId(initiativeId);
+    setError('');
+    try {
+      await initiativesApi.update(initiativeId, { status });
+      setInitiatives((current) =>
+        current.map((initiative) =>
+          initiative.id === initiativeId
+            ? {
+                ...initiative,
+                status,
+              }
+            : initiative
+        )
+      );
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        setError(err.response?.data?.detail || 'Failed to update initiative status');
+      } else {
+        setError('Failed to update initiative status');
+      }
+    } finally {
+      setSavingStatusInitiativeId(null);
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -255,8 +282,8 @@ export function InitiativesPage() {
                 const latest = initiative.latest_update;
                 const isQuickOpen = quickUpdateInitiativeId === initiative.id;
                 return (
-                  <>
-                    <TableRow key={initiative.id}>
+                  <Fragment key={initiative.id}>
+                    <TableRow>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>{initiative.name}</Typography>
                         {initiative.target_date && (
@@ -267,11 +294,20 @@ export function InitiativesPage() {
                       </TableCell>
                       <TableCell>{initiative.owner_name || 'Unassigned'}</TableCell>
                       <TableCell>
-                        <Chip
+                        <TextField
+                          select
                           size="small"
-                          label={initiative.status === 'on_hold' ? 'On Hold' : initiative.status === 'completed' ? 'Completed' : 'Active'}
-                          color={initiative.status === 'completed' ? 'success' : initiative.status === 'on_hold' ? 'warning' : 'primary'}
-                        />
+                          value={initiative.status}
+                          onChange={(event) =>
+                            void updateInitiativeStatus(initiative.id, event.target.value as Initiative['status'])
+                          }
+                          disabled={savingStatusInitiativeId === initiative.id}
+                          sx={{ minWidth: 130 }}
+                        >
+                          <MenuItem value="active">Active</MenuItem>
+                          <MenuItem value="on_hold">On Hold</MenuItem>
+                          <MenuItem value="completed">Completed</MenuItem>
+                        </TextField>
                       </TableCell>
                       <TableCell align="right">{Number(initiative.current_percent_complete).toFixed(0)}%</TableCell>
                       <TableCell>
@@ -349,7 +385,7 @@ export function InitiativesPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
               {filteredInitiatives.length === 0 && (
