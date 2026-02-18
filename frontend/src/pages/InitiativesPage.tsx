@@ -9,9 +9,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   MenuItem,
   Paper,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -45,6 +47,7 @@ export function InitiativesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | Initiative['status']>('all');
   const [tagFilter, setTagFilter] = useState('all');
   const [showStaleOnly, setShowStaleOnly] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [savingForm, setSavingForm] = useState(false);
@@ -104,6 +107,9 @@ export function InitiativesPage() {
       if (statusFilter !== 'all' && initiative.status !== statusFilter) {
         return false;
       }
+      if (!showInactive && initiative.status !== 'active') {
+        return false;
+      }
       if (tagFilter !== 'all') {
         const tags = (initiative.tags || []).map((tag) => tag.toLowerCase());
         if (!tags.includes(tagFilter.toLowerCase())) {
@@ -115,7 +121,7 @@ export function InitiativesPage() {
       }
       return true;
     });
-  }, [initiatives, search, statusFilter, tagFilter, showStaleOnly]);
+  }, [initiatives, search, statusFilter, showInactive, tagFilter, showStaleOnly]);
 
   const availableTags = useMemo(() => {
     const allTags = initiatives.flatMap((initiative) => initiative.tags || []);
@@ -320,6 +326,17 @@ export function InitiativesPage() {
           <MenuItem value="all">All</MenuItem>
           <MenuItem value="stale">Stale only</MenuItem>
         </TextField>
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={showInactive}
+              onChange={(event) => setShowInactive(event.target.checked)}
+            />
+          }
+          label="Show inactive"
+          sx={{ ml: 'auto' }}
+        />
       </Box>
 
       {error && (

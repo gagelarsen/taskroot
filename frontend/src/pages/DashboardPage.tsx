@@ -395,11 +395,18 @@ export function DashboardPage() {
   }, [contracts]);
 
   const filteredInitiatives = useMemo(() => {
-    if (staffFilterId === 'all') {
-      return initiatives;
-    }
-    return initiatives.filter((initiative) => initiative.owner === staffFilterId);
-  }, [initiatives, staffFilterId]);
+    return initiatives.filter((initiative) => {
+      if (!showInactive && initiative.status !== 'active') {
+        return false;
+      }
+
+      if (staffFilterId !== 'all' && initiative.owner !== staffFilterId) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [initiatives, showInactive, staffFilterId]);
 
   const sortedContracts = useMemo(() => {
     const valueForSort = (contract: Contract): string | number => {

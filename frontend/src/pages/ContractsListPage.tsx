@@ -19,7 +19,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControlLabel,
   Stack,
+  Switch,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -46,8 +48,10 @@ export function ContractsListPage() {
     order_by: 'start_date',
     order_dir: 'desc',
   });
+  const [showInactive, setShowInactive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
     client_name: '',
@@ -64,7 +68,10 @@ export function ContractsListPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await contractsApi.list(filters);
+      const data = await contractsApi.list({
+        ...filters,
+        status: showInactive ? undefined : 'active',
+      });
       setContracts(data);
     } catch (err) {
       if (err instanceof AxiosError) {
@@ -75,7 +82,7 @@ export function ContractsListPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, showInactive]);
 
   useEffect(() => {
     loadContracts();
@@ -99,6 +106,7 @@ export function ContractsListPage() {
 
   const handleOpenCreateDialog = () => {
     setError('');
+    setFormErrors({});
     setFormData({
       name: '',
       client_name: '',
@@ -118,8 +126,27 @@ export function ContractsListPage() {
   };
 
   const handleCreateContract = async () => {
+    const nextErrors: Record<string, string> = {};
+    if (!formData.name.trim()) nextErrors.name = 'Contract name is required';
+    if (!formData.client_name.trim()) nextErrors.client_name = 'Client name is required';
+    if (!formData.start_date) nextErrors.start_date = 'Start date is required';
+    if (!formData.end_date) nextErrors.end_date = 'End date is required';
+    if (
+      formData.start_date &&
+      formData.end_date &&
+      new Date(formData.end_date).getTime() < new Date(formData.start_date).getTime()
+    ) {
+      nextErrors.end_date = 'End date must be on or after start date';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors);
+      return;
+    }
+
     setSaving(true);
     setError('');
+    setFormErrors({});
     try {
       const tags = formData.tags
         .split(',')
@@ -133,6 +160,18 @@ export function ContractsListPage() {
       if (err instanceof AxiosError) {
         const errorData = err.response?.data;
         if (typeof errorData === 'object' && errorData !== null) {
+          const fieldErrors: Record<string, string> = {};
+          for (const [field, value] of Object.entries(errorData as Record<string, unknown>)) {
+            if (Array.isArray(value) && typeof value[0] === 'string') {
+              fieldErrors[field] = value[0];
+            } else if (typeof value === 'string') {
+              fieldErrors[field] = value;
+            }
+          }
+          if (Object.keys(fieldErrors).length > 0) {
+            setFormErrors(fieldErrors);
+          }
+
           const messages = Object.entries(errorData)
             .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
             .join('; ');
@@ -212,6 +251,17 @@ export function ContractsListPage() {
             </MenuItem>
           ))}
         </TextField>
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={showInactive}
+              onChange={(event) => setShowInactive(event.target.checked)}
+            />
+          }
+          label="Show inactive"
+          sx={{ ml: 'auto' }}
+        />
       </FilterBar>
 
       {error && (
@@ -304,6 +354,8 @@ export function ContractsListPage() {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
+              error={!!formErrors.name}
+              helperText={formErrors.name}
               fullWidth
             />
 
@@ -312,6 +364,8 @@ export function ContractsListPage() {
               value={formData.client_name}
               onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
               required
+              error={!!formErrors.client_name}
+              helperText={formErrors.client_name}
               fullWidth
             />
 
@@ -371,6 +425,8 @@ export function ContractsListPage() {
               value={formData.start_date}
               onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
               required
+              error={!!formErrors.start_date}
+              helperText={formErrors.start_date}
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
@@ -381,6 +437,8 @@ export function ContractsListPage() {
               value={formData.end_date}
               onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
               required
+              error={!!formErrors.end_date}
+              helperText={formErrors.end_date}
               fullWidth
               InputLabelProps={{ shrink: true }}
             />
@@ -394,9 +452,7 @@ export function ContractsListPage() {
             disabled={
               saving ||
               !formData.name.trim() ||
-              !formData.client_name.trim() ||
-              !formData.start_date ||
-              !formData.end_date
+              !formData.client_name.trim()
             }
           >
             {saving ? 'Saving...' : 'Save'}
