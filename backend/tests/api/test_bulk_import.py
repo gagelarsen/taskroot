@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from core.models import Contract, Deliverable, DeliverableTimeEntry, Staff, Task
+from core.models import Contract, ContractInvoiceUpdate, Deliverable, DeliverableTimeEntry, Staff, Task
 
 
 @pytest.mark.django_db
@@ -33,6 +33,17 @@ class TestBulkImportPermissions:
         """Test that time entries import requires admin role."""
         client = auth_client(manager_user)
         response = client.post("/api/v1/bulk-import/time-entries/", {}, format="json")
+        assert response.status_code == 403
+
+    def test_bulk_import_invoices_requires_authentication(self, api_client):
+        """Test that invoice updates import requires authentication."""
+        response = api_client.post("/api/v1/bulk-import/invoices/", {}, format="json")
+        assert response.status_code == 401
+
+    def test_bulk_import_invoices_requires_admin_role(self, auth_client, manager_user, manager_profile):
+        """Test that invoice updates import requires admin role."""
+        client = auth_client(manager_user)
+        response = client.post("/api/v1/bulk-import/invoices/", {}, format="json")
         assert response.status_code == 403
 
 
@@ -436,6 +447,136 @@ class TestBulkImportTimeEntries:
         assert response.data["stats"]["time_entries_created"] == 2
 
         assert DeliverableTimeEntry.objects.count() == 2
+
+
+@pytest.mark.django_db
+class TestBulkImportInvoiceUpdates:
+    """Test bulk import of contract invoice updates."""
+
+    def test_import_invoice_updates_success(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Invoice Contract",
+            contract_number="TM-INV-001",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            contract_amount=Decimal("50000.00"),
+            contract_type="time_and_materials",
+            status="active",
+        )
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_number": "TM-INV-001",
+                    "invoice_date": "2026-01-31",
+                    "amount": 12500,
+                    "note": "January invoice",
+                },
+                {
+                    "contract_id": contract.id,
+                    "invoice_date": "2026-02-28",
+                    "amount": 10000,
+                    "note": "February invoice",
+                },
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["invoice_updates_created"] == 2
+        assert response.data["stats"]["invoice_updates_skipped"] == 0
+        assert response.data["stats"]["invoice_updates_failed"] == 0
+
+        assert ContractInvoiceUpdate.objects.filter(contract=contract).count() == 2
+
+    def test_import_invoice_updates_skips_missing_contract(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_number": "DOES-NOT-EXIST",
+                    "invoice_date": "2026-01-31",
+                    "amount": 12500,
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["invoice_updates_created"] == 0
+        assert response.data["stats"]["invoice_updates_skipped"] == 1
+        assert response.data["stats"]["invoice_updates_failed"] == 0
+        assert "warnings" in response.data
+
+    def test_import_invoice_updates_skips_duplicates(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Dup Contract",
+            contract_number="TM-INV-DUP",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            contract_amount=Decimal("50000.00"),
+            contract_type="time_and_materials",
+            status="active",
+        )
+
+        ContractInvoiceUpdate.objects.create(
+            contract=contract,
+            invoice_date="2026-01-31",
+            amount=Decimal("1000.00"),
+            note="Existing",
+        )
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_number": "TM-INV-DUP",
+                    "invoice_date": "2026-01-31",
+                    "amount": 1000,
+                    "note": "Duplicate",
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["invoice_updates_created"] == 0
+        assert response.data["stats"]["invoice_updates_skipped"] == 1
+        assert response.data["stats"]["invoice_updates_failed"] == 0
+        assert ContractInvoiceUpdate.objects.filter(contract=contract).count() == 1
+
+    def test_import_invoice_updates_reports_validation_errors(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_number": "TM-INV-001",
+                    "amount": 100,
+                },
+                {
+                    "contract_number": "TM-INV-001",
+                    "invoice_date": "2026-01-31",
+                    "amount": 0,
+                },
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is False
+        assert response.data["stats"]["invoice_updates_created"] == 0
+        assert response.data["stats"]["invoice_updates_failed"] == 2
+        assert "errors" in response.data
 
 
 @pytest.mark.django_db

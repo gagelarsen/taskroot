@@ -120,3 +120,35 @@ class StaffTimeReportSerializer(serializers.Serializer):
     buckets = serializers.ListField(
         child=serializers.DictField(), help_text="Weekly time buckets with hours by deliverable/contract"
     )
+
+
+class TMBurnBucketSerializer(serializers.Serializer):
+    bucket = serializers.DateField(help_text="Week ending date")
+    invoice_amount = serializers.DecimalField(max_digits=12, decimal_places=2, help_text="Invoiced amount this week")
+    cumulative_invoiced = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Cumulative invoiced amount through this week",
+    )
+    remaining_contract_amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Remaining contract amount after invoiced updates",
+    )
+    weekly_hours = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Hours logged this week")
+    cumulative_hours = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Cumulative hours logged")
+
+
+class ContractTMBurnReportSerializer(serializers.Serializer):
+    contract_id = serializers.IntegerField(help_text="Contract ID")
+    start_date = serializers.DateField(help_text="Contract start date")
+    end_date = serializers.DateField(help_text="Contract end date")
+    contract_amount = serializers.DecimalField(max_digits=12, decimal_places=2, help_text="Total contract amount")
+    invoiced_amount = serializers.DecimalField(max_digits=12, decimal_places=2, help_text="Total invoiced amount")
+    remaining_contract_amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Contract amount remaining (contract amount - invoiced)",
+    )
+    spent_hours = serializers.DecimalField(max_digits=10, decimal_places=2, help_text="Total spent hours")
+    buckets = TMBurnBucketSerializer(many=True, help_text="Weekly invoice/hour bucket series")

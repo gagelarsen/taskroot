@@ -12,7 +12,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.api.v1.permissions import IsAdmin
-from core.models import Contract, Deliverable, DeliverableTimeEntry, Staff, Task
+from core.models import Contract, ContractInvoiceUpdate, Deliverable, DeliverableTimeEntry, Staff, Task
 
 
 @extend_schema(
@@ -353,6 +353,199 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                 message_parts.append(f"{stats['time_entries_skipped']} entries skipped")
             if stats["time_entries_failed"] > 0:
                 message_parts.append(f"{stats['time_entries_failed']} entries failed")
+
+            message = ", ".join(message_parts) if message_parts else "No entries processed"
+
+            response_data = {
+                "success": success,
+                "message": message,
+                "stats": stats,
+            }
+
+            if warnings:
+                response_data["warnings"] = warnings
+
+            if errors:
+                response_data["errors"] = errors
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response(
+            {"success": False, "error": f"Unexpected error: {str(e)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@extend_schema(
+    summary="Bulk import contract invoice updates from JSON",
+    description="""
+    Import contract invoice updates from a JSON payload.
+
+    **Contract matching priority:**
+    1. `contract_id`
+    2. `contract_number`
+    3. (`contract_name`, optional `contract_client_name`)
+
+    **Smart Import Behavior:**
+    - Missing/invalid contract references are **skipped** with warnings
+    - Duplicate entries (same contract + invoice_date + amount) are **skipped**
+    - Valid entries are created
+    - Processing continues across all rows
+
+    Requires admin role.
+    """,
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "invoice_updates": {"type": "array"},
+            },
+        }
+    },
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "success": {"type": "boolean"},
+                "message": {"type": "string"},
+                "stats": {
+                    "type": "object",
+                    "properties": {
+                        "invoice_updates_created": {"type": "integer"},
+                        "invoice_updates_skipped": {"type": "integer"},
+                        "invoice_updates_failed": {"type": "integer"},
+                    },
+                },
+                "warnings": {"type": "array", "items": {"type": "string"}},
+                "errors": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        400: {"description": "Unexpected error during import"},
+    },
+    examples=[
+        OpenApiExample(
+            "Sample Invoice Update Import",
+            value={
+                "invoice_updates": [
+                    {
+                        "contract_number": "TM-2026-001",
+                        "invoice_date": "2026-02-15",
+                        "amount": 12500.0,
+                        "note": "Milestone invoice",
+                    }
+                ]
+            },
+        )
+    ],
+)
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def bulk_import_invoice_updates_view(request: Request) -> Response:
+    """
+    Bulk import contract invoice updates from JSON payload.
+    """
+    data = request.data
+
+    stats = {
+        "invoice_updates_created": 0,
+        "invoice_updates_skipped": 0,
+        "invoice_updates_failed": 0,
+    }
+    warnings = []
+    errors = []
+
+    def _find_contract(entry_data: dict):
+        contract_id = entry_data.get("contract_id")
+        if contract_id is not None:
+            return Contract.objects.filter(id=contract_id).first()
+
+        contract_number = str(entry_data.get("contract_number", "")).strip()
+        if contract_number:
+            return Contract.objects.filter(contract_number=contract_number).first()
+
+        contract_name = str(entry_data.get("contract_name", "")).strip()
+        if contract_name:
+            contract_client_name = str(entry_data.get("contract_client_name", "")).strip()
+            return Contract.objects.filter(name=contract_name, client_name=contract_client_name).first()
+
+        return None
+
+    try:
+        with transaction.atomic():
+            for idx, entry_data in enumerate(data.get("invoice_updates", []), start=1):
+                invoice_date = entry_data.get("invoice_date", "")
+                amount_raw = entry_data.get("amount")
+                note = entry_data.get("note", "")
+
+                if not invoice_date:
+                    errors.append(f"Entry #{idx}: Missing invoice_date")
+                    stats["invoice_updates_failed"] += 1
+                    continue
+
+                if amount_raw in (None, ""):
+                    errors.append(f"Entry #{idx}: Missing amount")
+                    stats["invoice_updates_failed"] += 1
+                    continue
+
+                try:
+                    amount = Decimal(str(amount_raw))
+                except Exception:
+                    errors.append(f"Entry #{idx}: Invalid amount '{amount_raw}'")
+                    stats["invoice_updates_failed"] += 1
+                    continue
+
+                if amount <= 0:
+                    errors.append(f"Entry #{idx}: Amount must be > 0")
+                    stats["invoice_updates_failed"] += 1
+                    continue
+
+                contract = _find_contract(entry_data)
+                if not contract:
+                    warnings.append(
+                        f"Entry #{idx}: Contract not found (provide contract_id, contract_number, "
+                        "or contract_name + contract_client_name) - skipped"
+                    )
+                    stats["invoice_updates_skipped"] += 1
+                    continue
+
+                existing = ContractInvoiceUpdate.objects.filter(
+                    contract=contract,
+                    invoice_date=invoice_date,
+                    amount=amount,
+                ).first()
+
+                if existing:
+                    warnings.append(
+                        f"Entry #{idx}: Invoice update already exists for contract '{contract.id}' "
+                        f"on {invoice_date} amount {amount} - skipped"
+                    )
+                    stats["invoice_updates_skipped"] += 1
+                    continue
+
+                try:
+                    ContractInvoiceUpdate.objects.create(
+                        contract=contract,
+                        invoice_date=invoice_date,
+                        amount=amount,
+                        note=note,
+                    )
+                    stats["invoice_updates_created"] += 1
+                except Exception as e:
+                    errors.append(f"Entry #{idx}: Failed to create - {str(e)}")
+                    stats["invoice_updates_failed"] += 1
+
+            success = stats["invoice_updates_created"] > 0 or (
+                stats["invoice_updates_failed"] == 0 and stats["invoice_updates_skipped"] > 0
+            )
+
+            message_parts = []
+            if stats["invoice_updates_created"] > 0:
+                message_parts.append(f"{stats['invoice_updates_created']} entries created")
+            if stats["invoice_updates_skipped"] > 0:
+                message_parts.append(f"{stats['invoice_updates_skipped']} entries skipped")
+            if stats["invoice_updates_failed"] > 0:
+                message_parts.append(f"{stats['invoice_updates_failed']} entries failed")
 
             message = ", ".join(message_parts) if message_parts else "No entries processed"
 

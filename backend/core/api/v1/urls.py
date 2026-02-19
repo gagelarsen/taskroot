@@ -10,6 +10,7 @@ router.register(r"deliverables", views.DeliverableViewSet, basename="deliverable
 router.register(r"tasks", views.TaskViewSet, basename="task")
 router.register(r"deliverable-assignments", views.DeliverableAssignmentViewSet, basename="deliverable-assignment")
 router.register(r"deliverable-time-entries", views.DeliverableTimeEntryViewSet, basename="deliverable-time-entry")
+router.register(r"contract-invoice-updates", views.ContractInvoiceUpdateViewSet, basename="contract-invoice-update")
 router.register(
     r"deliverable-status-updates", views.DeliverableStatusUpdateViewSet, basename="deliverable-status-update"
 )
@@ -41,6 +42,7 @@ export_patterns = [
 import_patterns = [
     path("bulk-import/", bulk_import.bulk_import_view, name="bulk-import"),
     path("bulk-import/time-entries/", bulk_import.bulk_import_time_entries_view, name="bulk-import-time-entries"),
+    path("bulk-import/invoices/", bulk_import.bulk_import_invoice_updates_view, name="bulk-import-invoices"),
 ]
 
 urlpatterns = router.urls + export_patterns + import_patterns

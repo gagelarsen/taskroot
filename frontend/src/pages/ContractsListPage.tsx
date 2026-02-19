@@ -55,9 +55,11 @@ export function ContractsListPage() {
   const [formData, setFormData] = useState({
     name: '',
     client_name: '',
+    contract_number: '',
     tags: '',
     contract_type: 'fixed_cost' as Contract['contract_type'],
     budget_hours: '0',
+    contract_amount: '',
     status: 'draft' as Contract['status'],
     start_date: '',
     end_date: '',
@@ -110,9 +112,11 @@ export function ContractsListPage() {
     setFormData({
       name: '',
       client_name: '',
+      contract_number: '',
       tags: '',
       contract_type: 'fixed_cost',
       budget_hours: '0',
+      contract_amount: '',
       status: 'draft',
       start_date: '',
       end_date: '',
@@ -153,7 +157,11 @@ export function ContractsListPage() {
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
-      await contractsApi.create({ ...formData, tags });
+      await contractsApi.create({
+        ...formData,
+        contract_amount: formData.contract_amount === '' ? null : formData.contract_amount,
+        tags,
+      });
       setDialogOpen(false);
       await loadContracts();
     } catch (err) {
@@ -280,12 +288,14 @@ export function ContractsListPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell>Contract #</TableCell>
                 <TableCell>Client</TableCell>
                 <TableCell sx={{ width: 110 }}>Contract Type</TableCell>
                 <TableCell>Start Date</TableCell>
                 <TableCell>End Date</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Budget Hours</TableCell>
+                <TableCell align="right">Amount (USD)</TableCell>
                 <TableCell align="right">Assigned/Week</TableCell>
                 <TableCell align="right">Spent/Week</TableCell>
                 <TableCell align="right">% Complete</TableCell>
@@ -302,6 +312,7 @@ export function ContractsListPage() {
                   sx={{ cursor: 'pointer' }}
                 >
                   <TableCell>{contract.name || `Contract #${contract.id}`}</TableCell>
+                  <TableCell>{contract.contract_number || '-'}</TableCell>
                   <TableCell>{contract.client_name}</TableCell>
                   <TableCell sx={{ width: 110 }}>
                     <Chip
@@ -321,6 +332,9 @@ export function ContractsListPage() {
                     />
                   </TableCell>
                   <TableCell align="right">{parseFloat(contract.budget_hours).toFixed(1)}</TableCell>
+                  <TableCell align="right">
+                    {contract.contract_amount !== null ? parseFloat(contract.contract_amount).toFixed(2) : '-'}
+                  </TableCell>
                   <TableCell align="right">{parseFloat(contract.assigned_budget_hours_per_week).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.spent_hours_per_week).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.estimated_percent_complete).toFixed(0)}%</TableCell>
@@ -335,7 +349,7 @@ export function ContractsListPage() {
               ))}
               {contracts.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={11} align="center">
+                    <TableCell colSpan={14} align="center">
                     No contracts found
                   </TableCell>
                 </TableRow>
@@ -378,6 +392,13 @@ export function ContractsListPage() {
             />
 
             <TextField
+              label="Contract Number"
+              value={formData.contract_number}
+              onChange={(e) => setFormData({ ...formData, contract_number: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
               label="Contract Type"
               select
               value={formData.contract_type}
@@ -402,6 +423,15 @@ export function ContractsListPage() {
               required
               fullWidth
               inputProps={{ min: 0, step: 0.5 }}
+            />
+
+            <TextField
+              label="Contract Amount (USD)"
+              type="number"
+              value={formData.contract_amount}
+              onChange={(e) => setFormData({ ...formData, contract_amount: e.target.value })}
+              fullWidth
+              inputProps={{ min: 0, step: 0.01 }}
             />
 
             <TextField

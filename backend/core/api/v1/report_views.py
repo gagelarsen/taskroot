@@ -17,6 +17,7 @@ from core.api.v1.permissions import ReadOnlyForStaffOtherwiseManagerAdmin
 from core.api.v1.report_serializers import (
     ContractBurnReportSerializer,
     ContractDeliverablesReportSerializer,
+    ContractTMBurnReportSerializer,
     DeliverableBurnReportSerializer,
     DeliverableStatusHistoryReportSerializer,
     StaffTimeReportSerializer,
@@ -184,6 +185,87 @@ class ContractReportViewSet(ViewSet):
         }
 
         serializer = ContractDeliverablesReportSerializer(report_data)
+        return Response(serializer.data)
+
+    @extend_schema(
+        summary="Time and materials burn report",
+        description=("Get weekly invoice burndown and hours trend data for a time-and-materials contract."),
+        responses={200: ContractTMBurnReportSerializer},
+    )
+    @action(detail=True, methods=["get"], url_path="tm-burn")
+    def tm_burn(self, request, pk=None):
+        try:
+            contract = Contract.objects.get(pk=pk)
+        except Contract.DoesNotExist as err:
+            raise NotFound("Contract not found") from err
+
+        if contract.contract_type != Contract.ContractType.TIME_AND_MATERIALS:
+            return Response(
+                {"error": "This endpoint is only available for time-and-materials contracts."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if contract.contract_amount is None:
+            return Response(
+                {"error": "Contract amount is required for time-and-materials burn reporting."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        buckets = generate_weekly_buckets(contract.start_date, contract.end_date)
+
+        invoice_updates = contract.invoice_updates.filter(
+            invoice_date__gte=contract.start_date,
+            invoice_date__lte=contract.end_date,
+        )
+        weekly_invoice_amounts: dict[date, Decimal] = {}
+        for update in invoice_updates:
+            week_end = get_week_ending_date(update.invoice_date)
+            weekly_invoice_amounts[week_end] = weekly_invoice_amounts.get(week_end, Decimal("0")) + update.amount
+
+        time_entries = DeliverableTimeEntry.objects.filter(
+            deliverable__contract=contract,
+            entry_date__gte=contract.start_date,
+            entry_date__lte=contract.end_date,
+        )
+        weekly_hours: dict[date, Decimal] = {}
+        for entry in time_entries:
+            week_end = get_week_ending_date(entry.entry_date)
+            weekly_hours[week_end] = weekly_hours.get(week_end, Decimal("0")) + entry.hours
+
+        bucket_data = []
+        cumulative_invoiced = Decimal("0")
+        cumulative_hours = Decimal("0")
+
+        for bucket_end in buckets:
+            invoice_amount = weekly_invoice_amounts.get(bucket_end, Decimal("0"))
+            hours_for_week = weekly_hours.get(bucket_end, Decimal("0"))
+
+            cumulative_invoiced += invoice_amount
+            cumulative_hours += hours_for_week
+
+            bucket_data.append(
+                {
+                    "bucket": bucket_end,
+                    "invoice_amount": invoice_amount,
+                    "cumulative_invoiced": cumulative_invoiced,
+                    "remaining_contract_amount": contract.contract_amount - cumulative_invoiced,
+                    "weekly_hours": hours_for_week,
+                    "cumulative_hours": cumulative_hours,
+                }
+            )
+
+        report_data = {
+            "contract_id": contract.id,
+            "start_date": contract.start_date,
+            "end_date": contract.end_date,
+            "contract_amount": contract.contract_amount,
+            "invoiced_amount": contract.get_invoiced_amount(),
+            "remaining_contract_amount": contract.get_remaining_contract_amount(),
+            "spent_hours": contract.get_spent_hours(),
+            "buckets": bucket_data,
+        }
+
+        serializer = ContractTMBurnReportSerializer(report_data)
         return Response(serializer.data)
 
 

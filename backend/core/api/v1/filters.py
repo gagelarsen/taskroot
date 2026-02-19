@@ -3,6 +3,7 @@ from django.db.models import Exists, OuterRef, Q
 
 from core.models import (
     Contract,
+    ContractInvoiceUpdate,
     Deliverable,
     DeliverableAssignment,
     DeliverableStatusUpdate,
@@ -252,6 +253,20 @@ class DeliverableTimeEntryFilter(django_filters.FilterSet):
             "deliverable_id",
             "entry_date_from",
             "entry_date_to",
+        ]
+
+
+class ContractInvoiceUpdateFilter(django_filters.FilterSet):
+    contract_id = django_filters.NumberFilter(field_name="contract_id")
+    invoice_date_from = django_filters.DateFilter(field_name="invoice_date", lookup_expr="gte")
+    invoice_date_to = django_filters.DateFilter(field_name="invoice_date", lookup_expr="lte")
+
+    class Meta:
+        model = ContractInvoiceUpdate
+        fields = [
+            "contract_id",
+            "invoice_date_from",
+            "invoice_date_to",
         ]
 
 

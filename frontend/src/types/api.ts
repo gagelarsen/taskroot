@@ -9,12 +9,14 @@ export interface Contract {
   id: number;
   name: string;
   client_name: string;
+  contract_number: string;
   tags: string[];
   contract_type: 'fixed_cost' | 'time_and_materials';
   contract_type_display?: string;
   start_date: string;
   end_date: string;
   budget_hours: string;
+  contract_amount: string | null;
   status: 'draft' | 'active' | 'closed';
   created_at: string;
   updated_at: string;
@@ -31,10 +33,51 @@ export interface Contract {
   estimated_burn_rate: string;
   actual_burn_rate: string;
   estimated_percent_complete: string;
+  invoiced_amount: string;
+  remaining_contract_amount: string | null;
 
   // Health flags
   is_over_budget: boolean;
   is_overassigned: boolean;
+  is_over_invoiced: boolean;
+}
+
+export interface ContractInvoiceUpdate {
+  id: number;
+  contract: number;
+  invoice_date: string;
+  amount: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContractInvoiceUpdateFilters {
+  contract_id?: number;
+  invoice_date_from?: string;
+  invoice_date_to?: string;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
+}
+
+export interface TMBurnBucket {
+  bucket: string;
+  invoice_amount: string;
+  cumulative_invoiced: string;
+  remaining_contract_amount: string;
+  weekly_hours: string;
+  cumulative_hours: string;
+}
+
+export interface ContractTMBurnReport {
+  contract_id: number;
+  start_date: string;
+  end_date: string;
+  contract_amount: string;
+  invoiced_amount: string;
+  remaining_contract_amount: string;
+  spent_hours: string;
+  buckets: TMBurnBucket[];
 }
 
 // Forward declarations for circular references

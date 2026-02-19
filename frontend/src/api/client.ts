@@ -1,6 +1,8 @@
 import axios from 'axios';
 import type {
   ContractFilters,
+  ContractInvoiceUpdateFilters,
+  ContractTMBurnReport,
   CreateDeliverableStatusUpdatePayload,
   DeliverableFilters,
   FutureWorkFilters,
@@ -86,6 +88,27 @@ export const contractsApi = {
 
   delete: async (id: number) => {
     await apiClient.delete(`/contracts/${id}/`);
+  },
+};
+
+export const contractInvoiceUpdatesApi = {
+  list: async (params?: ContractInvoiceUpdateFilters) => {
+    const response = await apiClient.get('/contract-invoice-updates/', { params });
+    return response.data.results || response.data;
+  },
+  create: async (data: unknown) => {
+    const response = await apiClient.post('/contract-invoice-updates/', data);
+    return response.data;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/contract-invoice-updates/${id}/`);
+  },
+};
+
+export const reportsApi = {
+  getContractTMBurn: async (contractId: number): Promise<ContractTMBurnReport> => {
+    const response = await apiClient.get(`/reports/contracts/${contractId}/tm-burn/`);
+    return response.data;
   },
 };
 

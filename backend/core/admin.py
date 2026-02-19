@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from core.models import (
     Contract,
+    ContractInvoiceUpdate,
     Deliverable,
     DeliverableAssignment,
     DeliverableStatusUpdate,
@@ -20,9 +21,26 @@ class StaffAdmin(admin.ModelAdmin):
 
 @admin.register(Contract)
 class ContractAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "start_date", "end_date", "budget_hours", "status")
+    list_display = (
+        "id",
+        "name",
+        "contract_number",
+        "start_date",
+        "end_date",
+        "budget_hours",
+        "contract_amount",
+        "status",
+    )
     list_filter = ("status",)
-    search_fields = ("id", "name", "client_name")
+    search_fields = ("id", "name", "contract_number", "client_name")
+
+
+@admin.register(ContractInvoiceUpdate)
+class ContractInvoiceUpdateAdmin(admin.ModelAdmin):
+    list_display = ("id", "contract", "invoice_date", "amount")
+    list_filter = ("invoice_date",)
+    search_fields = ("contract__name", "contract__contract_number")
+    autocomplete_fields = ("contract",)
 
 
 class DeliverableAssignmentInline(admin.TabularInline):

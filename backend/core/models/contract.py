@@ -18,12 +18,20 @@ class Contract(models.Model):
 
     name = models.CharField(max_length=255, default="")
     client_name = models.CharField(max_length=255, default="")
+    contract_number = models.CharField(max_length=100, blank=True, default="")
     start_date = models.DateField()
     end_date = models.DateField()
     budget_hours = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(Decimal("0"))],
+    )
+    contract_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+        null=True,
+        blank=True,
     )
     contract_type = models.CharField(
         max_length=30,
@@ -107,6 +115,19 @@ class Contract(models.Model):
         """Budget hours remaining (budget - spent hours)."""
         return self.budget_hours - self.get_spent_hours()
 
+    def get_invoiced_amount(self) -> Decimal:
+        """Sum of all invoiced amounts for this contract."""
+        total = Decimal("0")
+        for update in self.invoice_updates.all():
+            total += update.amount
+        return total
+
+    def get_remaining_contract_amount(self) -> Decimal | None:
+        """Contract amount remaining (contract amount - invoiced), or None when contract amount is not set."""
+        if self.contract_amount is None:
+            return None
+        return self.contract_amount - self.get_invoiced_amount()
+
     def get_unspent_budget_hours(self) -> Decimal:
         """Unspent budget hours (budget - spent hours). Alias for get_remaining_budget_hours()."""
         return self.get_remaining_budget_hours()
@@ -172,6 +193,12 @@ class Contract(models.Model):
     def is_overassigned(self) -> bool:
         """True if assigned budget hours exceed contract budget."""
         return self.get_assigned_budget_hours() > self.budget_hours
+
+    def is_over_invoiced(self) -> bool:
+        """True if total invoiced amount exceeds contract amount."""
+        if self.contract_amount is None:
+            return False
+        return self.get_invoiced_amount() > self.contract_amount
 
     def is_over_expected(self) -> bool:
         """

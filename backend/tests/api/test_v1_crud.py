@@ -74,6 +74,20 @@ class TestV1CrudSmoke:
         assert r.data["contract_type"] == "time_and_materials"
         assert r.data["contract_type_display"] == "Time and Materials"
 
+    def test_contract_create_with_optional_number_and_amount(self, api_client, contract_payload):
+        payload = {
+            **contract_payload,
+            "contract_number": "TM-2026-001",
+            "contract_amount": "125000.50",
+            "contract_type": "time_and_materials",
+        }
+        r = api_client.post("/api/v1/contracts/", payload, format="json")
+        assert r.status_code == 201, r.data
+        assert r.data["contract_number"] == "TM-2026-001"
+        assert r.data["contract_amount"] == "125000.50"
+        assert r.data["invoiced_amount"] == 0
+        assert str(r.data["remaining_contract_amount"]) == "125000.50"
+
     def test_contract_create_and_update_tags(self, api_client, contract_payload):
         payload = {**contract_payload, "tags": ["Urgent", "Internal", "urgent", "  "]}
         r = api_client.post("/api/v1/contracts/", payload, format="json")
@@ -190,6 +204,31 @@ class TestV1CrudSmoke:
         r = api_client.get("/api/v1/deliverable-time-entries/")
         assert r.status_code == 200
         assert any(item["id"] == time_entry_id for item in r.data["results"])
+
+    def test_contract_invoice_update_create_and_list(self, api_client, contract_payload):
+        contract_payload = {
+            **contract_payload,
+            "contract_type": "time_and_materials",
+            "contract_amount": "10000.00",
+        }
+        contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
+
+        r = api_client.post(
+            "/api/v1/contract-invoice-updates/",
+            {
+                "contract": contract["id"],
+                "invoice_date": "2026-02-01",
+                "amount": "1234.56",
+                "note": "Initial invoice",
+            },
+            format="json",
+        )
+        assert r.status_code == 201, r.data
+        invoice_update_id = r.data["id"]
+
+        r = api_client.get(f"/api/v1/contract-invoice-updates/?contract_id={contract['id']}")
+        assert r.status_code == 200
+        assert any(item["id"] == invoice_update_id for item in r.data["results"])
 
     def test_status_update_create_and_list(self, api_client, contract_payload):
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data

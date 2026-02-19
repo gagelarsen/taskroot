@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 
 from core.models import (
     Contract,
+    ContractInvoiceUpdate,
     Deliverable,
     DeliverableAssignment,
     DeliverableStatusUpdate,
@@ -325,6 +326,81 @@ class TestStaffTimeReport:
         assert "buckets" in data
         # Time entries no longer track staff, so buckets should be empty
         assert len(data["buckets"]) == 0
+
+
+@pytest.mark.django_db
+class TestTimeMaterialsBurnReport:
+    """Test T&M invoice-based burn report endpoint."""
+
+    def test_tm_burn_report_returns_invoice_and_hours_series(self, admin_user):
+        contract = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            budget_hours=Decimal("500.00"),
+            contract_type="time_and_materials",
+            contract_amount=Decimal("10000.00"),
+            status="active",
+        )
+
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="TM Deliverable",
+            status="in_progress",
+        )
+
+        ContractInvoiceUpdate.objects.create(
+            contract=contract,
+            invoice_date=date(2026, 1, 6),
+            amount=Decimal("2000.00"),
+        )
+        ContractInvoiceUpdate.objects.create(
+            contract=contract,
+            invoice_date=date(2026, 1, 20),
+            amount=Decimal("1500.00"),
+        )
+
+        DeliverableTimeEntry.objects.create(
+            deliverable=deliverable,
+            entry_date=date(2026, 1, 7),
+            hours=Decimal("10.00"),
+        )
+        DeliverableTimeEntry.objects.create(
+            deliverable=deliverable,
+            entry_date=date(2026, 1, 21),
+            hours=Decimal("6.00"),
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get(f"/api/v1/reports/contracts/{contract.id}/tm-burn/")
+
+        assert response.status_code == 200
+        data = response.data
+
+        assert data["contract_id"] == contract.id
+        assert data["contract_amount"] == "10000.00"
+        assert data["invoiced_amount"] == "3500.00"
+        assert data["remaining_contract_amount"] == "6500.00"
+        assert data["spent_hours"] == "16.00"
+        assert len(data["buckets"]) > 0
+        assert "invoice_amount" in data["buckets"][0]
+        assert "weekly_hours" in data["buckets"][0]
+
+    def test_tm_burn_report_requires_tm_contract_type(self, admin_user):
+        contract = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            budget_hours=Decimal("500.00"),
+            contract_type="fixed_cost",
+            contract_amount=Decimal("10000.00"),
+            status="active",
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get(f"/api/v1/reports/contracts/{contract.id}/tm-burn/")
+
+        assert response.status_code == 400
 
 
 @pytest.mark.django_db

@@ -4,6 +4,7 @@ from rest_framework.validators import UniqueTogetherValidator
 
 from core.models import (
     Contract,
+    ContractInvoiceUpdate,
     Deliverable,
     DeliverableAssignment,
     DeliverableStatusUpdate,
@@ -49,10 +50,13 @@ class ContractSerializer(serializers.ModelSerializer):
     estimated_burn_rate = serializers.SerializerMethodField()
     actual_burn_rate = serializers.SerializerMethodField()
     estimated_percent_complete = serializers.SerializerMethodField()
+    invoiced_amount = serializers.SerializerMethodField()
+    remaining_contract_amount = serializers.SerializerMethodField()
 
     # Health flags (read-only)
     is_over_budget = serializers.SerializerMethodField()
     is_overassigned = serializers.SerializerMethodField()
+    is_over_invoiced = serializers.SerializerMethodField()
 
     class Meta:
         model = Contract
@@ -60,9 +64,11 @@ class ContractSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "client_name",
+            "contract_number",
             "start_date",
             "end_date",
             "budget_hours",
+            "contract_amount",
             "contract_type",
             "contract_type_display",
             "status",
@@ -81,8 +87,11 @@ class ContractSerializer(serializers.ModelSerializer):
             "estimated_burn_rate",
             "actual_burn_rate",
             "estimated_percent_complete",
+            "invoiced_amount",
+            "remaining_contract_amount",
             "is_over_budget",
             "is_overassigned",
+            "is_over_invoiced",
         ]
         read_only_fields = [
             "id",
@@ -100,8 +109,11 @@ class ContractSerializer(serializers.ModelSerializer):
             "estimated_burn_rate",
             "actual_burn_rate",
             "estimated_percent_complete",
+            "invoiced_amount",
+            "remaining_contract_amount",
             "is_over_budget",
             "is_overassigned",
+            "is_over_invoiced",
         ]
 
     @extend_schema_field(serializers.FloatField(read_only=True, help_text="Sum of budget hours from all deliverables"))
@@ -173,6 +185,14 @@ class ContractSerializer(serializers.ModelSerializer):
     def get_estimated_percent_complete(self, obj):
         return obj.get_estimated_percent_complete()
 
+    @extend_schema_field(serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True))
+    def get_invoiced_amount(self, obj):
+        return obj.get_invoiced_amount()
+
+    @extend_schema_field(serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, allow_null=True))
+    def get_remaining_contract_amount(self, obj):
+        return obj.get_remaining_contract_amount()
+
     @extend_schema_field(serializers.BooleanField(read_only=True, help_text="True if spent hours exceed budget"))
     def get_is_over_budget(self, obj):
         return obj.is_over_budget()
@@ -182,6 +202,12 @@ class ContractSerializer(serializers.ModelSerializer):
     )
     def get_is_overassigned(self, obj):
         return obj.is_overassigned()
+
+    @extend_schema_field(
+        serializers.BooleanField(read_only=True, help_text="True if invoiced amount exceeds contract amount")
+    )
+    def get_is_over_invoiced(self, obj):
+        return obj.is_over_invoiced()
 
     def validate_tags(self, value):
         if value is None:
@@ -530,6 +556,21 @@ class DeliverableTimeEntrySerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+
+class ContractInvoiceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractInvoiceUpdate
+        fields = [
+            "id",
+            "contract",
+            "invoice_date",
+            "amount",
+            "note",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class DeliverableStatusUpdateSerializer(serializers.ModelSerializer):

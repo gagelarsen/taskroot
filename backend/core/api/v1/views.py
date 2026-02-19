@@ -9,6 +9,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from core.api.v1.filters import (
     ContractFilter,
+    ContractInvoiceUpdateFilter,
     DeliverableAssignmentFilter,
     DeliverableFilter,
     DeliverableStatusUpdateFilter,
@@ -29,6 +30,7 @@ from core.api.v1.permissions import (
     get_staff_role,
 )
 from core.api.v1.serializers import (
+    ContractInvoiceUpdateSerializer,
     ContractSerializer,
     DeliverableAssignmentSerializer,
     DeliverableSerializer,
@@ -44,6 +46,7 @@ from core.api.v1.serializers import (
 )
 from core.models import (
     Contract,
+    ContractInvoiceUpdate,
     Deliverable,
     DeliverableAssignment,
     DeliverableStatusUpdate,
@@ -131,7 +134,7 @@ class ContractViewSet(ModelViewSet):
     serializer_class = ContractSerializer
     filterset_class = ContractFilter
 
-    search_fields = ["name", "client_name"]
+    search_fields = ["name", "client_name", "contract_number"]
 
     ordering_fields = ["start_date", "end_date", "id", "name"]
 
@@ -571,6 +574,48 @@ class DeliverableTimeEntryViewSet(ModelViewSet):
 
         # Managers/Admins and all other cases
         return [ReadOnlyForStaffOtherwiseManagerAdmin()]
+
+
+@extend_schema(tags=["contract-invoice-updates"])
+@extend_schema_view(
+    list=extend_schema(
+        summary="List contract invoice updates",
+        description="List invoice updates with optional filtering, ordering, and pagination.",
+        parameters=[
+            OpenApiParameter("contract_id", OpenApiTypes.INT, description="Filter by contract ID"),
+            OpenApiParameter(
+                "invoice_date_from", OpenApiTypes.DATE, description="Filter updates on or after this date"
+            ),
+            OpenApiParameter("invoice_date_to", OpenApiTypes.DATE, description="Filter updates on or before this date"),
+            OpenApiParameter(
+                "order_by", OpenApiTypes.STR, description="Field to order by", enum=["invoice_date", "id"]
+            ),
+            OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),
+        ],
+    ),
+    create=extend_schema(
+        summary="Create a contract invoice update",
+        description="Create a dated invoiced amount update for a contract.",
+    ),
+    retrieve=extend_schema(
+        summary="Get a contract invoice update", description="Retrieve a single invoice update by ID."
+    ),
+    update=extend_schema(summary="Update a contract invoice update", description="Update an invoice update."),
+    partial_update=extend_schema(
+        summary="Partially update a contract invoice update",
+        description="Partially update an invoice update.",
+    ),
+    destroy=extend_schema(summary="Delete a contract invoice update", description="Delete an invoice update."),
+)
+class ContractInvoiceUpdateViewSet(ModelViewSet):
+    permission_classes = [ReadOnlyForStaffOtherwiseManagerAdmin]
+    serializer_class = ContractInvoiceUpdateSerializer
+    filterset_class = ContractInvoiceUpdateFilter
+
+    ordering_fields = ["invoice_date", "id"]
+
+    def get_queryset(self):
+        return ContractInvoiceUpdate.objects.all().select_related("contract").order_by("-id")
 
 
 @extend_schema(tags=["deliverable-status-updates"])

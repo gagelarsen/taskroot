@@ -28,6 +28,7 @@ import type { Contract, Deliverable } from '../types/api';
 import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
 import { BurnDownChart } from '../components/BurnDownChart';
+import { TimeMaterialsBurnCharts } from '../components/TimeMaterialsBurnCharts';
 import { getContractTypeShortLabel } from '../utils/contractTypes';
 import { AxiosError } from 'axios';
 import { formatContractStatusLabel, getContractStatusChipColor } from '../utils/contractStatus';
@@ -157,6 +158,16 @@ export function ContractDetailPage() {
             <Typography variant="h5">{parseFloat(contract.remaining_budget_hours).toFixed(1)}</Typography>
           </CardContent>
         </Card>
+        {contract.contract_amount !== null && (
+          <Card sx={{ flex: 1 }}>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
+                Contract Amount (USD)
+              </Typography>
+              <Typography variant="h5">${parseFloat(contract.contract_amount).toFixed(2)}</Typography>
+            </CardContent>
+          </Card>
+        )}
       </Stack>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 3 }}>
@@ -191,6 +202,12 @@ export function ContractDetailPage() {
                       label={getContractTypeShortLabel(contract.contract_type)}
                     />
                   </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Contract Number
+                  </Typography>
+                  <Typography>{contract.contract_number || 'Not set'}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -277,6 +294,26 @@ export function ContractDetailPage() {
                 </Typography>
                 <Typography>{parseFloat(contract.estimated_percent_complete).toFixed(1)}%</Typography>
               </Box>
+              {contract.contract_amount !== null && (
+                <>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Invoiced Amount (USD)
+                    </Typography>
+                    <Typography>${parseFloat(contract.invoiced_amount).toFixed(2)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Remaining Amount (USD)
+                    </Typography>
+                    <Typography>
+                      {contract.remaining_contract_amount !== null
+                        ? `$${parseFloat(contract.remaining_contract_amount).toFixed(2)}`
+                        : 'Not set'}
+                    </Typography>
+                  </Box>
+                </>
+              )}
               <Box>
                 <Typography variant="caption" color="text.secondary">
                   Health Flags
@@ -284,7 +321,8 @@ export function ContractDetailPage() {
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
                   {contract.is_over_budget && <StatusBadge type="over_budget" />}
                   {contract.is_overassigned && <StatusBadge type="overassigned" />}
-                  {!contract.is_over_budget && !contract.is_overassigned && (
+                  {contract.is_over_invoiced && <Chip label="Over Invoiced" size="small" color="error" />}
+                  {!contract.is_over_budget && !contract.is_overassigned && !contract.is_over_invoiced && (
                     <StatusBadge type="on_track" />
                   )}
                 </Box>
@@ -298,7 +336,11 @@ export function ContractDetailPage() {
 
       {activeTab === 1 && (
         <Box sx={{ mb: 3 }}>
-          <BurnDownChart contract={contract} />
+          {contract.contract_type === 'time_and_materials' ? (
+            <TimeMaterialsBurnCharts contract={contract} />
+          ) : (
+            <BurnDownChart contract={contract} />
+          )}
         </Box>
       )}
 

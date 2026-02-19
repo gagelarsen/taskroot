@@ -11,6 +11,9 @@ interface ImportStats {
   time_entries_created?: number;
   time_entries_skipped?: number;
   time_entries_failed?: number;
+  invoice_updates_created?: number;
+  invoice_updates_skipped?: number;
+  invoice_updates_failed?: number;
 }
 
 interface ImportResult {
@@ -26,7 +29,7 @@ export function BulkImportPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [importType, setImportType] = useState<'data' | 'time-entries'>('data');
+  const [importType, setImportType] = useState<'data' | 'time-entries' | 'invoices'>('data');
   const [exportError, setExportError] = useState('');
   const [exportingKey, setExportingKey] = useState<string | null>(null);
   const [contractBurnId, setContractBurnId] = useState('');
@@ -100,9 +103,12 @@ export function BulkImportPage() {
       const fileContent = await selectedFile.text();
       const jsonData = JSON.parse(fileContent);
 
-      const endpoint = importType === 'time-entries'
-        ? '/bulk-import/time-entries/'
-        : '/bulk-import/';
+      const endpoint =
+        importType === 'time-entries'
+          ? '/bulk-import/time-entries/'
+          : importType === 'invoices'
+            ? '/bulk-import/invoices/'
+            : '/bulk-import/';
 
       const response = await apiClient.post(endpoint, jsonData);
       setResult(response.data);
@@ -254,6 +260,16 @@ export function BulkImportPage() {
               >
                 Time Entries
               </Button>
+              <Button
+                variant={importType === 'invoices' ? 'contained' : 'outlined'}
+                onClick={() => {
+                  setImportType('invoices');
+                  setSelectedFile(null);
+                  setResult(null);
+                }}
+              >
+                Invoice Updates
+              </Button>
             </Stack>
           </CardContent>
         </Card>
@@ -366,6 +382,21 @@ export function BulkImportPage() {
                         {result.stats.time_entries_failed !== undefined && result.stats.time_entries_failed > 0 && (
                           <Typography variant="body2" color="error.main">
                             Time entries failed: <strong>{result.stats.time_entries_failed}</strong>
+                          </Typography>
+                        )}
+                        {result.stats.invoice_updates_created !== undefined && (
+                          <Typography variant="body2">
+                            Invoice updates created: <strong>{result.stats.invoice_updates_created}</strong>
+                          </Typography>
+                        )}
+                        {result.stats.invoice_updates_skipped !== undefined && result.stats.invoice_updates_skipped > 0 && (
+                          <Typography variant="body2" color="warning.main">
+                            Invoice updates skipped: <strong>{result.stats.invoice_updates_skipped}</strong>
+                          </Typography>
+                        )}
+                        {result.stats.invoice_updates_failed !== undefined && result.stats.invoice_updates_failed > 0 && (
+                          <Typography variant="body2" color="error.main">
+                            Invoice updates failed: <strong>{result.stats.invoice_updates_failed}</strong>
                           </Typography>
                         )}
                       </Stack>
@@ -488,6 +519,38 @@ export function BulkImportPage() {
   ]
 }`}
               </pre>
+
+                <Typography variant="body2" paragraph sx={{ mt: 2 }}>
+                  <strong>For Invoice Updates:</strong>
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                  <pre style={{ margin: 0, fontSize: '0.875rem', overflow: 'auto' }}>
+    {`{
+      "invoice_updates": [
+        {
+          "contract_number": "TM-2026-001",
+          "invoice_date": "2026-02-15",
+          "amount": 12500.0,
+          "note": "Milestone invoice"
+        },
+        {
+          "contract_id": 42,
+          "invoice_date": "2026-03-15",
+          "amount": 10000.0,
+          "note": "Second invoice"
+        },
+        {
+          "contract_name": "Project A",
+          "contract_client_name": "Client X",
+          "invoice_date": "2026-04-15",
+          "amount": 8000.0,
+          "note": "Optional lookup by name/client"
+        }
+      ]
+    }
+    `}
+                  </pre>
+                </Paper>
             </Paper>
           </CardContent>
         </Card>

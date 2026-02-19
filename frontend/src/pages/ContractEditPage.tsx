@@ -26,8 +26,10 @@ export function ContractEditPage() {
   const [contract, setContract] = useState<Partial<Contract>>({
     name: '',
     client_name: '',
+    contract_number: '',
     contract_type: 'fixed_cost',
     budget_hours: '0',
+    contract_amount: null,
     status: 'draft',
     start_date: '',
     end_date: '',
@@ -73,8 +75,10 @@ export function ContractEditPage() {
       const payload = {
         name: contract.name,
         client_name: contract.client_name,
+        contract_number: contract.contract_number || '',
         contract_type: contract.contract_type,
         budget_hours: contract.budget_hours,
+        contract_amount: contract.contract_amount === '' ? null : contract.contract_amount,
         status: contract.status,
         start_date: contract.start_date,
         end_date: contract.end_date,
@@ -176,6 +180,13 @@ export function ContractEditPage() {
             </TextField>
 
             <TextField
+              label="Contract Number"
+              value={contract.contract_number || ''}
+              onChange={(e) => setContract({ ...contract, contract_number: e.target.value })}
+              fullWidth
+            />
+
+            <TextField
               label="Budget Hours"
               type="number"
               value={contract.budget_hours || '0'}
@@ -183,6 +194,21 @@ export function ContractEditPage() {
               required
               fullWidth
               inputProps={{ min: 0, step: 0.5 }}
+            />
+
+            <TextField
+              label="Contract Amount (USD)"
+              type="number"
+              value={contract.contract_amount ?? ''}
+              onChange={(e) =>
+                setContract({
+                  ...contract,
+                  contract_amount: e.target.value === '' ? null : e.target.value,
+                })
+              }
+              fullWidth
+              inputProps={{ min: 0, step: 0.01 }}
+              helperText="Optional"
             />
 
             <TextField
