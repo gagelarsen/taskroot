@@ -18,6 +18,7 @@ import { BulkImportPage } from './pages/BulkImportPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { InitiativesPage } from './pages/InitiativesPage';
 import { FutureWorkPage } from './pages/FutureWorkPage';
+import { MissingUpdatesPage } from './pages/MissingUpdatesPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('access_token');
@@ -197,6 +198,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <FutureWorkPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/missing-updates"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <MissingUpdatesPage />
                 </AppShell>
               </PrivateRoute>
             }
