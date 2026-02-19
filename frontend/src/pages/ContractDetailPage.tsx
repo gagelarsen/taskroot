@@ -37,6 +37,7 @@ import {
   formatDeliverableLifecycleStatusLabel,
   getDeliverableLifecycleStatusChipColor,
 } from '../utils/deliverableStatus';
+import { formatUsdAmount } from '../utils/currency';
 
 export function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -164,7 +165,7 @@ export function ContractDetailPage() {
               <Typography color="text.secondary" gutterBottom>
                 Contract Amount (USD)
               </Typography>
-              <Typography variant="h5">${parseFloat(contract.contract_amount).toFixed(2)}</Typography>
+              <Typography variant="h5">{formatUsdAmount(contract.contract_amount)}</Typography>
             </CardContent>
           </Card>
         )}
@@ -300,7 +301,7 @@ export function ContractDetailPage() {
                     <Typography variant="caption" color="text.secondary">
                       Invoiced Amount (USD)
                     </Typography>
-                    <Typography>${parseFloat(contract.invoiced_amount).toFixed(2)}</Typography>
+                    <Typography>{formatUsdAmount(contract.invoiced_amount)}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
@@ -308,7 +309,7 @@ export function ContractDetailPage() {
                     </Typography>
                     <Typography>
                       {contract.remaining_contract_amount !== null
-                        ? `$${parseFloat(contract.remaining_contract_amount).toFixed(2)}`
+                        ? formatUsdAmount(contract.remaining_contract_amount)
                         : 'Not set'}
                     </Typography>
                   </Box>

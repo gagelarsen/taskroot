@@ -38,6 +38,7 @@ import {
   formatContractStatusLabel,
   getContractStatusChipColor,
 } from '../utils/contractStatus';
+import { formatUsdAmount } from '../utils/currency';
 import { AxiosError } from 'axios';
 
 export function ContractsListPage() {
@@ -333,7 +334,7 @@ export function ContractsListPage() {
                   </TableCell>
                   <TableCell align="right">{parseFloat(contract.budget_hours).toFixed(1)}</TableCell>
                   <TableCell align="right">
-                    {contract.contract_amount !== null ? parseFloat(contract.contract_amount).toFixed(2) : '-'}
+                    {contract.contract_amount !== null ? formatUsdAmount(contract.contract_amount) : '-'}
                   </TableCell>
                   <TableCell align="right">{parseFloat(contract.assigned_budget_hours_per_week).toFixed(1)}</TableCell>
                   <TableCell align="right">{parseFloat(contract.spent_hours_per_week).toFixed(1)}</TableCell>

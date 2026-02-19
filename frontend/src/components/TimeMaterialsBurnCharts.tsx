@@ -35,6 +35,30 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
 
+function parseIsoDate(dateValue: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+
+  const parsed = new Date(year, monthIndex, day);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== monthIndex ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
 export function TimeMaterialsBurnCharts({ contract }: TimeMaterialsBurnChartsProps) {
   const [report, setReport] = useState<ContractTMBurnReport | null>(null);
   const [invoiceUpdates, setInvoiceUpdates] = useState<ContractInvoiceUpdate[]>([]);
@@ -126,6 +150,7 @@ export function TimeMaterialsBurnCharts({ contract }: TimeMaterialsBurnChartsPro
     if (!report) {
       return {
         dates: [] as Date[],
+        invoiceDates: [] as Date[],
         cumulativeInvoiced: [] as number[],
         remainingContractAmount: [] as number[],
         cumulativeHours: [] as number[],
@@ -133,14 +158,58 @@ export function TimeMaterialsBurnCharts({ contract }: TimeMaterialsBurnChartsPro
       };
     }
 
+    const lastHoursIndex = (() => {
+      for (let i = report.buckets.length - 1; i >= 0; i -= 1) {
+        if (parseFloat(report.buckets[i].weekly_hours) > 0) {
+          return i;
+        }
+      }
+      return -1;
+    })();
+
+    const hourBuckets =
+      lastHoursIndex >= 0 ? report.buckets.slice(0, lastHoursIndex + 1) : [];
+
+    const contractStart = parseIsoDate(contract.start_date);
+    const contractEnd = parseIsoDate(contract.end_date);
+    const filteredInvoiceUpdates = invoiceUpdates
+      .map((update) => {
+        const parsedDate = parseIsoDate(update.invoice_date);
+        return parsedDate ? { update, parsedDate } : null;
+      })
+      .filter((item): item is { update: ContractInvoiceUpdate; parsedDate: Date } => {
+        if (!item) {
+          return false;
+        }
+        if (!contractStart || !contractEnd) {
+          return true;
+        }
+        return item.parsedDate >= contractStart && item.parsedDate <= contractEnd;
+      })
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+
+    let cumulativeInvoiceAmount = 0;
+    const invoiceDates: Date[] = [];
+    const invoiceCumulative: number[] = [];
+    const invoiceRemaining: number[] = [];
+
+    for (const { update, parsedDate } of filteredInvoiceUpdates) {
+      const amount = parseFloat(update.amount);
+      cumulativeInvoiceAmount += amount;
+      invoiceDates.push(parsedDate);
+      invoiceCumulative.push(cumulativeInvoiceAmount);
+      invoiceRemaining.push(parseFloat(report.contract_amount) - cumulativeInvoiceAmount);
+    }
+
     return {
-      dates: report.buckets.map((bucket) => new Date(bucket.bucket)),
-      cumulativeInvoiced: report.buckets.map((bucket) => parseFloat(bucket.cumulative_invoiced)),
-      remainingContractAmount: report.buckets.map((bucket) => parseFloat(bucket.remaining_contract_amount)),
-      cumulativeHours: report.buckets.map((bucket) => parseFloat(bucket.cumulative_hours)),
-      weeklyHours: report.buckets.map((bucket) => parseFloat(bucket.weekly_hours)),
+      dates: hourBuckets.map((bucket) => new Date(bucket.bucket)),
+      invoiceDates,
+      cumulativeInvoiced: invoiceCumulative,
+      remainingContractAmount: invoiceRemaining,
+      cumulativeHours: hourBuckets.map((bucket) => parseFloat(bucket.cumulative_hours)),
+      weeklyHours: hourBuckets.map((bucket) => parseFloat(bucket.weekly_hours)),
     };
-  }, [report]);
+  }, [contract.end_date, contract.start_date, report, invoiceUpdates]);
 
   if (loading) {
     return (
@@ -163,12 +232,18 @@ export function TimeMaterialsBurnCharts({ contract }: TimeMaterialsBurnChartsPro
           <Typography variant="h6" gutterBottom>
             Invoice Burndown
           </Typography>
-          {!report || chartSeries.dates.length === 0 ? (
-            <Alert severity="info">No report data available</Alert>
+          {!report || chartSeries.invoiceDates.length === 0 ? (
+            <Alert severity="info">No invoice data available</Alert>
           ) : (
             <>
               <LineChart
-                xAxis={[{ data: chartSeries.dates, scaleType: 'time', valueFormatter: (date) => date.toLocaleDateString() }]}
+                xAxis={[
+                  {
+                    data: chartSeries.invoiceDates,
+                    scaleType: 'time',
+                    valueFormatter: (date) => date.toLocaleDateString(),
+                  },
+                ]}
                 yAxis={[{ label: 'USD' }]}
                 series={[
                   { data: chartSeries.cumulativeInvoiced, label: 'Cumulative Invoiced' },
