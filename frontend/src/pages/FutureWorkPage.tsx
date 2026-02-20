@@ -28,6 +28,7 @@ import { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { futureWorkApi, staffApi } from '../api/client';
 import type { FutureWork, Staff } from '../types/api';
+import { sortStaffByName } from '../utils/staffSort';
 
 export function FutureWorkPage() {
   const navigate = useNavigate();
@@ -106,7 +107,7 @@ export function FutureWorkPage() {
         staffApi.list({ order_by: 'id', order_dir: 'asc' }),
       ]);
       setItems(futureWork);
-      setStaff(staffMembers);
+      setStaff(sortStaffByName(staffMembers));
     } catch (err) {
       setError(getApiErrorMessage(err, 'Failed to load future work'));
     } finally {

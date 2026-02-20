@@ -16,6 +16,7 @@ import { tasksApi, staffApi, deliverablesApi } from '../api/client';
 import type { Task, Staff, Deliverable } from '../types/api';
 import { AxiosError } from 'axios';
 import { TASK_STATUS_OPTIONS } from '../utils/taskStatus';
+import { sortStaffByName } from '../utils/staffSort';
 
 export function TaskEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +48,7 @@ export function TaskEditPage() {
           staffApi.list(),
           deliverablesApi.list(),
         ]);
-        setStaff(staffData);
+        setStaff(sortStaffByName(staffData));
         setDeliverables(deliverablesData);
 
         if (!isNew && id) {

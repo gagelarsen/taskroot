@@ -41,6 +41,7 @@ import {
   getDeliverableLifecycleStatusChipColor,
 } from '../utils/deliverableStatus';
 import { formatTaskStatusLabel, getTaskStatusChipColor } from '../utils/taskStatus';
+import { sortStaffByName } from '../utils/staffSort';
 
 export function DeliverableDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -153,7 +154,7 @@ export function DeliverableDetailPage() {
     const loadStaffMembers = async () => {
       try {
         const data = await staffApi.list({ order_by: 'id', order_dir: 'desc' });
-        setStaffMembers(data);
+        setStaffMembers(sortStaffByName(data));
       } catch {
         setStaffMembers([]);
       }

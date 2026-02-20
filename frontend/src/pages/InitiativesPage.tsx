@@ -27,6 +27,7 @@ import { Add, Edit } from '@mui/icons-material';
 import { AxiosError } from 'axios';
 import { initiativeWeeklyUpdatesApi, initiativesApi, staffApi } from '../api/client';
 import type { Initiative, Staff } from '../types/api';
+import { sortStaffByName } from '../utils/staffSort';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -77,7 +78,7 @@ export function InitiativesPage() {
         staffApi.list({ order_by: 'id', order_dir: 'asc' }),
       ]);
       setInitiatives(initiativeData);
-      setStaff(staffData);
+      setStaff(sortStaffByName(staffData));
     } catch (err) {
       if (err instanceof AxiosError) {
         setError(err.response?.data?.detail || 'Failed to load initiatives');

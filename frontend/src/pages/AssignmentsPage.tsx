@@ -25,6 +25,7 @@ import { Add, Edit, Delete } from '@mui/icons-material';
 import { assignmentsApi, deliverablesApi, staffApi } from '../api/client';
 import type { DeliverableAssignment, Deliverable, Staff } from '../types/api';
 import { AxiosError } from 'axios';
+import { sortStaffByName } from '../utils/staffSort';
 
 interface AssignmentFilters {
   deliverable_id?: number;
@@ -68,7 +69,7 @@ export function AssignmentsPage() {
       ]);
       setAssignments(assignmentsData);
       setDeliverables(deliverablesData);
-      setStaff(staffData);
+      setStaff(sortStaffByName(staffData));
     } catch (err) {
       if (err instanceof AxiosError) {
         setError(err.response?.data?.detail || 'Failed to load assignments');
