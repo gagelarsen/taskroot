@@ -20,6 +20,13 @@ import {
   Tab,
   FormControlLabel,
   Switch,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import { ArrowBack, Add, Edit } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -47,7 +54,19 @@ export function ContractDetailPage() {
   const [showCompleteDeliverables, setShowCompleteDeliverables] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [savingDeliverable, setSavingDeliverable] = useState(false);
   const [error, setError] = useState('');
+  const [deliverableMenuPosition, setDeliverableMenuPosition] = useState<{ mouseX: number; mouseY: number } | null>(null);
+  const [menuDeliverable, setMenuDeliverable] = useState<Deliverable | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingDeliverable, setEditingDeliverable] = useState<Deliverable | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    budget_hours: '0',
+    status: 'not_started' as Deliverable['status'],
+    charge_code: '',
+    target_completion_date: '',
+  });
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -90,6 +109,71 @@ export function ContractDetailPage() {
   const visibleDeliverables = showCompleteDeliverables
     ? deliverables
     : deliverables.filter((deliverable) => parseFloat(deliverable.estimated_percent_complete) < 100);
+
+  const openDeliverableContextMenu = (event: React.MouseEvent, deliverable: Deliverable) => {
+    event.preventDefault();
+    setMenuDeliverable(deliverable);
+    setDeliverableMenuPosition({ mouseX: event.clientX + 2, mouseY: event.clientY - 6 });
+  };
+
+  const closeDeliverableContextMenu = () => {
+    setDeliverableMenuPosition(null);
+  };
+
+  const openEditDeliverableDialogFromMenu = () => {
+    if (!menuDeliverable) {
+      closeDeliverableContextMenu();
+      return;
+    }
+
+    setEditingDeliverable(menuDeliverable);
+    setEditForm({
+      name: menuDeliverable.name,
+      budget_hours: menuDeliverable.budget_hours,
+      status: menuDeliverable.status,
+      charge_code: menuDeliverable.charge_code || '',
+      target_completion_date: menuDeliverable.target_completion_date || '',
+    });
+    setEditDialogOpen(true);
+    closeDeliverableContextMenu();
+  };
+
+  const closeEditDeliverableDialog = () => {
+    if (savingDeliverable) {
+      return;
+    }
+    setEditDialogOpen(false);
+    setEditingDeliverable(null);
+  };
+
+  const handleSaveDeliverableEdit = async () => {
+    if (!editingDeliverable) {
+      return;
+    }
+
+    setSavingDeliverable(true);
+    setError('');
+    try {
+      await deliverablesApi.update(editingDeliverable.id, {
+        name: editForm.name,
+        budget_hours: editForm.budget_hours,
+        status: editForm.status,
+        charge_code: editForm.charge_code,
+        target_completion_date: editForm.target_completion_date || null,
+      });
+      await loadData();
+      setEditDialogOpen(false);
+      setEditingDeliverable(null);
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        setError(err.response?.data?.detail || 'Failed to save deliverable');
+      } else {
+        setError('Failed to save deliverable');
+      }
+    } finally {
+      setSavingDeliverable(false);
+    }
+  };
 
   return (
     <Box>
@@ -459,9 +543,8 @@ export function ContractDetailPage() {
               <TableCell>Status</TableCell>
               <TableCell>Target Date</TableCell>
               <TableCell align="right">Budget</TableCell>
-              <TableCell align="right">Assigned Budget</TableCell>
               <TableCell align="right">Spent</TableCell>
-              <TableCell align="right">Variance</TableCell>
+              <TableCell align="right">Difference</TableCell>
               <TableCell align="right">% Complete</TableCell>
               <TableCell>Latest Status</TableCell>
               <TableCell>Flags</TableCell>
@@ -470,11 +553,13 @@ export function ContractDetailPage() {
           <TableBody>
             {visibleDeliverables.map((deliverable) => {
               const isComplete = parseFloat(deliverable.estimated_percent_complete) >= 100;
+              const difference = parseFloat(deliverable.budget_hours) - parseFloat(deliverable.spent_hours)
               return (
               <TableRow
                 key={deliverable.id}
                 hover
                 onClick={() => navigate(`/deliverables/${deliverable.id}`)}
+                onContextMenu={(event) => openDeliverableContextMenu(event, deliverable)}
                 sx={{ cursor: 'pointer' }}
               >
                 <TableCell>{deliverable.name}</TableCell>
@@ -492,9 +577,10 @@ export function ContractDetailPage() {
                   </Box>
                 </TableCell>
                 <TableCell align="right">{parseFloat(deliverable.budget_hours).toFixed(1)}</TableCell>
-                <TableCell align="right">{parseFloat(deliverable.assigned_budget_hours).toFixed(1)}</TableCell>
                 <TableCell align="right">{parseFloat(deliverable.spent_hours).toFixed(1)}</TableCell>
-                <TableCell align="right">{parseFloat(deliverable.variance_hours).toFixed(1)}</TableCell>
+                <TableCell align="right" sx={{ color: difference < 0 ? 'error.main' : 'inherit' }}>
+                  {difference}
+                </TableCell>
                 <TableCell align="right">{parseFloat(deliverable.estimated_percent_complete).toFixed(0)}%</TableCell>
                 <TableCell>
                   {deliverable.latest_status_update ? (
@@ -528,6 +614,87 @@ export function ContractDetailPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Menu
+        open={!!deliverableMenuPosition}
+        onClose={closeDeliverableContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          deliverableMenuPosition
+            ? { top: deliverableMenuPosition.mouseY, left: deliverableMenuPosition.mouseX }
+            : undefined
+        }
+      >
+        <MenuItem onClick={openEditDeliverableDialogFromMenu}>Edit deliverable</MenuItem>
+      </Menu>
+
+      <Dialog open={editDialogOpen} onClose={closeEditDeliverableDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Deliverable</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Name"
+              value={editForm.name}
+              onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Budget Hours"
+              type="number"
+              value={editForm.budget_hours}
+              onChange={(event) => setEditForm((current) => ({ ...current, budget_hours: event.target.value }))}
+              inputProps={{ min: 0, step: 0.5 }}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Status"
+              select
+              value={editForm.status}
+              onChange={(event) =>
+                setEditForm((current) => ({
+                  ...current,
+                  status: event.target.value as Deliverable['status'],
+                }))
+              }
+              required
+              fullWidth
+            >
+              <MenuItem value="planned">Planned</MenuItem>
+              <MenuItem value="in_progress">In Progress</MenuItem>
+              <MenuItem value="complete">Complete</MenuItem>
+              <MenuItem value="blocked">Blocked</MenuItem>
+            </TextField>
+            <TextField
+              label="Charge Code"
+              value={editForm.charge_code}
+              onChange={(event) => setEditForm((current) => ({ ...current, charge_code: event.target.value }))}
+              fullWidth
+            />
+            <TextField
+              label="Target Completion Date"
+              type="date"
+              value={editForm.target_completion_date}
+              onChange={(event) =>
+                setEditForm((current) => ({ ...current, target_completion_date: event.target.value }))
+              }
+              fullWidth
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeEditDeliverableDialog} disabled={savingDeliverable}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveDeliverableEdit} variant="contained" disabled={savingDeliverable}>
+            {savingDeliverable ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
         </>
       )}
     </Box>

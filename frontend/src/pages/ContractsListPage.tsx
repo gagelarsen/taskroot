@@ -8,6 +8,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableSortLabel,
   Paper,
   CircularProgress,
   Alert,
@@ -53,6 +54,23 @@ export function ContractsListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [tableSort, setTableSort] = useState<{
+    key:
+      | 'name'
+      | 'contract_number'
+      | 'client_name'
+      | 'contract_type'
+      | 'start_date'
+      | 'end_date'
+      | 'status'
+      | 'budget_hours'
+      | 'contract_amount'
+      | 'assigned_budget_hours_per_week'
+      | 'spent_hours_per_week'
+      | 'estimated_percent_complete'
+      | 'remaining_budget_hours';
+    direction: 'asc' | 'desc';
+  }>({ key: 'start_date', direction: 'desc' });
   const [formData, setFormData] = useState({
     name: '',
     client_name: '',
@@ -106,6 +124,72 @@ export function ContractsListPage() {
     const tags = contracts.flatMap((contract) => contract.tags || []);
     return Array.from(new Set(tags)).sort((left, right) => left.localeCompare(right));
   }, [contracts]);
+
+  const sortedContracts = useMemo(() => {
+    const sorted = [...contracts];
+    const { key, direction } = tableSort;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    sorted.sort((left, right) => {
+      const numberValue = (contract: Contract, field: string) => {
+        const value = contract[field as keyof Contract];
+        if (value === null || value === undefined || value === '') {
+          return Number.NEGATIVE_INFINITY;
+        }
+        return Number(value);
+      };
+
+      switch (key) {
+        case 'budget_hours':
+        case 'contract_amount':
+        case 'assigned_budget_hours_per_week':
+        case 'spent_hours_per_week':
+        case 'estimated_percent_complete':
+        case 'remaining_budget_hours': {
+          const leftValue = numberValue(left, key);
+          const rightValue = numberValue(right, key);
+          return (leftValue - rightValue) * dir;
+        }
+        case 'start_date':
+        case 'end_date': {
+          const leftValue = left[key] || '';
+          const rightValue = right[key] || '';
+          return leftValue.localeCompare(rightValue) * dir;
+        }
+        default: {
+          const leftValue = (left[key] || '').toString().toLowerCase();
+          const rightValue = (right[key] || '').toString().toLowerCase();
+          return leftValue.localeCompare(rightValue) * dir;
+        }
+      }
+    });
+
+    return sorted;
+  }, [contracts, tableSort]);
+
+  const handleColumnSort = (
+    key:
+      | 'name'
+      | 'contract_number'
+      | 'client_name'
+      | 'contract_type'
+      | 'start_date'
+      | 'end_date'
+      | 'status'
+      | 'budget_hours'
+      | 'contract_amount'
+      | 'assigned_budget_hours_per_week'
+      | 'spent_hours_per_week'
+      | 'estimated_percent_complete'
+      | 'remaining_budget_hours'
+  ) => {
+    setTableSort((current) => {
+      if (current.key === key) {
+        return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
 
   const handleOpenCreateDialog = () => {
     setError('');
@@ -288,24 +372,128 @@ export function ContractsListPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Contract #</TableCell>
-                <TableCell>Client</TableCell>
-                <TableCell sx={{ width: 110 }}>Contract Type</TableCell>
-                <TableCell>Start Date</TableCell>
-                <TableCell>End Date</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Budget Hours</TableCell>
-                <TableCell align="right">Amount (USD)</TableCell>
-                <TableCell align="right">Assigned/Week</TableCell>
-                <TableCell align="right">Spent/Week</TableCell>
-                <TableCell align="right">% Complete</TableCell>
-                <TableCell align="right">Remaining</TableCell>
+                <TableCell sortDirection={tableSort.key === 'name' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'name'}
+                    direction={tableSort.key === 'name' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('name')}
+                  >
+                    Name
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={tableSort.key === 'contract_number' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'contract_number'}
+                    direction={tableSort.key === 'contract_number' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('contract_number')}
+                  >
+                    Contract #
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={tableSort.key === 'client_name' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'client_name'}
+                    direction={tableSort.key === 'client_name' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('client_name')}
+                  >
+                    Client
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ width: 110 }} sortDirection={tableSort.key === 'contract_type' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'contract_type'}
+                    direction={tableSort.key === 'contract_type' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('contract_type')}
+                  >
+                    Contract Type
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={tableSort.key === 'start_date' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'start_date'}
+                    direction={tableSort.key === 'start_date' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('start_date')}
+                  >
+                    Start Date
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={tableSort.key === 'end_date' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'end_date'}
+                    direction={tableSort.key === 'end_date' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('end_date')}
+                  >
+                    End Date
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sortDirection={tableSort.key === 'status' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'status'}
+                    direction={tableSort.key === 'status' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('status')}
+                  >
+                    Status
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={tableSort.key === 'budget_hours' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'budget_hours'}
+                    direction={tableSort.key === 'budget_hours' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('budget_hours')}
+                  >
+                    Budget Hours
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={tableSort.key === 'contract_amount' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'contract_amount'}
+                    direction={tableSort.key === 'contract_amount' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('contract_amount')}
+                  >
+                    Amount (USD)
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={tableSort.key === 'assigned_budget_hours_per_week' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'assigned_budget_hours_per_week'}
+                    direction={tableSort.key === 'assigned_budget_hours_per_week' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('assigned_budget_hours_per_week')}
+                  >
+                    Assigned/Week
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={tableSort.key === 'spent_hours_per_week' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'spent_hours_per_week'}
+                    direction={tableSort.key === 'spent_hours_per_week' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('spent_hours_per_week')}
+                  >
+                    Spent/Week
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={tableSort.key === 'estimated_percent_complete' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'estimated_percent_complete'}
+                    direction={tableSort.key === 'estimated_percent_complete' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('estimated_percent_complete')}
+                  >
+                    % Complete
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right" sortDirection={tableSort.key === 'remaining_budget_hours' ? tableSort.direction : false}>
+                  <TableSortLabel
+                    active={tableSort.key === 'remaining_budget_hours'}
+                    direction={tableSort.key === 'remaining_budget_hours' ? tableSort.direction : 'asc'}
+                    onClick={() => handleColumnSort('remaining_budget_hours')}
+                  >
+                    Remaining
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Flags</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {contracts.map((contract) => (
+              {sortedContracts.map((contract) => (
                 <TableRow
                   key={contract.id}
                   hover
