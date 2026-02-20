@@ -42,6 +42,7 @@ import {
 } from '../utils/deliverableStatus';
 import { formatTaskStatusLabel, getTaskStatusChipColor } from '../utils/taskStatus';
 import { sortStaffByName } from '../utils/staffSort';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function DeliverableDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -93,34 +94,6 @@ export function DeliverableDetailPage() {
   const [assignmentCreateError, setAssignmentCreateError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const getApiErrorMessage = (err: unknown, fallbackMessage: string) => {
-    if (!(err instanceof AxiosError)) {
-      return fallbackMessage;
-    }
-
-    const responseData = err.response?.data;
-    if (typeof responseData === 'string') {
-      return responseData;
-    }
-
-    if (responseData?.detail && typeof responseData.detail === 'string') {
-      return responseData.detail;
-    }
-
-    if (responseData && typeof responseData === 'object') {
-      for (const value of Object.values(responseData as Record<string, unknown>)) {
-        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
-          return value[0];
-        }
-        if (typeof value === 'string') {
-          return value;
-        }
-      }
-    }
-
-    return fallbackMessage;
-  };
 
   const loadData = useCallback(async () => {
     if (!id) return;

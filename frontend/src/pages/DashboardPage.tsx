@@ -35,6 +35,7 @@ import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative, Staff,
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
 import { formatContractStatusLabel } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 type FlagFilter = 'all' | 'any' | 'over_budget' | 'overassigned' | 'over_expected';
 type SortDirection = 'asc' | 'desc';
@@ -303,34 +304,6 @@ export function DashboardPage() {
       setLoadingDeliverablesByContract((current) => ({ ...current, [contractId]: false }));
     }
   }, [deliverablesByContract]);
-
-  const getApiErrorMessage = (err: unknown, fallbackMessage: string): string => {
-    if (!(err instanceof AxiosError)) {
-      return fallbackMessage;
-    }
-
-    const responseData = err.response?.data;
-    if (typeof responseData === 'string') {
-      return responseData;
-    }
-
-    if (responseData?.detail && typeof responseData.detail === 'string') {
-      return responseData.detail;
-    }
-
-    if (responseData && typeof responseData === 'object') {
-      for (const value of Object.values(responseData as Record<string, unknown>)) {
-        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
-          return value[0];
-        }
-        if (typeof value === 'string') {
-          return value;
-        }
-      }
-    }
-
-    return fallbackMessage;
-  };
 
   const startQuickAddStatusUpdate = async (contractId: number, deliverable: Deliverable) => {
     setQuickAddDialogContractId(contractId);

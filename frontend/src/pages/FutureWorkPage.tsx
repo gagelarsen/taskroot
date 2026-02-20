@@ -24,11 +24,11 @@ import {
   Typography,
 } from '@mui/material';
 import { Add, Edit } from '@mui/icons-material';
-import { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { futureWorkApi, staffApi } from '../api/client';
 import type { FutureWork, Staff } from '../types/api';
 import { sortStaffByName } from '../utils/staffSort';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function FutureWorkPage() {
   const navigate = useNavigate();
@@ -69,34 +69,6 @@ export function FutureWorkPage() {
     contract_type: 'fixed_cost',
     status: 'draft',
   });
-
-  const getApiErrorMessage = (err: unknown, fallbackMessage: string): string => {
-    if (!(err instanceof AxiosError)) {
-      return fallbackMessage;
-    }
-
-    const responseData = err.response?.data;
-    if (typeof responseData === 'string') {
-      return responseData;
-    }
-
-    if (responseData?.detail && typeof responseData.detail === 'string') {
-      return responseData.detail;
-    }
-
-    if (responseData && typeof responseData === 'object') {
-      for (const value of Object.values(responseData as Record<string, unknown>)) {
-        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
-          return value[0];
-        }
-        if (typeof value === 'string') {
-          return value;
-        }
-      }
-    }
-
-    return fallbackMessage;
-  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
