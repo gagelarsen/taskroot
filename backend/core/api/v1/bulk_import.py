@@ -30,7 +30,7 @@ def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) ->
     if "CHARGE CODE" not in header_map or "HOURS" not in header_map:
         raise ValueError("CSV must include CHARGE CODE and HOURS columns")
 
-    entries: list[dict] = []
+    aggregated_entries: dict[tuple[str, str], dict] = {}
     for row in reader:
         charge_code = (row.get(header_map["CHARGE CODE"], "") or "").strip()
         if not charge_code:
@@ -66,19 +66,38 @@ def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) ->
         )
         note_parts = [value for value in [group, description] if value]
 
-        entries.append(
-            {
+        aggregate_key = (charge_code, entry_date)
+        note = " - ".join(note_parts)
+
+        if aggregate_key not in aggregated_entries:
+            aggregated_entries[aggregate_key] = {
                 "charge_code": charge_code,
                 "entry_date": entry_date,
-                "hours": str(hours),
-                "note": " - ".join(note_parts),
+                "hours": hours,
+                "note": note,
             }
-        )
+            continue
 
-    if not entries:
+        aggregated_entries[aggregate_key]["hours"] += hours
+        if note:
+            existing_note = aggregated_entries[aggregate_key]["note"]
+            if not existing_note:
+                aggregated_entries[aggregate_key]["note"] = note
+            elif note not in existing_note.split("; "):
+                aggregated_entries[aggregate_key]["note"] = f"{existing_note}; {note}"
+
+    if not aggregated_entries:
         raise ValueError("No importable time entries found in CSV")
 
-    return entries
+    return [
+        {
+            "charge_code": entry["charge_code"],
+            "entry_date": entry["entry_date"],
+            "hours": str(entry["hours"]),
+            "note": entry["note"],
+        }
+        for entry in aggregated_entries.values()
+    ]
 
 
 @extend_schema(
@@ -328,6 +347,19 @@ def bulk_import_view(request: Request) -> Response:
                     "items": {"type": "string"},
                     "description": "List of errors for failed entries",
                 },
+                "imported_entries": {
+                    "type": "array",
+                    "description": "List of created time entries for verification",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "charge_code": {"type": "string"},
+                            "entry_date": {"type": "string", "format": "date"},
+                            "hours": {"type": "string"},
+                            "note": {"type": "string"},
+                        },
+                    },
+                },
             },
         },
         400: {"description": "Unexpected error during import"},
@@ -401,6 +433,7 @@ def bulk_import_time_entries_view(request: Request) -> Response:
     }
     warnings = []
     errors = []
+    imported_entries = []
 
     try:
         with transaction.atomic():
@@ -445,13 +478,21 @@ def bulk_import_time_entries_view(request: Request) -> Response:
 
                 # Create time entry
                 try:
-                    DeliverableTimeEntry.objects.create(
+                    created_entry = DeliverableTimeEntry.objects.create(
                         deliverable=deliverable,
                         entry_date=entry_date,
                         hours=Decimal(str(hours)),
                         note=entry_data.get("note", ""),
                     )
                     stats["time_entries_created"] += 1
+                    imported_entries.append(
+                        {
+                            "charge_code": charge_code,
+                            "entry_date": str(created_entry.entry_date),
+                            "hours": str(created_entry.hours),
+                            "note": created_entry.note,
+                        }
+                    )
                 except Exception as e:
                     errors.append(f"Entry #{idx}: Failed to create - {str(e)}")
                     stats["time_entries_failed"] += 1
@@ -476,6 +517,9 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                 "message": message,
                 "stats": stats,
             }
+
+            if imported_entries:
+                response_data["imported_entries"] = imported_entries
 
             if warnings:
                 response_data["warnings"] = warnings

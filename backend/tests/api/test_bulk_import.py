@@ -253,6 +253,11 @@ class TestBulkImportTimeEntries:
         assert response.data["stats"]["time_entries_created"] == 1
         assert response.data["stats"]["time_entries_skipped"] == 0
         assert response.data["stats"]["time_entries_failed"] == 0
+        assert "imported_entries" in response.data
+        assert len(response.data["imported_entries"]) == 1
+        assert response.data["imported_entries"][0]["charge_code"] == "TEST_CHARGE_CODE"
+        assert response.data["imported_entries"][0]["entry_date"] == "2026-01-15"
+        assert response.data["imported_entries"][0]["hours"] == "8.5"
 
         # Verify time entry was created
         entry = DeliverableTimeEntry.objects.get(note="Work completed")
@@ -302,6 +307,7 @@ class TestBulkImportTimeEntries:
         assert response.data["stats"]["time_entries_created"] == 0
         assert response.data["stats"]["time_entries_skipped"] == 1
         assert response.data["stats"]["time_entries_failed"] == 0
+        assert "imported_entries" not in response.data
         assert "warnings" in response.data
         assert len(response.data["warnings"]) == 1
         assert "already exists" in response.data["warnings"][0]
@@ -485,6 +491,8 @@ class TestBulkImportTimeEntries:
         assert response.status_code == 200
         assert response.data["success"] is True
         assert response.data["stats"]["time_entries_created"] == 1
+        assert "imported_entries" in response.data
+        assert response.data["imported_entries"][0]["hours"] == "2.5"
         assert response.data["stats"]["time_entries_skipped"] == 0
         assert response.data["stats"]["time_entries_failed"] == 0
 
@@ -525,6 +533,89 @@ class TestBulkImportTimeEntries:
         assert response.data["success"] is True
         assert response.data["stats"]["time_entries_created"] == 1
         assert DeliverableTimeEntry.objects.filter(entry_date="2026-03-05", hours=Decimal("3.0")).exists()
+
+    def test_import_time_entries_from_csv_aggregates_duplicate_charge_codes(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="CSV Aggregate Project",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="CSV Aggregate Deliverable",
+            charge_code="POSE_CODE",
+            status="in_progress",
+        )
+
+        csv_content = (
+            "GROUP,RESOURCE ID,CHARGE CODE,CHARGE CODE DESCRIPTION,HOURS\n"
+            "Development,,POSE_CODE,Tethys POSE,85.25\n"
+            "Sales/Marketing,,POSE_CODE,Tethys POSE,5.50\n"
+            "Administration,,POSE_CODE,Tethys POSE,13.00\n"
+        )
+        csv_file = SimpleUploadedFile("pose_rollup.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-03-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["time_entries_created"] == 1
+        assert response.data["stats"]["time_entries_skipped"] == 0
+        assert response.data["stats"]["time_entries_failed"] == 0
+
+        entries = DeliverableTimeEntry.objects.filter(deliverable=deliverable)
+        assert entries.count() == 1
+        assert entries.first().hours == Decimal("103.75")
+
+    def test_import_time_entries_from_csv_aggregates_and_backfills_empty_note(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="CSV Note Backfill Project",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="CSV Note Backfill Deliverable",
+            charge_code="NOTE_BACKFILL",
+            status="in_progress",
+        )
+
+        csv_content = (
+            "GROUP,RESOURCE ID,CHARGE CODE,CHARGE CODE DESCRIPTION,HOURS\n"
+            ",,NOTE_BACKFILL,,1.0\n"
+            "Development,,NOTE_BACKFILL,POSE,2.0\n"
+        )
+        csv_file = SimpleUploadedFile("note_backfill.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-03-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["time_entries_created"] == 1
+
+        entry = DeliverableTimeEntry.objects.get(deliverable=deliverable)
+        assert entry.hours == Decimal("3.0")
+        assert entry.note == "Development - POSE"
 
     def test_import_time_entries_from_csv_missing_required_columns(self, auth_client, admin_user, admin_profile):
         client = auth_client(admin_user)

@@ -23,6 +23,12 @@ interface ImportResult {
   stats?: ImportStats;
   warnings?: string[];
   errors?: string[];
+  imported_entries?: Array<{
+    charge_code: string;
+    entry_date: string;
+    hours: string;
+    note: string;
+  }>;
 }
 
 export function BulkImportPage() {
@@ -429,6 +435,24 @@ export function BulkImportPage() {
                           </Typography>
                         )}
                       </Stack>
+                    </Box>
+                  )}
+
+                  {result.imported_entries && result.imported_entries.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Imported Time Entries ({result.imported_entries.length})
+                      </Typography>
+                      <Paper variant="outlined" sx={{ p: 1.5, maxHeight: 320, overflow: 'auto' }}>
+                        <Stack spacing={1}>
+                          {result.imported_entries.map((entry, idx) => (
+                            <Typography key={`${entry.charge_code}-${entry.entry_date}-${idx}`} variant="body2">
+                              <strong>{entry.charge_code}</strong> — {entry.entry_date} — {entry.hours}h
+                              {entry.note ? ` — ${entry.note}` : ''}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Paper>
                     </Box>
                   )}
 
