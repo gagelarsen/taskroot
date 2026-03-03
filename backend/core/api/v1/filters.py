@@ -2,6 +2,7 @@ import django_filters
 from django.db.models import Exists, OuterRef, Q
 
 from core.models import (
+    ChargeCode,
     Contract,
     ContractInvoiceUpdate,
     Deliverable,
@@ -253,6 +254,24 @@ class DeliverableTimeEntryFilter(django_filters.FilterSet):
             "deliverable_id",
             "entry_date_from",
             "entry_date_to",
+        ]
+
+
+class ChargeCodeFilter(django_filters.FilterSet):
+    code = django_filters.CharFilter(field_name="code", lookup_expr="icontains")
+    is_active = django_filters.BooleanFilter(field_name="is_active")
+    deliverable_id = django_filters.NumberFilter(field_name="deliverable_id")
+    allotted_hours_from = django_filters.NumberFilter(field_name="allotted_hours", lookup_expr="gte")
+    allotted_hours_to = django_filters.NumberFilter(field_name="allotted_hours", lookup_expr="lte")
+
+    class Meta:
+        model = ChargeCode
+        fields = [
+            "code",
+            "is_active",
+            "deliverable_id",
+            "allotted_hours_from",
+            "allotted_hours_to",
         ]
 
 

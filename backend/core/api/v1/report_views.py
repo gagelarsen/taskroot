@@ -15,6 +15,7 @@ from rest_framework.viewsets import ViewSet
 
 from core.api.v1.permissions import ReadOnlyForStaffOtherwiseManagerAdmin
 from core.api.v1.report_serializers import (
+    ChargeCodeUsageReportSerializer,
     ContractBurnReportSerializer,
     ContractDeliverablesReportSerializer,
     ContractTMBurnReportSerializer,
@@ -22,7 +23,7 @@ from core.api.v1.report_serializers import (
     DeliverableStatusHistoryReportSerializer,
     StaffTimeReportSerializer,
 )
-from core.models import Contract, Deliverable, DeliverableTimeEntry, Staff
+from core.models import ChargeCode, Contract, Deliverable, DeliverableTimeEntry, Staff, UnmappedChargeCodeEntry
 
 
 def get_week_ending_date(d: date) -> date:
@@ -472,4 +473,170 @@ class StaffReportViewSet(ViewSet):
         }
 
         serializer = StaffTimeReportSerializer(report_data)
+        return Response(serializer.data)
+
+
+class ChargeCodeReportViewSet(ViewSet):
+    """Reporting endpoints for charge code usage."""
+
+    permission_classes = [ReadOnlyForStaffOtherwiseManagerAdmin]
+
+    @extend_schema(
+        summary="Charge code usage report",
+        description=(
+            "Get weekly hours for a single charge code or a base code prefix with optional date range filtering."
+        ),
+        responses={200: ChargeCodeUsageReportSerializer},
+        parameters=[
+            OpenApiParameter(
+                name="charge_code", description="Exact charge code (e.g., BASE:SUB)", required=False, type=str
+            ),
+            OpenApiParameter(
+                name="base_code", description="Base charge code prefix before ':'", required=False, type=str
+            ),
+            OpenApiParameter(name="start_date", description="Report start date (YYYY-MM-DD)", required=False, type=str),
+            OpenApiParameter(name="end_date", description="Report end date (YYYY-MM-DD)", required=False, type=str),
+            OpenApiParameter(
+                name="bucket", description="Time bucket size. Only 'week' is supported.", required=False, type=str
+            ),
+        ],
+    )
+    @action(detail=False, methods=["get"], url_path="usage")
+    def usage(self, request):
+        charge_code = (request.query_params.get("charge_code") or "").strip()
+        base_code = (request.query_params.get("base_code") or "").strip()
+
+        if bool(charge_code) == bool(base_code):
+            return Response(
+                {"error": "Provide exactly one of 'charge_code' or 'base_code'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        bucket_type = request.query_params.get("bucket", "week")
+        if bucket_type != "week":
+            return Response(
+                {"error": "Only 'week' bucket type is currently supported"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        start_date_param = (request.query_params.get("start_date") or "").strip()
+        end_date_param = (request.query_params.get("end_date") or "").strip()
+
+        try:
+            start_date = date.fromisoformat(start_date_param) if start_date_param else None
+            end_date = date.fromisoformat(end_date_param) if end_date_param else None
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD for start_date and end_date."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if charge_code:
+            selected_codes = list(ChargeCode.objects.filter(code=charge_code).order_by("code"))
+            if not selected_codes:
+                raise NotFound("Charge code not found")
+            report_type = "charge_code"
+            identifier = charge_code
+        else:
+            selected_codes = list(ChargeCode.objects.filter(code__startswith=base_code).order_by("code"))
+            selected_codes = [
+                code_obj
+                for code_obj in selected_codes
+                if code_obj.code == base_code or code_obj.code.startswith(f"{base_code}:")
+            ]
+            if not selected_codes:
+                raise NotFound("No charge codes found for base_code")
+            report_type = "base_code"
+            identifier = base_code
+
+        selected_code_values = [code_obj.code for code_obj in selected_codes]
+
+        deliverable_ids = [code_obj.deliverable_id for code_obj in selected_codes if code_obj.deliverable_id]
+        time_entries = DeliverableTimeEntry.objects.filter(deliverable_id__in=deliverable_ids)
+        unmapped_entries = UnmappedChargeCodeEntry.objects.filter(charge_code__in=selected_codes)
+
+        if start_date:
+            time_entries = time_entries.filter(entry_date__gte=start_date)
+            unmapped_entries = unmapped_entries.filter(entry_date__gte=start_date)
+        if end_date:
+            time_entries = time_entries.filter(entry_date__lte=end_date)
+            unmapped_entries = unmapped_entries.filter(entry_date__lte=end_date)
+
+        dates = [entry.entry_date for entry in time_entries] + [entry.entry_date for entry in unmapped_entries]
+        if not dates:
+            if start_date and end_date:
+                report_start = start_date
+                report_end = end_date
+            else:
+                today = date.today()
+                report_start = today - timedelta(days=84)
+                report_end = today
+        else:
+            report_start = start_date or min(dates)
+            report_end = end_date or max(dates)
+
+        if report_start > report_end:
+            return Response(
+                {"error": "start_date must be on or before end_date."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        buckets = generate_weekly_buckets(report_start, report_end)
+
+        weekly_hours: dict[date, Decimal] = {}
+        for entry in time_entries:
+            bucket_end = get_week_ending_date(entry.entry_date)
+            weekly_hours[bucket_end] = weekly_hours.get(bucket_end, Decimal("0")) + entry.hours
+        for entry in unmapped_entries:
+            bucket_end = get_week_ending_date(entry.entry_date)
+            weekly_hours[bucket_end] = weekly_hours.get(bucket_end, Decimal("0")) + entry.hours
+
+        allotted_values = [
+            code_obj.allotted_hours for code_obj in selected_codes if code_obj.allotted_hours is not None
+        ]
+        allotted_hours = sum(allotted_values, Decimal("0")) if allotted_values else None
+
+        expected_per_bucket = None
+        if allotted_hours is not None and buckets:
+            expected_per_bucket = allotted_hours / Decimal(len(buckets))
+
+        bucket_data = []
+        cumulative_actual = Decimal("0")
+        cumulative_expected = Decimal("0") if expected_per_bucket is not None else None
+
+        for bucket_end in buckets:
+            actual_for_bucket = weekly_hours.get(bucket_end, Decimal("0"))
+            cumulative_actual += actual_for_bucket
+
+            if expected_per_bucket is not None and cumulative_expected is not None:
+                cumulative_expected += expected_per_bucket
+
+            bucket_data.append(
+                {
+                    "bucket": bucket_end,
+                    "actual_hours": actual_for_bucket,
+                    "cumulative_actual": cumulative_actual,
+                    "expected_hours": expected_per_bucket,
+                    "cumulative_expected": cumulative_expected,
+                }
+            )
+
+        spent_hours = cumulative_actual
+        remaining_hours = None if allotted_hours is None else allotted_hours - spent_hours
+        is_over_allotted = False if allotted_hours is None else spent_hours > allotted_hours
+
+        report_data = {
+            "report_type": report_type,
+            "identifier": identifier,
+            "start_date": report_start,
+            "end_date": report_end,
+            "allotted_hours": allotted_hours,
+            "spent_hours": spent_hours,
+            "remaining_hours": remaining_hours,
+            "is_over_allotted": is_over_allotted,
+            "matched_charge_codes": selected_code_values,
+            "buckets": bucket_data,
+        }
+
+        serializer = ChargeCodeUsageReportSerializer(report_data)
         return Response(serializer.data)

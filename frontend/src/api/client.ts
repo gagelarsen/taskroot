@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type {
+  ChargeCodeUsageReport,
   ContractFilters,
   ContractInvoiceUpdateFilters,
   ContractTMBurnReport,
@@ -108,6 +109,44 @@ export const contractInvoiceUpdatesApi = {
 export const reportsApi = {
   getContractTMBurn: async (contractId: number): Promise<ContractTMBurnReport> => {
     const response = await apiClient.get(`/reports/contracts/${contractId}/tm-burn/`);
+    return response.data;
+  },
+  getChargeCodeUsage: async (params: {
+    charge_code?: string;
+    base_code?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ChargeCodeUsageReport> => {
+    const response = await apiClient.get('/reports/charge-codes/usage/', { params });
+    return response.data;
+  },
+};
+
+export const chargeCodesApi = {
+  list: async (params?: {
+    code?: string;
+    is_active?: boolean;
+    deliverable_id?: number;
+    allotted_hours_from?: number;
+    allotted_hours_to?: number;
+    q?: string;
+    order_by?: string;
+    order_dir?: 'asc' | 'desc';
+  }) => {
+    const response = await apiClient.get('/charge-codes/', { params });
+    return response.data.results || response.data;
+  },
+  update: async (
+    id: number,
+    data: {
+      code?: string;
+      description?: string;
+      allotted_hours?: string | null;
+      deliverable?: number | null;
+      is_active?: boolean;
+    }
+  ) => {
+    const response = await apiClient.patch(`/charge-codes/${id}/`, data);
     return response.data;
   },
 };

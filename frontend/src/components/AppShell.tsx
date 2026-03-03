@@ -25,6 +25,7 @@ import {
   WarningAmber as MissingUpdatesIcon,
   WorkOutline as FutureWorkIcon,
   CloudUpload as BulkImportIcon,
+  Tag as ChargeCodeIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,7 @@ export function AppShell({ children }: AppShellProps) {
     { text: 'Future Work', icon: <FutureWorkIcon />, path: '/future-work' },
     { text: 'Staff', icon: <StaffIcon />, path: '/staff' },
     { text: 'Assignments', icon: <AssignmentsIcon />, path: '/assignments' },
+    { text: 'Charge Codes', icon: <ChargeCodeIcon />, path: '/charge-codes' },
     { text: 'Bulk Import', icon: <BulkImportIcon />, path: '/bulk-import' },
   ];
 

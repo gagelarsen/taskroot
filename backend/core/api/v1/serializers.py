@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
 from core.models import (
+    ChargeCode,
     Contract,
     ContractInvoiceUpdate,
     Deliverable,
@@ -32,6 +33,30 @@ class StaffSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class ChargeCodeSerializer(serializers.ModelSerializer):
+    deliverable_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChargeCode
+        fields = [
+            "id",
+            "code",
+            "description",
+            "allotted_hours",
+            "deliverable",
+            "deliverable_name",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "deliverable_name", "created_at", "updated_at"]
+
+    def get_deliverable_name(self, obj):
+        if obj.deliverable_id:
+            return obj.deliverable.name
+        return None
 
 
 class ContractSerializer(serializers.ModelSerializer):

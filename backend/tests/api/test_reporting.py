@@ -9,6 +9,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from core.models import (
+    ChargeCode,
     Contract,
     ContractInvoiceUpdate,
     Deliverable,
@@ -18,6 +19,7 @@ from core.models import (
     Initiative,
     InitiativeWeeklyUpdate,
     Task,
+    UnmappedChargeCodeEntry,
 )
 
 
@@ -986,3 +988,124 @@ class TestWeekEndingEdgeCases:
         assert len(response.data["buckets"]) == 1
         # The bucket should be the week ending date for start_date (Sunday Jan 7)
         assert response.data["buckets"][0]["bucket"] == "2026-01-04"
+
+
+@pytest.mark.django_db
+class TestChargeCodeUsageReport:
+    def test_charge_code_usage_report(self, admin_user):
+        contract = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 2, 28),
+            budget_hours=Decimal("500.00"),
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(contract=contract, name="Pose Work", status="in_progress")
+        code = ChargeCode.objects.create(code="POSE:DEV", allotted_hours=Decimal("12.00"), deliverable=deliverable)
+
+        DeliverableTimeEntry.objects.create(
+            deliverable=deliverable,
+            entry_date=date(2026, 1, 5),
+            hours=Decimal("5.00"),
+        )
+
+        UnmappedChargeCodeEntry.objects.create(
+            charge_code=code,
+            entry_date=date(2026, 1, 9),
+            hours=Decimal("3.00"),
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get(
+            "/api/v1/reports/charge-codes/usage/" "?charge_code=POSE:DEV&start_date=2026-01-01&end_date=2026-01-31"
+        )
+
+        assert response.status_code == 200
+        data = response.data
+        assert data["report_type"] == "charge_code"
+        assert data["identifier"] == "POSE:DEV"
+        assert data["allotted_hours"] == "12.00"
+        assert data["spent_hours"] == "8.00"
+        assert data["remaining_hours"] == "4.00"
+        assert data["is_over_allotted"] is False
+        assert data["matched_charge_codes"] == ["POSE:DEV"]
+        assert len(data["buckets"]) > 0
+
+    def test_base_code_usage_rollup_and_over_allotted(self, admin_user):
+        contract = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            budget_hours=Decimal("200.00"),
+            status="active",
+        )
+        d1 = Deliverable.objects.create(contract=contract, name="POSE A", status="in_progress")
+        d2 = Deliverable.objects.create(contract=contract, name="POSE B", status="in_progress")
+
+        _ = ChargeCode.objects.create(code="POSE:PM", allotted_hours=Decimal("4.00"), deliverable=d1)
+        _ = ChargeCode.objects.create(code="POSE:DEV", allotted_hours=Decimal("5.00"), deliverable=d2)
+        _ = ChargeCode.objects.create(code="OTHER:DEV", allotted_hours=Decimal("99.00"), deliverable=None)
+
+        DeliverableTimeEntry.objects.create(deliverable=d1, entry_date=date(2026, 1, 6), hours=Decimal("7.00"))
+        DeliverableTimeEntry.objects.create(deliverable=d2, entry_date=date(2026, 1, 7), hours=Decimal("4.00"))
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get("/api/v1/reports/charge-codes/usage/?base_code=POSE")
+
+        assert response.status_code == 200
+        data = response.data
+        assert data["report_type"] == "base_code"
+        assert data["identifier"] == "POSE"
+        assert sorted(data["matched_charge_codes"]) == ["POSE:DEV", "POSE:PM"]
+        assert data["allotted_hours"] == "9.00"
+        assert data["spent_hours"] == "11.00"
+        assert data["remaining_hours"] == "-2.00"
+        assert data["is_over_allotted"] is True
+
+    def test_charge_code_usage_errors(self, admin_user):
+        contract = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            budget_hours=Decimal("100.00"),
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(contract=contract, name="Pose", status="in_progress")
+        _ = ChargeCode.objects.create(code="POSE:QA", deliverable=deliverable)
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        both_response = client.get("/api/v1/reports/charge-codes/usage/?charge_code=A&base_code=B")
+        assert both_response.status_code == 400
+
+        missing_response = client.get("/api/v1/reports/charge-codes/usage/")
+        assert missing_response.status_code == 400
+
+        invalid_date_response = client.get("/api/v1/reports/charge-codes/usage/?charge_code=POSE:QA&start_date=bad")
+        assert invalid_date_response.status_code == 400
+
+        bad_range_response = client.get(
+            "/api/v1/reports/charge-codes/usage/?charge_code=POSE:QA&start_date=2026-01-10&end_date=2026-01-01"
+        )
+        assert bad_range_response.status_code == 400
+
+        not_found_response = client.get("/api/v1/reports/charge-codes/usage/?charge_code=NOPE:1")
+        assert not_found_response.status_code == 404
+
+        base_not_found_response = client.get("/api/v1/reports/charge-codes/usage/?base_code=UNKNOWN")
+        assert base_not_found_response.status_code == 404
+
+        invalid_bucket_response = client.get("/api/v1/reports/charge-codes/usage/?charge_code=POSE:QA&bucket=day")
+        assert invalid_bucket_response.status_code == 400
+
+    def test_charge_code_usage_no_entries_defaults_date_window(self, admin_user):
+        _ = ChargeCode.objects.create(code="POSE:EMPTY")
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get("/api/v1/reports/charge-codes/usage/?charge_code=POSE:EMPTY")
+
+        assert response.status_code == 200
+        data = response.data
+        assert data["spent_hours"] == "0.00"
+        assert len(data["buckets"]) > 0

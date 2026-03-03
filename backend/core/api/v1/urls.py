@@ -5,6 +5,7 @@ from core.api.v1 import bulk_import, export_views, report_views, views
 
 router = DefaultRouter()
 router.register(r"staff", views.StaffViewSet, basename="staff")
+router.register(r"charge-codes", views.ChargeCodeViewSet, basename="charge-code")
 router.register(r"contracts", views.ContractViewSet, basename="contract")
 router.register(r"deliverables", views.DeliverableViewSet, basename="deliverable")
 router.register(r"tasks", views.TaskViewSet, basename="task")
@@ -22,6 +23,7 @@ router.register(r"future-work", views.FutureWorkViewSet, basename="future-work")
 router.register(r"reports/contracts", report_views.ContractReportViewSet, basename="report-contract")
 router.register(r"reports/deliverables", report_views.DeliverableReportViewSet, basename="report-deliverable")
 router.register(r"reports/staff", report_views.StaffReportViewSet, basename="report-staff")
+router.register(r"reports/charge-codes", report_views.ChargeCodeReportViewSet, basename="report-charge-code")
 
 # Export endpoints (non-ViewSet, so we add them manually)
 export_patterns = [

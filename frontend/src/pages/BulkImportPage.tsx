@@ -11,6 +11,7 @@ interface ImportStats {
   time_entries_created?: number;
   time_entries_skipped?: number;
   time_entries_failed?: number;
+  unmapped_entries_created?: number;
   invoice_updates_created?: number;
   invoice_updates_skipped?: number;
   invoice_updates_failed?: number;
@@ -28,6 +29,14 @@ interface ImportResult {
     entry_date: string;
     hours: string;
     note: string;
+  }>;
+  unmapped_entries?: Array<{
+    charge_code: string;
+    entry_date: string;
+    hours: string;
+    note: string;
+    charge_code_description: string;
+    source_file: string;
   }>;
 }
 
@@ -419,6 +428,11 @@ export function BulkImportPage() {
                             Time entries failed: <strong>{result.stats.time_entries_failed}</strong>
                           </Typography>
                         )}
+                        {result.stats.unmapped_entries_created !== undefined && result.stats.unmapped_entries_created > 0 && (
+                          <Typography variant="body2" color="warning.main">
+                            Unmapped entries tracked: <strong>{result.stats.unmapped_entries_created}</strong>
+                          </Typography>
+                        )}
                         {result.stats.invoice_updates_created !== undefined && (
                           <Typography variant="body2">
                             Invoice updates created: <strong>{result.stats.invoice_updates_created}</strong>
@@ -448,6 +462,25 @@ export function BulkImportPage() {
                           {result.imported_entries.map((entry, idx) => (
                             <Typography key={`${entry.charge_code}-${entry.entry_date}-${idx}`} variant="body2">
                               <strong>{entry.charge_code}</strong> — {entry.entry_date} — {entry.hours}h
+                              {entry.note ? ` — ${entry.note}` : ''}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Paper>
+                    </Box>
+                  )}
+
+                  {result.unmapped_entries && result.unmapped_entries.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="h6" gutterBottom>
+                        Unmapped Charge Codes ({result.unmapped_entries.length})
+                      </Typography>
+                      <Paper variant="outlined" sx={{ p: 1.5, maxHeight: 320, overflow: 'auto' }}>
+                        <Stack spacing={1}>
+                          {result.unmapped_entries.map((entry, idx) => (
+                            <Typography key={`${entry.charge_code}-${entry.entry_date}-${idx}`} variant="body2">
+                              <strong>{entry.charge_code}</strong> — {entry.entry_date} — {entry.hours}h
+                              {entry.charge_code_description ? ` — ${entry.charge_code_description}` : ''}
                               {entry.note ? ` — ${entry.note}` : ''}
                             </Typography>
                           ))}

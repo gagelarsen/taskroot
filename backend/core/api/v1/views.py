@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from core.api.v1.filters import (
+    ChargeCodeFilter,
     ContractFilter,
     ContractInvoiceUpdateFilter,
     DeliverableAssignmentFilter,
@@ -30,6 +31,7 @@ from core.api.v1.permissions import (
     get_staff_role,
 )
 from core.api.v1.serializers import (
+    ChargeCodeSerializer,
     ContractInvoiceUpdateSerializer,
     ContractSerializer,
     DeliverableAssignmentSerializer,
@@ -45,6 +47,7 @@ from core.api.v1.serializers import (
     TaskSerializer,
 )
 from core.models import (
+    ChargeCode,
     Contract,
     ContractInvoiceUpdate,
     Deliverable,
@@ -193,6 +196,42 @@ class StaffViewSet(ModelViewSet):
 
     def get_queryset(self):
         return Staff.objects.all().order_by("-id")
+
+
+@extend_schema(tags=["charge-codes"])
+@extend_schema_view(
+    list=extend_schema(
+        summary="List charge codes",
+        description="List charge codes with optional filters and pagination.",
+        parameters=[
+            OpenApiParameter("code", OpenApiTypes.STR, description="Filter by partial charge code"),
+            OpenApiParameter("is_active", OpenApiTypes.BOOL, description="Filter by active status"),
+            OpenApiParameter("deliverable_id", OpenApiTypes.INT, description="Filter by linked deliverable"),
+            OpenApiParameter(
+                "allotted_hours_from", OpenApiTypes.NUMBER, description="Filter by minimum allotted hours"
+            ),
+            OpenApiParameter("allotted_hours_to", OpenApiTypes.NUMBER, description="Filter by maximum allotted hours"),
+            OpenApiParameter("q", OpenApiTypes.STR, description="Search by code or description"),
+            OpenApiParameter("order_by", OpenApiTypes.STR, description="Field to order by"),
+            OpenApiParameter("order_dir", OpenApiTypes.STR, description="Order direction", enum=["asc", "desc"]),
+        ],
+    ),
+    create=extend_schema(summary="Create charge code", description="Create a new charge code mapping."),
+    retrieve=extend_schema(summary="Get charge code", description="Retrieve charge code details."),
+    update=extend_schema(summary="Update charge code", description="Update a charge code mapping."),
+    partial_update=extend_schema(summary="Partially update charge code", description="Partially update a charge code."),
+    destroy=extend_schema(summary="Delete charge code", description="Delete a charge code mapping."),
+)
+class ChargeCodeViewSet(ModelViewSet):
+    permission_classes = [ReadOnlyForStaffOtherwiseManagerAdmin]
+    serializer_class = ChargeCodeSerializer
+    filterset_class = ChargeCodeFilter
+
+    search_fields = ["code", "description", "deliverable__name"]
+    ordering_fields = ["code", "allotted_hours", "updated_at", "id"]
+
+    def get_queryset(self):
+        return ChargeCode.objects.select_related("deliverable").all().order_by("code")
 
 
 @extend_schema(tags=["deliverables"])

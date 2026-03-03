@@ -80,6 +80,39 @@ export interface ContractTMBurnReport {
   buckets: TMBurnBucket[];
 }
 
+export interface ChargeCode {
+  id: number;
+  code: string;
+  description: string;
+  allotted_hours: string | null;
+  deliverable: number | null;
+  deliverable_name: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChargeCodeUsageBucket {
+  bucket: string;
+  actual_hours: string;
+  cumulative_actual: string;
+  expected_hours: string | null;
+  cumulative_expected: string | null;
+}
+
+export interface ChargeCodeUsageReport {
+  report_type: 'charge_code' | 'base_code';
+  identifier: string;
+  start_date: string;
+  end_date: string;
+  allotted_hours: string | null;
+  spent_hours: string;
+  remaining_hours: string | null;
+  is_over_allotted: boolean;
+  matched_charge_codes: string[];
+  buckets: ChargeCodeUsageBucket[];
+}
+
 // Forward declarations for circular references
 export interface DeliverableAssignment {
   id: number;

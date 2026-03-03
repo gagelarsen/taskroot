@@ -15,7 +15,16 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.api.v1.permissions import IsAdmin
-from core.models import Contract, ContractInvoiceUpdate, Deliverable, DeliverableTimeEntry, Staff, Task
+from core.models import (
+    ChargeCode,
+    Contract,
+    ContractInvoiceUpdate,
+    Deliverable,
+    DeliverableTimeEntry,
+    Staff,
+    Task,
+    UnmappedChargeCodeEntry,
+)
 
 
 def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) -> list[dict]:
@@ -75,10 +84,13 @@ def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) ->
                 "entry_date": entry_date,
                 "hours": hours,
                 "note": note,
+                "charge_code_description": description,
             }
             continue
 
         aggregated_entries[aggregate_key]["hours"] += hours
+        if description and not aggregated_entries[aggregate_key]["charge_code_description"]:
+            aggregated_entries[aggregate_key]["charge_code_description"] = description
         if note:
             existing_note = aggregated_entries[aggregate_key]["note"]
             if not existing_note:
@@ -95,6 +107,7 @@ def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) ->
             "entry_date": entry["entry_date"],
             "hours": str(entry["hours"]),
             "note": entry["note"],
+            "charge_code_description": entry["charge_code_description"],
         }
         for entry in aggregated_entries.values()
     ]
@@ -335,6 +348,7 @@ def bulk_import_view(request: Request) -> Response:
                         "time_entries_created": {"type": "integer"},
                         "time_entries_skipped": {"type": "integer"},
                         "time_entries_failed": {"type": "integer"},
+                        "unmapped_entries_created": {"type": "integer"},
                     },
                 },
                 "warnings": {
@@ -357,6 +371,21 @@ def bulk_import_view(request: Request) -> Response:
                             "entry_date": {"type": "string", "format": "date"},
                             "hours": {"type": "string"},
                             "note": {"type": "string"},
+                        },
+                    },
+                },
+                "unmapped_entries": {
+                    "type": "array",
+                    "description": "Unmapped charge-code entries captured for later assignment",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "charge_code": {"type": "string"},
+                            "entry_date": {"type": "string", "format": "date"},
+                            "hours": {"type": "string"},
+                            "note": {"type": "string"},
+                            "charge_code_description": {"type": "string"},
+                            "source_file": {"type": "string"},
                         },
                     },
                 },
@@ -430,10 +459,13 @@ def bulk_import_time_entries_view(request: Request) -> Response:
         "time_entries_created": 0,
         "time_entries_skipped": 0,
         "time_entries_failed": 0,
+        "unmapped_entries_created": 0,
     }
     warnings = []
     errors = []
     imported_entries = []
+    unmapped_entries = []
+    source_file = request.FILES["file"].name if "file" in request.FILES else ""
 
     try:
         with transaction.atomic():
@@ -442,6 +474,8 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                 charge_code = entry_data.get("charge_code", "")
                 entry_date = entry_data.get("entry_date", "")
                 hours = entry_data.get("hours", 0)
+                note = entry_data.get("note", "")
+                charge_code_description = entry_data.get("charge_code_description", "")
 
                 # Validate required fields
                 if not charge_code:
@@ -454,12 +488,66 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                     stats["time_entries_failed"] += 1
                     continue
 
+                charge_code_record, _ = ChargeCode.objects.get_or_create(
+                    code=charge_code,
+                    defaults={
+                        "description": charge_code_description,
+                        "is_active": True,
+                    },
+                )
+
+                if charge_code_description and not charge_code_record.description:
+                    charge_code_record.description = charge_code_description
+                    charge_code_record.save(update_fields=["description", "updated_at"])
+
+                deliverable = charge_code_record.deliverable
+                if not deliverable:
+                    deliverable = Deliverable.objects.filter(charge_code=charge_code).first()
+                    if deliverable:
+                        charge_code_record.deliverable = deliverable
+                        charge_code_record.save(update_fields=["deliverable", "updated_at"])
+
                 # Find deliverable by charge_code
-                try:
-                    deliverable = Deliverable.objects.get(charge_code=charge_code)
-                except Deliverable.DoesNotExist:
-                    warnings.append(f"Entry #{idx}: Deliverable not found with charge_code '{charge_code}' - skipped")
+                if not deliverable:
+                    decimal_hours = Decimal(str(hours))
+                    existing_unmapped_entry = UnmappedChargeCodeEntry.objects.filter(
+                        charge_code=charge_code_record,
+                        entry_date=entry_date,
+                        hours=decimal_hours,
+                        note=note,
+                        source_file=source_file,
+                    ).first()
+
+                    if existing_unmapped_entry:
+                        warnings.append(
+                            f"Entry #{idx}: Unmapped charge_code '{charge_code}' already tracked "
+                            f"on {entry_date} - skipped"
+                        )
+                        stats["time_entries_skipped"] += 1
+                        continue
+
+                    unmapped_entry = UnmappedChargeCodeEntry.objects.create(
+                        charge_code=charge_code_record,
+                        entry_date=entry_date,
+                        hours=decimal_hours,
+                        note=note,
+                        source_file=source_file,
+                    )
+                    unmapped_entries.append(
+                        {
+                            "charge_code": charge_code,
+                            "entry_date": str(unmapped_entry.entry_date),
+                            "hours": str(unmapped_entry.hours),
+                            "note": unmapped_entry.note,
+                            "charge_code_description": charge_code_record.description,
+                            "source_file": source_file,
+                        }
+                    )
+                    warnings.append(
+                        f"Entry #{idx}: Deliverable not found with charge_code '{charge_code}' - tracked as unmapped"
+                    )
                     stats["time_entries_skipped"] += 1
+                    stats["unmapped_entries_created"] += 1
                     continue
 
                 # Check if entry already exists for this deliverable and date
@@ -482,7 +570,7 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                         deliverable=deliverable,
                         entry_date=entry_date,
                         hours=Decimal(str(hours)),
-                        note=entry_data.get("note", ""),
+                        note=note,
                     )
                     stats["time_entries_created"] += 1
                     imported_entries.append(
@@ -498,8 +586,10 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                     stats["time_entries_failed"] += 1
 
             # Determine overall success
-            success = stats["time_entries_created"] > 0 or (
-                stats["time_entries_failed"] == 0 and stats["time_entries_skipped"] > 0
+            success = (
+                stats["time_entries_created"] > 0
+                or stats["unmapped_entries_created"] > 0
+                or (stats["time_entries_failed"] == 0 and stats["time_entries_skipped"] > 0)
             )
 
             message_parts = []
@@ -509,6 +599,8 @@ def bulk_import_time_entries_view(request: Request) -> Response:
                 message_parts.append(f"{stats['time_entries_skipped']} entries skipped")
             if stats["time_entries_failed"] > 0:
                 message_parts.append(f"{stats['time_entries_failed']} entries failed")
+            if stats["unmapped_entries_created"] > 0:
+                message_parts.append(f"{stats['unmapped_entries_created']} unmapped entries tracked")
 
             message = ", ".join(message_parts) if message_parts else "No entries processed"
 
@@ -520,6 +612,9 @@ def bulk_import_time_entries_view(request: Request) -> Response:
 
             if imported_entries:
                 response_data["imported_entries"] = imported_entries
+
+            if unmapped_entries:
+                response_data["unmapped_entries"] = unmapped_entries
 
             if warnings:
                 response_data["warnings"] = warnings

@@ -67,6 +67,48 @@ class TestV1CrudSmoke:
         assert r.status_code == 200
         assert any(item["id"] == contract_id for item in r.data["results"])
 
+    def test_charge_code_create_and_list(self, api_client):
+        r = api_client.post(
+            "/api/v1/charge-codes/",
+            {
+                "code": "POSE:PM",
+                "description": "Project management",
+                "allotted_hours": "40.00",
+                "is_active": True,
+            },
+            format="json",
+        )
+        assert r.status_code == 201, r.data
+        code_id = r.data["id"]
+        assert r.data["allotted_hours"] == "40.00"
+
+        r = api_client.get("/api/v1/charge-codes/?code=POSE")
+        assert r.status_code == 200
+        assert any(item["id"] == code_id for item in r.data["results"])
+
+    def test_charge_code_list_includes_deliverable_name(self, api_client, contract_payload):
+        contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
+        deliverable = api_client.post(
+            "/api/v1/deliverables/",
+            {"contract": contract["id"], "name": "D-POSE", "status": "planned"},
+            format="json",
+        ).data
+
+        r = api_client.post(
+            "/api/v1/charge-codes/",
+            {
+                "code": "POSE:DLV",
+                "deliverable": deliverable["id"],
+                "is_active": True,
+            },
+            format="json",
+        )
+        assert r.status_code == 201, r.data
+
+        list_response = api_client.get("/api/v1/charge-codes/?code=POSE:DLV")
+        assert list_response.status_code == 200
+        assert list_response.data["results"][0]["deliverable_name"] == "D-POSE"
+
     def test_contract_create_with_explicit_contract_type(self, api_client, contract_payload):
         payload = {**contract_payload, "contract_type": "time_and_materials"}
         r = api_client.post("/api/v1/contracts/", payload, format="json")

@@ -7,7 +7,16 @@ from decimal import Decimal
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from core.models import Contract, ContractInvoiceUpdate, Deliverable, DeliverableTimeEntry, Staff, Task
+from core.models import (
+    ChargeCode,
+    Contract,
+    ContractInvoiceUpdate,
+    Deliverable,
+    DeliverableTimeEntry,
+    Staff,
+    Task,
+    UnmappedChargeCodeEntry,
+)
 
 
 @pytest.mark.django_db
@@ -339,10 +348,15 @@ class TestBulkImportTimeEntries:
         assert response.data["stats"]["time_entries_created"] == 0
         assert response.data["stats"]["time_entries_skipped"] == 1
         assert response.data["stats"]["time_entries_failed"] == 0
+        assert response.data["stats"]["unmapped_entries_created"] == 1
         assert "warnings" in response.data
         assert len(response.data["warnings"]) == 1
         assert "not found" in response.data["warnings"][0]
         assert "NONEXISTENT_CODE" in response.data["warnings"][0]
+        assert "unmapped_entries" in response.data
+        assert response.data["unmapped_entries"][0]["charge_code"] == "NONEXISTENT_CODE"
+        assert UnmappedChargeCodeEntry.objects.count() == 1
+        assert ChargeCode.objects.filter(code="NONEXISTENT_CODE").exists()
 
     def test_import_time_entries_mixed_valid_and_invalid(self, auth_client, admin_user, admin_profile):
         """Test that valid entries are imported even when some are invalid."""
@@ -405,6 +419,7 @@ class TestBulkImportTimeEntries:
         assert response.data["stats"]["time_entries_created"] == 2  # Two valid entries
         assert response.data["stats"]["time_entries_skipped"] == 2  # One nonexistent, one duplicate
         assert response.data["stats"]["time_entries_failed"] == 0
+        assert response.data["stats"]["unmapped_entries_created"] == 1
         assert "warnings" in response.data
         assert len(response.data["warnings"]) == 2
 
@@ -616,6 +631,81 @@ class TestBulkImportTimeEntries:
         entry = DeliverableTimeEntry.objects.get(deliverable=deliverable)
         assert entry.hours == Decimal("3.0")
         assert entry.note == "Development - POSE"
+
+    def test_import_time_entries_tracks_unmapped_from_csv_and_skips_duplicate_reimports(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        csv_content = "CHARGE CODE,CHARGE CODE DESCRIPTION,HOURS\n" "UNMAPPED_CODE,Unmapped code,4.0\n"
+        csv_file = SimpleUploadedFile("unmapped_codes.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        first_response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-03-01"},
+            format="multipart",
+        )
+
+        assert first_response.status_code == 200
+        assert first_response.data["stats"]["time_entries_created"] == 0
+        assert first_response.data["stats"]["time_entries_skipped"] == 1
+        assert first_response.data["stats"]["unmapped_entries_created"] == 1
+        assert "unmapped_entries" in first_response.data
+        assert first_response.data["unmapped_entries"][0]["charge_code_description"] == "Unmapped code"
+        assert ChargeCode.objects.get(code="UNMAPPED_CODE").description == "Unmapped code"
+        assert UnmappedChargeCodeEntry.objects.count() == 1
+
+        csv_file_again = SimpleUploadedFile("unmapped_codes.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        second_response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file_again, "entry_date": "2026-03-01"},
+            format="multipart",
+        )
+
+        assert second_response.status_code == 200
+        assert second_response.data["stats"]["time_entries_created"] == 0
+        assert second_response.data["stats"]["time_entries_skipped"] == 1
+        assert second_response.data["stats"]["unmapped_entries_created"] == 0
+        assert "already tracked" in second_response.data["warnings"][0]
+        assert UnmappedChargeCodeEntry.objects.count() == 1
+
+    def test_import_time_entries_updates_existing_blank_charge_code_description(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Description Update Project",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        Deliverable.objects.create(
+            contract=contract,
+            name="Description Update Deliverable",
+            charge_code="DESC_UPDATE",
+            status="in_progress",
+        )
+        ChargeCode.objects.create(code="DESC_UPDATE", description="")
+
+        payload = {
+            "time_entries": [
+                {
+                    "charge_code": "DESC_UPDATE",
+                    "charge_code_description": "Updated Description",
+                    "entry_date": "2026-03-10",
+                    "hours": 2.0,
+                    "note": "Description update test",
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/time-entries/", payload, format="json")
+
+        assert response.status_code == 200
+        assert response.data["stats"]["time_entries_created"] == 1
+        assert ChargeCode.objects.get(code="DESC_UPDATE").description == "Updated Description"
 
     def test_import_time_entries_from_csv_missing_required_columns(self, auth_client, admin_user, admin_profile):
         client = auth_client(admin_user)

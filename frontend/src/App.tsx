@@ -19,6 +19,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { InitiativesPage } from './pages/InitiativesPage';
 import { FutureWorkPage } from './pages/FutureWorkPage';
 import { MissingUpdatesPage } from './pages/MissingUpdatesPage';
+import { ChargeCodesPage } from './pages/ChargeCodesPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!localStorage.getItem('access_token');
@@ -198,6 +199,16 @@ function App() {
               <PrivateRoute>
                 <AppShell>
                   <FutureWorkPage />
+                </AppShell>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/charge-codes"
+            element={
+              <PrivateRoute>
+                <AppShell>
+                  <ChargeCodesPage />
                 </AppShell>
               </PrivateRoute>
             }

@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from core.models import (
+    ChargeCode,
     Contract,
     ContractInvoiceUpdate,
     Deliverable,
@@ -9,6 +10,7 @@ from core.models import (
     DeliverableTimeEntry,
     Staff,
     Task,
+    UnmappedChargeCodeEntry,
 )
 
 
@@ -41,6 +43,30 @@ class ContractInvoiceUpdateAdmin(admin.ModelAdmin):
     list_filter = ("invoice_date",)
     search_fields = ("contract__name", "contract__contract_number")
     autocomplete_fields = ("contract",)
+
+
+class UnmappedChargeCodeEntryInline(admin.TabularInline):
+    model = UnmappedChargeCodeEntry
+    extra = 0
+    fields = ("entry_date", "hours", "note", "source_file", "created_at")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(ChargeCode)
+class ChargeCodeAdmin(admin.ModelAdmin):
+    list_display = ("id", "code", "description", "allotted_hours", "deliverable", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("code", "description", "deliverable__name")
+    autocomplete_fields = ("deliverable",)
+    inlines = (UnmappedChargeCodeEntryInline,)
+
+
+@admin.register(UnmappedChargeCodeEntry)
+class UnmappedChargeCodeEntryAdmin(admin.ModelAdmin):
+    list_display = ("id", "charge_code", "entry_date", "hours", "source_file", "created_at")
+    list_filter = ("entry_date", "created_at")
+    search_fields = ("charge_code__code", "note", "source_file")
+    autocomplete_fields = ("charge_code",)
 
 
 class DeliverableAssignmentInline(admin.TabularInline):
