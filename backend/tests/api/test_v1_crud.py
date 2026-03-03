@@ -342,6 +342,56 @@ class TestV1CrudSmoke:
         assert r.data["future_work"]["converted_to_type"] == "contract"
         assert r.data["contract"]["name"] == "Potential New Client"
 
+    def test_future_work_convert_to_initiative_fails_when_already_converted(self, api_client):
+        item = api_client.post(
+            "/api/v1/future-work/",
+            {"name": "Already Converted Item", "notes": "One-time conversion", "tags": ["internal"]},
+            format="json",
+        ).data
+
+        first = api_client.post(f"/api/v1/future-work/{item['id']}/convert-to-initiative/", {}, format="json")
+        assert first.status_code == 200, first.data
+
+        second = api_client.post(f"/api/v1/future-work/{item['id']}/convert-to-initiative/", {}, format="json")
+        assert second.status_code == 400
+        assert "already converted" in second.data["detail"].lower()
+
+    def test_future_work_convert_to_contract_fails_when_already_converted(self, api_client):
+        item = api_client.post(
+            "/api/v1/future-work/",
+            {"name": "Already Converted Contract Item", "notes": "One-time conversion", "tags": ["pipeline"]},
+            format="json",
+        ).data
+
+        first = api_client.post(
+            f"/api/v1/future-work/{item['id']}/convert-to-contract/",
+            {
+                "start_date": "2026-04-01",
+                "end_date": "2026-10-31",
+                "budget_hours": "240",
+                "client_name": "Acme Corp",
+                "contract_type": "time_and_materials",
+                "status": "draft",
+            },
+            format="json",
+        )
+        assert first.status_code == 200, first.data
+
+        second = api_client.post(
+            f"/api/v1/future-work/{item['id']}/convert-to-contract/",
+            {
+                "start_date": "2026-04-01",
+                "end_date": "2026-10-31",
+                "budget_hours": "240",
+                "client_name": "Acme Corp",
+                "contract_type": "time_and_materials",
+                "status": "draft",
+            },
+            format="json",
+        )
+        assert second.status_code == 400
+        assert "already converted" in second.data["detail"].lower()
+
 
 @pytest.mark.django_db
 class TestV1Validations:

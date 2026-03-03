@@ -22,7 +22,7 @@ force-single-line = false
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra --cov=core --cov=taskroot --cov-report=term-missing --cov-report=html"
+addopts = "-ra --cov=core --cov=taskroot --cov-report=term-missing --cov-report=html --cov-fail-under=100"
 testpaths = ["tests"]
 DJANGO_SETTINGS_MODULE = "taskroot.settings"
 python_files = ["test_*.py"]

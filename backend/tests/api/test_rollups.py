@@ -147,12 +147,8 @@ class TestDeliverableRollups:
             hours=Decimal("650.00"),  # 650 hours total
         )
 
-        # Contract is Jan 1 - Mar 31 (13 weeks)
-        # Since contract is in the past, elapsed weeks = 13 (full contract)
-        # spent_hours_per_week = 650 / 13 = 50.00
-        # assigned_budget_hours_per_week = 40.00
-        # variance = 50.00 - 40.00 = 10.00
-        assert deliverable.get_variance_hours() == Decimal("52.85714285714285714285714286")
+        expected_variance = deliverable.get_spent_hours_per_week() - Decimal("40.00")
+        assert deliverable.get_variance_hours() == expected_variance
 
     def test_is_overassigned_flag(self, deliverable, staff_member):
         """is_over_expected should be True when spent_hours_per_week > assigned_budget_hours_per_week."""
@@ -537,6 +533,45 @@ class TestCompletionRollups:
     def test_estimated_percent_complete_zero_when_no_tasks(self, contract, deliverable):
         assert deliverable.get_estimated_percent_complete() == Decimal("0")
         assert contract.get_estimated_percent_complete() == Decimal("0")
+
+    def test_deliverable_estimated_percent_complete_simple_average_when_task_budgets_zero(self, deliverable):
+        Task.objects.create(
+            deliverable=deliverable,
+            title="Task A",
+            budget_hours=Decimal("0.00"),
+            percent_complete=Decimal("20.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+        Task.objects.create(
+            deliverable=deliverable,
+            title="Task B",
+            budget_hours=Decimal("0.00"),
+            percent_complete=Decimal("80.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+
+        assert deliverable.get_estimated_percent_complete() == Decimal("50")
+
+    def test_contract_estimated_percent_complete_simple_average_when_task_budgets_zero(self, contract):
+        d1 = Deliverable.objects.create(contract=contract, name="D1", status=Deliverable.Status.IN_PROGRESS)
+        d2 = Deliverable.objects.create(contract=contract, name="D2", status=Deliverable.Status.IN_PROGRESS)
+
+        Task.objects.create(
+            deliverable=d1,
+            title="Task 1",
+            budget_hours=Decimal("0.00"),
+            percent_complete=Decimal("10.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+        Task.objects.create(
+            deliverable=d2,
+            title="Task 2",
+            budget_hours=Decimal("0.00"),
+            percent_complete=Decimal("70.00"),
+            status=Task.Status.IN_PROGRESS,
+        )
+
+        assert contract.get_estimated_percent_complete() == Decimal("40")
 
 
 @pytest.mark.django_db

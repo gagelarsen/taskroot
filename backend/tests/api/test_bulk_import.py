@@ -848,3 +848,128 @@ class TestBulkImportCoverageEdges:
         assert response.status_code == 400
         assert response.data["success"] is False
         assert "Unexpected error" in response.data["error"]
+
+    def test_invoice_updates_import_finds_contract_by_name_and_client(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Named Contract",
+            client_name="Client Lookup",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_name": "Named Contract",
+                    "contract_client_name": "Client Lookup",
+                    "invoice_date": "2026-03-01",
+                    "amount": 2500,
+                    "note": "Lookup path",
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["invoice_updates_created"] == 1
+        assert ContractInvoiceUpdate.objects.filter(contract=contract, amount=Decimal("2500")).exists()
+
+    def test_invoice_updates_import_reports_missing_and_invalid_amount(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_number": "TM-INV-001",
+                    "invoice_date": "2026-01-31",
+                },
+                {
+                    "contract_number": "TM-INV-001",
+                    "invoice_date": "2026-01-31",
+                    "amount": "not-a-number",
+                },
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is False
+        assert response.data["stats"]["invoice_updates_failed"] == 2
+        assert any("Missing amount" in error for error in response.data["errors"])
+        assert any("Invalid amount" in error for error in response.data["errors"])
+
+    def test_invoice_updates_import_missing_contract_identifiers_returns_not_found_warning(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "invoice_date": "2026-01-31",
+                    "amount": 100,
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["invoice_updates_created"] == 0
+        assert response.data["stats"]["invoice_updates_skipped"] == 1
+        assert "warnings" in response.data
+
+    def test_invoice_updates_import_create_exception_is_reported(
+        self, auth_client, admin_user, admin_profile, monkeypatch
+    ):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="Invoice Create Failure",
+            contract_number="INV-FAIL",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+
+        def raise_create_error(*args, **kwargs):
+            raise RuntimeError("forced invoice create failure")
+
+        monkeypatch.setattr(ContractInvoiceUpdate.objects, "create", raise_create_error)
+
+        payload = {
+            "invoice_updates": [
+                {
+                    "contract_id": contract.id,
+                    "invoice_date": "2026-03-15",
+                    "amount": 1200,
+                }
+            ]
+        }
+
+        response = client.post("/api/v1/bulk-import/invoices/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is False
+        assert response.data["stats"]["invoice_updates_failed"] == 1
+        assert "forced invoice create failure" in response.data["errors"][0]
+
+    def test_invoice_updates_import_non_mapping_payload_hits_outer_exception(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        response = client.post(
+            "/api/v1/bulk-import/invoices/",
+            ["not", "a", "mapping"],
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "Unexpected error" in response.data["error"]

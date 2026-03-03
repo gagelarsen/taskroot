@@ -7,10 +7,19 @@ from decimal import Decimal
 
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from core.api.v1.filters import _parse_bool
-from core.models import Contract, Deliverable, DeliverableAssignment, Initiative, InitiativeWeeklyUpdate, Staff
+from core.api.v1.filters import ContractFilter, FutureWorkFilter, InitiativeFilter, _parse_bool
+from core.models import (
+    Contract,
+    Deliverable,
+    DeliverableAssignment,
+    FutureWork,
+    Initiative,
+    InitiativeWeeklyUpdate,
+    Staff,
+)
 
 
 @pytest.fixture
@@ -365,6 +374,139 @@ class TestInitiativeFilters:
         ids = {item["id"] for item in response.data["results"]}
         assert tagged.id in ids
         assert len(ids) == 1
+
+    def test_initiative_filter_stale_false(self, auth_client):
+        stale = Initiative.objects.create(name="Stale False Initiative", status="active")
+        current = Initiative.objects.create(name="Current False Initiative", status="active")
+
+        InitiativeWeeklyUpdate.objects.create(
+            initiative=stale,
+            period_end=date(2026, 1, 1),
+            percent_complete=Decimal("10.0"),
+            summary="Old update",
+        )
+        InitiativeWeeklyUpdate.objects.create(
+            initiative=current,
+            period_end=date.today(),
+            percent_complete=Decimal("80.0"),
+            summary="Recent update",
+        )
+
+        response = auth_client.get("/api/v1/initiatives/?stale=false")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert current.id in ids
+        assert stale.id not in ids
+
+    def test_initiative_filter_stale_invalid_value_returns_all(self, auth_client):
+        first = Initiative.objects.create(name="First Initiative", status="active")
+        second = Initiative.objects.create(name="Second Initiative", status="active")
+
+        response = auth_client.get("/api/v1/initiatives/?stale=invalid")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert first.id in ids
+        assert second.id in ids
+
+    def test_initiative_filter_tags_empty_value_returns_all(self, auth_client):
+        first = Initiative.objects.create(name="Tags Empty A", status="active")
+        second = Initiative.objects.create(name="Tags Empty B", status="active", tags=["Ops"])
+
+        response = auth_client.get("/api/v1/initiatives/?tags=")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert first.id in ids
+        assert second.id in ids
+
+
+@pytest.mark.django_db
+class TestFutureWorkFilters:
+    def test_future_work_filter_converted_true(self, auth_client):
+        converted = FutureWork.objects.create(
+            name="Converted Future Work",
+            converted_to_type="initiative",
+            converted_to_id=1,
+            converted_at=timezone.now(),
+        )
+        _ = FutureWork.objects.create(name="Unconverted Future Work")
+
+        response = auth_client.get("/api/v1/future-work/?converted=true")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert converted.id in ids
+        assert len(ids) == 1
+
+    def test_future_work_filter_converted_false(self, auth_client):
+        _ = FutureWork.objects.create(
+            name="Converted Future Work",
+            converted_to_type="initiative",
+            converted_to_id=1,
+            converted_at=timezone.now(),
+        )
+        unconverted = FutureWork.objects.create(name="Not Converted")
+
+        response = auth_client.get("/api/v1/future-work/?converted=false")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert unconverted.id in ids
+        assert len(ids) == 1
+
+    def test_future_work_filter_converted_invalid_value_returns_all(self, auth_client):
+        first = FutureWork.objects.create(name="FW One")
+        second = FutureWork.objects.create(name="FW Two")
+
+        response = auth_client.get("/api/v1/future-work/?converted=maybe")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert first.id in ids
+        assert second.id in ids
+
+    def test_future_work_filter_tags_matches_any(self, auth_client):
+        match = FutureWork.objects.create(name="FW Ops", tags=["Ops", "Internal"])
+        _ = FutureWork.objects.create(name="FW Client", tags=["Client"])
+
+        response = auth_client.get("/api/v1/future-work/?tags=ops")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert match.id in ids
+        assert len(ids) == 1
+
+    def test_future_work_filter_tags_empty_value_returns_all(self, auth_client):
+        first = FutureWork.objects.create(name="FW Empty A")
+        second = FutureWork.objects.create(name="FW Empty B", tags=["Ops"])
+
+        response = auth_client.get("/api/v1/future-work/?tags=")
+        assert response.status_code == 200
+        ids = {item["id"] for item in response.data["results"]}
+        assert first.id in ids
+        assert second.id in ids
+
+
+@pytest.mark.django_db
+class TestFilterMethodDirectCoverage:
+    def test_contract_filter_tags_empty_requested_returns_same_queryset(self):
+        contract = Contract.objects.create(
+            name="Contract Direct Filter",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("10.0"),
+            status="active",
+        )
+        queryset = Contract.objects.all()
+        filtered = ContractFilter().filter_tags(queryset, "tags", " , ")
+        assert list(filtered.values_list("id", flat=True)) == [contract.id]
+
+    def test_initiative_filter_tags_empty_requested_returns_same_queryset(self):
+        initiative = Initiative.objects.create(name="Initiative Direct Filter", status="active")
+        queryset = Initiative.objects.all()
+        filtered = InitiativeFilter().filter_tags(queryset, "tags", " , ")
+        assert list(filtered.values_list("id", flat=True)) == [initiative.id]
+
+    def test_future_work_filter_tags_empty_requested_returns_same_queryset(self):
+        item = FutureWork.objects.create(name="Future Work Direct Filter")
+        queryset = FutureWork.objects.all()
+        filtered = FutureWorkFilter().filter_tags(queryset, "tags", " , ")
+        assert list(filtered.values_list("id", flat=True)) == [item.id]
 
 
 @pytest.mark.django_db

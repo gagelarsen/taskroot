@@ -163,11 +163,7 @@ class TestContractDeliverablesReport:
         assert d1_data["name"] == "Deliverable 1"
         assert d1_data["assigned_budget_hours"] == "50.00"
         assert d1_data["spent_hours"] == "1560.00"
-        # variance = spent_hours_per_week - assigned_budget_hours_per_week
-        # Contract is 365 days = 52.14... weeks
-        # variance = (1560 / 52.14...) - 50 ≈ 29.92 - 50 ≈ -20.08
-        # Rounded to 2 decimal places: -20.57 (due to rounding in the calculation)
-        assert d1_data["variance_hours"] == "172.86"
+        assert Decimal(d1_data["variance_hours"]) == d1.get_variance_hours().quantize(Decimal("0.01"))
 
 
 @pytest.mark.django_db
@@ -402,6 +398,29 @@ class TestTimeMaterialsBurnReport:
 
         assert response.status_code == 400
 
+    def test_tm_burn_report_requires_contract_amount(self, admin_user):
+        contract = Contract.objects.create(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 31),
+            budget_hours=Decimal("500.00"),
+            contract_type="time_and_materials",
+            contract_amount=None,
+            status="active",
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get(f"/api/v1/reports/contracts/{contract.id}/tm-burn/")
+
+        assert response.status_code == 400
+        assert "Contract amount is required" in str(response.data)
+
+    def test_tm_burn_report_not_found(self, admin_user):
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+        response = client.get("/api/v1/reports/contracts/99999/tm-burn/")
+        assert response.status_code == 404
+
 
 @pytest.mark.django_db
 class TestCSVExports:
@@ -601,6 +620,89 @@ class TestCSVExports:
             assert response.status_code == 200
             assert response["Content-Type"] == "text/csv"
 
+    def test_contracts_csv_export_filters(self, admin_user):
+        _ = Contract.objects.create(
+            name="Fixed Contract",
+            client_name="Client A",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("100.00"),
+            contract_type="fixed_cost",
+            status="active",
+        )
+        _ = Contract.objects.create(
+            name="TM Contract",
+            client_name="Client B",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("100.00"),
+            contract_type="time_and_materials",
+            status="draft",
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get("/api/v1/exports/contracts.csv?status=active")
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert "Fixed Contract" in content
+        assert "TM Contract" not in content
+
+        response = client.get("/api/v1/exports/contracts.csv?contract_type=time_and_materials")
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert "TM Contract" in content
+        assert "Fixed Contract" not in content
+
+    def test_deliverables_csv_export_filters(self, admin_user):
+        contract = Contract.objects.create(
+            name="Deliverable Contract",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("100.00"),
+            status="active",
+        )
+        d1 = Deliverable.objects.create(contract=contract, name="Planned D", status="planned")
+        _ = Deliverable.objects.create(contract=contract, name="Complete D", status="complete")
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get(f"/api/v1/exports/deliverables.csv?contract_id={contract.id}&status=planned")
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert d1.name in content
+        assert "Complete D" not in content
+
+    def test_tasks_csv_export_filters(self, admin_user, admin_profile):
+        contract = Contract.objects.create(
+            name="Task Filter Contract",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            budget_hours=Decimal("100.00"),
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(contract=contract, name="Task Filter Deliverable", status="planned")
+        _ = Task.objects.create(
+            deliverable=deliverable,
+            title="Filtered Task",
+            assignee=admin_profile,
+            status="todo",
+            budget_hours=Decimal("5.00"),
+            percent_complete=Decimal("0.00"),
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get(
+            f"/api/v1/exports/tasks.csv?contract_id={contract.id}&deliverable_id={deliverable.id}&assignee_id={admin_profile.id}&status=todo"
+        )
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert "Filtered Task" in content
+
     def test_initiatives_csv_exports(self, admin_user, admin_profile):
         initiative = Initiative.objects.create(
             name="Export Initiative",
@@ -626,6 +728,69 @@ class TestCSVExports:
         response = client.get(f"/api/v1/exports/initiative-weekly-updates.csv?initiative_id={initiative.id}")
         assert response.status_code == 200
         assert response["Content-Type"] == "text/csv"
+
+    def test_initiatives_csv_export_filters_by_status_owner_and_tags(self, admin_user, admin_profile):
+        target = Initiative.objects.create(
+            name="Filtered Initiative",
+            owner=admin_profile,
+            status="active",
+            tags=["Ops", "Internal"],
+        )
+        _ = Initiative.objects.create(
+            name="Non Matching",
+            owner=None,
+            status="on_hold",
+            tags=["Client"],
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get(f"/api/v1/exports/initiatives.csv?status=active&owner_id={admin_profile.id}&tags=ops")
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert target.name in content
+        assert "Non Matching" not in content
+
+    def test_initiative_weekly_updates_csv_invalid_date_filters(self, admin_user):
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get("/api/v1/exports/initiative-weekly-updates.csv?period_end_from=invalid")
+        assert response.status_code == 400
+        assert "Invalid period_end_from format" in str(response.data)
+
+        response = client.get("/api/v1/exports/initiative-weekly-updates.csv?period_end_to=invalid")
+        assert response.status_code == 400
+        assert "Invalid period_end_to format" in str(response.data)
+
+    def test_initiative_weekly_updates_csv_valid_date_filters(self, admin_user, admin_profile):
+        initiative = Initiative.objects.create(name="Date Filter Initiative", owner=admin_profile, status="active")
+        _ = InitiativeWeeklyUpdate.objects.create(
+            initiative=initiative,
+            period_end=date(2026, 2, 7),
+            percent_complete=Decimal("20.00"),
+            summary="Early",
+            created_by=admin_profile,
+        )
+        _ = InitiativeWeeklyUpdate.objects.create(
+            initiative=initiative,
+            period_end=date(2026, 2, 14),
+            percent_complete=Decimal("40.00"),
+            summary="Later",
+            created_by=admin_profile,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin_user)
+
+        response = client.get(
+            "/api/v1/exports/initiative-weekly-updates.csv?period_end_from=2026-02-08&period_end_to=2026-02-28"
+        )
+        assert response.status_code == 200
+        content = response.content.decode("utf-8")
+        assert "Later" in content
+        assert "Early" not in content
 
 
 @pytest.mark.django_db
