@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
-from core.models import Staff
+from core.models import ChargeCode, Staff
 
 
 @pytest.fixture()
@@ -183,6 +183,32 @@ class TestV1CrudSmoke:
         assert r.status_code == 200
         deliverable = next(item for item in r.data["results"] if item["id"] == deliverable_id)
         assert deliverable["charge_code"] == "CC-456"
+
+        mapping = ChargeCode.objects.get(code="CC-456")
+        assert mapping.deliverable_id == deliverable_id
+
+    def test_deliverable_charge_code_clear_unlinks_mapping(self, api_client, contract_payload):
+        contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data
+        created = api_client.post(
+            "/api/v1/deliverables/",
+            {"contract": contract["id"], "name": "D-clear", "charge_code": "CLR-1", "status": "planned"},
+            format="json",
+        )
+        assert created.status_code == 201, created.data
+        deliverable_id = created.data["id"]
+
+        mapped = ChargeCode.objects.get(code="CLR-1")
+        assert mapped.deliverable_id == deliverable_id
+
+        cleared = api_client.patch(
+            f"/api/v1/deliverables/{deliverable_id}/",
+            {"charge_code": ""},
+            format="json",
+        )
+        assert cleared.status_code == 200, cleared.data
+
+        mapped.refresh_from_db()
+        assert mapped.deliverable_id is None
 
     def test_task_create_without_assignee_and_list(self, api_client, contract_payload):
         contract = api_client.post("/api/v1/contracts/", contract_payload, format="json").data

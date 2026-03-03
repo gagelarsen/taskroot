@@ -497,6 +497,43 @@ class DeliverableSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def _sync_charge_code_mapping(self, deliverable: Deliverable):
+        charge_code_value = (deliverable.charge_code or "").strip()
+
+        current_mapping = ChargeCode.objects.filter(deliverable=deliverable).first()
+
+        if not charge_code_value:
+            if current_mapping:
+                current_mapping.deliverable = None
+                current_mapping.save(update_fields=["deliverable", "updated_at"])
+            return
+
+        if current_mapping and current_mapping.code != charge_code_value:
+            current_mapping.deliverable = None
+            current_mapping.save(update_fields=["deliverable", "updated_at"])
+
+        target_mapping, _ = ChargeCode.objects.get_or_create(
+            code=charge_code_value,
+            defaults={
+                "description": "",
+                "is_active": True,
+            },
+        )
+
+        if target_mapping.deliverable_id != deliverable.id:
+            target_mapping.deliverable = deliverable
+            target_mapping.save(update_fields=["deliverable", "updated_at"])
+
+    def create(self, validated_data):
+        deliverable = super().create(validated_data)
+        self._sync_charge_code_mapping(deliverable)
+        return deliverable
+
+    def update(self, instance, validated_data):
+        deliverable = super().update(instance, validated_data)
+        self._sync_charge_code_mapping(deliverable)
+        return deliverable
+
 
 class TaskSerializer(serializers.ModelSerializer):
     # Ensure nullable FK behaves the way we want at the API boundary:

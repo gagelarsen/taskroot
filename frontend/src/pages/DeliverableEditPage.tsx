@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  Autocomplete,
   Box,
   Typography,
   TextField,
@@ -12,8 +13,8 @@ import {
 } from '@mui/material';
 import { ArrowBack, Save } from '@mui/icons-material';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { deliverablesApi, contractsApi } from '../api/client';
-import type { Deliverable, Contract } from '../types/api';
+import { chargeCodesApi, deliverablesApi, contractsApi } from '../api/client';
+import type { Deliverable, Contract, ChargeCode } from '../types/api';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { coerceToIsoDateOnly } from '../utils/dateHelpers';
 
@@ -35,6 +36,7 @@ export function DeliverableEditPage() {
     target_completion_date: null,
   });
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [chargeCodeOptions, setChargeCodeOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -42,8 +44,12 @@ export function DeliverableEditPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const contractsData = await contractsApi.list();
+        const [contractsData, chargeCodesData] = await Promise.all([
+          contractsApi.list(),
+          chargeCodesApi.list({ is_active: true, order_by: 'code', order_dir: 'asc' }),
+        ]);
         setContracts(contractsData);
+        setChargeCodeOptions((chargeCodesData as ChargeCode[]).map((item) => item.code));
 
         if (!isNew && id) {
           const deliverableData = await deliverablesApi.get(parseInt(id));
@@ -184,12 +190,19 @@ export function DeliverableEditPage() {
               <MenuItem value="blocked">Blocked</MenuItem>
             </TextField>
 
-            <TextField
-              label="Charge Code"
+            <Autocomplete
+              freeSolo
+              options={chargeCodeOptions}
               value={deliverable.charge_code || ''}
-              onChange={(e) => setDeliverable({ ...deliverable, charge_code: e.target.value })}
-              fullWidth
-              helperText="Optional billing or tracking code"
+              onInputChange={(_, value) => setDeliverable({ ...deliverable, charge_code: value })}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Charge Code"
+                  fullWidth
+                  helperText="Existing charge codes are suggested; you can still type a new one."
+                />
+              )}
             />
 
             <TextField

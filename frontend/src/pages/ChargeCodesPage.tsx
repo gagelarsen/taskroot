@@ -9,6 +9,8 @@ import {
   CircularProgress,
   MenuItem,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from '@mui/material';
@@ -34,6 +36,7 @@ export function ChargeCodesPage() {
   const [saveMessage, setSaveMessage] = useState('');
   const [report, setReport] = useState<ChargeCodeUsageReport | null>(null);
   const [allottedDrafts, setAllottedDrafts] = useState<Record<number, string>>({});
+  const [activeTab, setActiveTab] = useState<'plot' | 'allotted'>('plot');
 
   const [mode, setMode] = useState<'charge_code' | 'base_code'>('charge_code');
   const [selectedChargeCode, setSelectedChargeCode] = useState('');
@@ -212,74 +215,12 @@ export function ChargeCodesPage() {
         Charge Codes
       </Typography>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-            <TextField
-              select
-              label="View"
-              value={mode}
-              onChange={(event) => setMode(event.target.value as 'charge_code' | 'base_code')}
-              fullWidth
-            >
-              <MenuItem value="charge_code">Charge Code</MenuItem>
-              <MenuItem value="base_code">Base Code</MenuItem>
-            </TextField>
-
-            {mode === 'charge_code' ? (
-              <TextField
-                select
-                label="Charge Code"
-                value={selectedChargeCode}
-                onChange={(event) => setSelectedChargeCode(event.target.value)}
-                fullWidth
-              >
-                {chargeCodes.map((chargeCode) => (
-                  <MenuItem key={chargeCode.id} value={chargeCode.code}>
-                    {chargeCode.code}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : (
-              <TextField
-                select
-                label="Base Code"
-                value={selectedBaseCode}
-                onChange={(event) => setSelectedBaseCode(event.target.value)}
-                fullWidth
-              >
-                {baseCodeOptions.map((baseCode) => (
-                  <MenuItem key={baseCode} value={baseCode}>
-                    {baseCode}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-
-            <TextField
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-
-            <TextField
-              label="End Date"
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
-
-            <Button variant="contained" onClick={() => void loadReport()} disabled={!canRunReport || loadingReport}>
-              Run Report
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value)}>
+          <Tab value="plot" label="Plot" />
+          <Tab value="allotted" label="Allotted Hours" />
+        </Tabs>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -293,128 +234,203 @@ export function ChargeCodesPage() {
         </Alert>
       )}
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
-            <Typography variant="h6">Allotted Hours</Typography>
-            <Button
-              variant="contained"
-              onClick={() => void handleSaveAllAllottedHours()}
-              disabled={savingAllAllotted || !hasAllottedChanges}
-            >
-              Save All
-            </Button>
-          </Stack>
-          <Stack spacing={1.5}>
-            {chargeCodes.map((chargeCode) => {
-              const draftValue = allottedDrafts[chargeCode.id] ?? '';
-              const isDirty = (chargeCode.allotted_hours ?? '').trim() !== draftValue.trim();
-              return (
-                <Stack key={chargeCode.id} direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
-                  <Box sx={{ flex: 1, width: '100%' }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography variant="body2">{chargeCode.code}</Typography>
-                      {isDirty && <Chip label="Unsaved" size="small" color="warning" variant="outlined" />}
-                    </Stack>
-                  </Box>
-                  <TextField
-                    label="Allotted Hours"
-                    type="number"
-                    size="small"
-                    value={draftValue}
-                    onChange={(event) =>
-                      setAllottedDrafts((current) => ({
-                        ...current,
-                        [chargeCode.id]: event.target.value,
-                      }))
-                    }
-                    inputProps={{ min: 0, step: '0.01' }}
-                    sx={{ minWidth: 180 }}
-                  />
-                  <Button
-                    variant="outlined"
-                    onClick={() => void handleSaveAllottedHours(chargeCode)}
-                    disabled={savingAllottedId === chargeCode.id || savingAllAllotted || !isDirty}
-                  >
-                    Save
-                  </Button>
-                </Stack>
-              );
-            })}
-          </Stack>
-        </CardContent>
-      </Card>
-
-      {(loadingOptions || loadingReport) && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {!loadingReport && report && (
+      {activeTab === 'plot' && (
         <>
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: '1 1 220px' }}>
-              <Card>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <TextField
+                  select
+                  label="View"
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value as 'charge_code' | 'base_code')}
+                  fullWidth
+                >
+                  <MenuItem value="charge_code">Charge Code</MenuItem>
+                  <MenuItem value="base_code">Base Code</MenuItem>
+                </TextField>
+
+                {mode === 'charge_code' ? (
+                  <TextField
+                    select
+                    label="Charge Code"
+                    value={selectedChargeCode}
+                    onChange={(event) => setSelectedChargeCode(event.target.value)}
+                    fullWidth
+                  >
+                    {chargeCodes.map((chargeCode) => (
+                      <MenuItem key={chargeCode.id} value={chargeCode.code}>
+                        {chargeCode.code}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    select
+                    label="Base Code"
+                    value={selectedBaseCode}
+                    onChange={(event) => setSelectedBaseCode(event.target.value)}
+                    fullWidth
+                  >
+                    {baseCodeOptions.map((baseCode) => (
+                      <MenuItem key={baseCode} value={baseCode}>
+                        {baseCode}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+
+                <TextField
+                  label="Start Date"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+
+                <TextField
+                  label="End Date"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+
+                <Button variant="contained" onClick={() => void loadReport()} disabled={!canRunReport || loadingReport}>
+                  Run Report
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          {(loadingOptions || loadingReport) && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          )}
+
+          {!loadingReport && report && (
+            <>
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 220px' }}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="text.secondary">Allotted Hours</Typography>
+                      <Typography variant="h5">{report.allotted_hours ?? 'Not set'}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 220px' }}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="text.secondary">Spent Hours</Typography>
+                      <Typography variant="h5">{report.spent_hours}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 220px' }}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="text.secondary">Remaining Hours</Typography>
+                      <Typography variant="h5">{report.remaining_hours ?? 'N/A'}</Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+                <Box sx={{ flex: '1 1 220px' }}>
+                  <Card>
+                    <CardContent>
+                      <Typography color="text.secondary">Status</Typography>
+                      <Typography variant="h5" color={report.is_over_allotted ? 'error.main' : 'success.main'}>
+                        {report.is_over_allotted ? 'Over Allotted' : 'On Track'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+
+              <Card sx={{ mb: 3 }}>
                 <CardContent>
-                  <Typography color="text.secondary">Allotted Hours</Typography>
-                  <Typography variant="h5">{report.allotted_hours ?? 'Not set'}</Typography>
+                  <Typography variant="h6" gutterBottom>
+                    Cumulative Burn
+                  </Typography>
+                  <LineChart
+                    height={360}
+                    xAxis={[{ scaleType: 'point', data: chartXAxis }]}
+                    series={[
+                      { label: 'Cumulative Actual', data: cumulativeActualSeries },
+                      { label: 'Cumulative Expected', data: cumulativeExpectedSeries },
+                    ]}
+                    margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
+                  />
                 </CardContent>
               </Card>
-            </Box>
-            <Box sx={{ flex: '1 1 220px' }}>
+
               <Card>
                 <CardContent>
-                  <Typography color="text.secondary">Spent Hours</Typography>
-                  <Typography variant="h5">{report.spent_hours}</Typography>
-                </CardContent>
-              </Card>
-            </Box>
-            <Box sx={{ flex: '1 1 220px' }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary">Remaining Hours</Typography>
-                  <Typography variant="h5">{report.remaining_hours ?? 'N/A'}</Typography>
-                </CardContent>
-              </Card>
-            </Box>
-            <Box sx={{ flex: '1 1 220px' }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary">Status</Typography>
-                  <Typography variant="h5" color={report.is_over_allotted ? 'error.main' : 'success.main'}>
-                    {report.is_over_allotted ? 'Over Allotted' : 'On Track'}
+                  <Typography variant="body2" color="text.secondary">
+                    Included charge codes: {report.matched_charge_codes.join(', ')}
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
-          </Box>
-
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Cumulative Burn
-              </Typography>
-              <LineChart
-                height={360}
-                xAxis={[{ scaleType: 'point', data: chartXAxis }]}
-                series={[
-                  { label: 'Cumulative Actual', data: cumulativeActualSeries },
-                  { label: 'Cumulative Expected', data: cumulativeExpectedSeries },
-                ]}
-                margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                Included charge codes: {report.matched_charge_codes.join(', ')}
-              </Typography>
-            </CardContent>
-          </Card>
+            </>
+          )}
         </>
+      )}
+
+      {activeTab === 'allotted' && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
+              <Typography variant="h6">Allotted Hours</Typography>
+              <Button
+                variant="contained"
+                onClick={() => void handleSaveAllAllottedHours()}
+                disabled={savingAllAllotted || !hasAllottedChanges}
+              >
+                Save All
+              </Button>
+            </Stack>
+            <Stack spacing={1.5}>
+              {chargeCodes.map((chargeCode) => {
+                const draftValue = allottedDrafts[chargeCode.id] ?? '';
+                const isDirty = (chargeCode.allotted_hours ?? '').trim() !== draftValue.trim();
+                return (
+                  <Stack key={chargeCode.id} direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
+                    <Box sx={{ flex: 1, width: '100%' }}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body2">{chargeCode.code}</Typography>
+                        {isDirty && <Chip label="Unsaved" size="small" color="warning" variant="outlined" />}
+                      </Stack>
+                    </Box>
+                    <TextField
+                      label="Allotted Hours"
+                      type="number"
+                      size="small"
+                      value={draftValue}
+                      onChange={(event) =>
+                        setAllottedDrafts((current) => ({
+                          ...current,
+                          [chargeCode.id]: event.target.value,
+                        }))
+                      }
+                      inputProps={{ min: 0, step: '0.01' }}
+                      sx={{ minWidth: 180 }}
+                    />
+                    <Button
+                      variant="outlined"
+                      onClick={() => void handleSaveAllottedHours(chargeCode)}
+                      disabled={savingAllottedId === chargeCode.id || savingAllAllotted || !isDirty}
+                    >
+                      Save
+                    </Button>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          </CardContent>
+        </Card>
       )}
     </Box>
   );
