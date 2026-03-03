@@ -992,7 +992,7 @@ class TestWeekEndingEdgeCases:
 
 @pytest.mark.django_db
 class TestChargeCodeUsageReport:
-    def test_charge_code_usage_report(self, admin_user):
+    def test_charge_code_usage_report(self, admin_user, admin_profile):
         contract = Contract.objects.create(
             start_date=date(2026, 1, 1),
             end_date=date(2026, 2, 28),
@@ -1000,6 +1000,12 @@ class TestChargeCodeUsageReport:
             status="active",
         )
         deliverable = Deliverable.objects.create(contract=contract, name="Pose Work", status="in_progress")
+        DeliverableAssignment.objects.create(
+            deliverable=deliverable,
+            staff=admin_profile,
+            budget_hours=Decimal("6.00"),
+            is_lead=True,
+        )
         code = ChargeCode.objects.create(code="POSE:DEV", allotted_hours=Decimal("12.00"), deliverable=deliverable)
 
         DeliverableTimeEntry.objects.create(
@@ -1030,8 +1036,9 @@ class TestChargeCodeUsageReport:
         assert data["is_over_allotted"] is False
         assert data["matched_charge_codes"] == ["POSE:DEV"]
         assert len(data["buckets"]) > 0
+        assert data["buckets"][0]["expected_hours"] == "6.00"
 
-    def test_base_code_usage_rollup_and_over_allotted(self, admin_user):
+    def test_base_code_usage_rollup_and_over_allotted(self, admin_user, admin_profile):
         contract = Contract.objects.create(
             start_date=date(2026, 1, 1),
             end_date=date(2026, 1, 31),
@@ -1040,6 +1047,18 @@ class TestChargeCodeUsageReport:
         )
         d1 = Deliverable.objects.create(contract=contract, name="POSE A", status="in_progress")
         d2 = Deliverable.objects.create(contract=contract, name="POSE B", status="in_progress")
+        DeliverableAssignment.objects.create(
+            deliverable=d1,
+            staff=admin_profile,
+            budget_hours=Decimal("2.50"),
+            is_lead=True,
+        )
+        DeliverableAssignment.objects.create(
+            deliverable=d2,
+            staff=admin_profile,
+            budget_hours=Decimal("3.50"),
+            is_lead=True,
+        )
 
         _ = ChargeCode.objects.create(code="POSE:PM", allotted_hours=Decimal("4.00"), deliverable=d1)
         _ = ChargeCode.objects.create(code="POSE:DEV", allotted_hours=Decimal("5.00"), deliverable=d2)
@@ -1061,6 +1080,7 @@ class TestChargeCodeUsageReport:
         assert data["spent_hours"] == "11.00"
         assert data["remaining_hours"] == "-2.00"
         assert data["is_over_allotted"] is True
+        assert data["buckets"][0]["expected_hours"] == "6.00"
 
     def test_charge_code_usage_errors(self, admin_user):
         contract = Contract.objects.create(

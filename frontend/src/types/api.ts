@@ -84,6 +84,8 @@ export interface ChargeCode {
   id: number;
   code: string;
   description: string;
+  start_date: string | null;
+  end_date: string | null;
   allotted_hours: string | null;
   deliverable: number | null;
   deliverable_name: string | null;

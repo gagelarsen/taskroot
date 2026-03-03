@@ -596,9 +596,13 @@ class ChargeCodeReportViewSet(ViewSet):
         ]
         allotted_hours = sum(allotted_values, Decimal("0")) if allotted_values else None
 
+        mapped_deliverables = [code_obj.deliverable for code_obj in selected_codes if code_obj.deliverable_id]
         expected_per_bucket = None
-        if allotted_hours is not None and buckets:
-            expected_per_bucket = allotted_hours / Decimal(len(buckets))
+        if mapped_deliverables:
+            expected_per_bucket = sum(
+                (deliverable.get_assigned_budget_hours_per_week() for deliverable in mapped_deliverables),
+                Decimal("0"),
+            )
 
         bucket_data = []
         cumulative_actual = Decimal("0")

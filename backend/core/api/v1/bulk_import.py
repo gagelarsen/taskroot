@@ -113,6 +113,24 @@ def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) ->
     ]
 
 
+def _sync_deliverable_charge_code_mapping(deliverable: Deliverable, charge_code_value: str) -> None:
+    code = (charge_code_value or "").strip()
+    if not code:
+        return
+
+    charge_code, _ = ChargeCode.objects.get_or_create(
+        code=code,
+        defaults={
+            "description": "",
+            "is_active": True,
+        },
+    )
+
+    if charge_code.deliverable_id is None:
+        charge_code.deliverable_id = deliverable.id
+        charge_code.save(update_fields=["deliverable", "updated_at"])
+
+
 @extend_schema(
     summary="Bulk import data from JSON",
     description="""
@@ -238,6 +256,8 @@ def bulk_import_view(request: Request) -> Response:
                         "status": deliv_data.get("status", "planned"),
                     },
                 )
+
+                _sync_deliverable_charge_code_mapping(deliverable, deliverable.charge_code)
                 deliverable_map[deliv_data["name"]] = deliverable
                 if created:
                     stats["deliverables_created"] += 1

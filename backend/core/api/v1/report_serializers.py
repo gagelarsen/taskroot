@@ -165,7 +165,7 @@ class ChargeCodeUsageBucketSerializer(serializers.Serializer):
     expected_hours = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text="Expected weekly hours from allotted hours, distributed evenly",
+        help_text="Expected weekly hours from assigned budget hours on mapped deliverables",
         allow_null=True,
     )
     cumulative_expected = serializers.DecimalField(

@@ -44,6 +44,8 @@ class ChargeCodeSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "description",
+            "start_date",
+            "end_date",
             "allotted_hours",
             "deliverable",
             "deliverable_name",

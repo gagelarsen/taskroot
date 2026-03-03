@@ -221,6 +221,38 @@ class TestBulkImportSuccess:
         assert task.assignee is None
         assert task.budget_hours == Decimal("0")
 
+    def test_import_deliverable_with_blank_charge_code_does_not_create_mapping(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        payload = {
+            "contracts": [
+                {
+                    "name": "Project Blank Code",
+                    "client_name": "Client Blank",
+                    "start_date": "2026-01-01",
+                    "end_date": "2026-12-31",
+                    "budget_hours": 100,
+                    "status": "active",
+                }
+            ],
+            "deliverables": [
+                {
+                    "contract_name": "Project Blank Code",
+                    "contract_client_name": "Client Blank",
+                    "name": "Deliverable Blank Code",
+                    "charge_code": "   ",
+                    "status": "planned",
+                }
+            ],
+        }
+
+        response = client.post("/api/v1/bulk-import/", payload, format="json")
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert not ChargeCode.objects.filter(code="").exists()
+
 
 @pytest.mark.django_db
 class TestBulkImportTimeEntries:

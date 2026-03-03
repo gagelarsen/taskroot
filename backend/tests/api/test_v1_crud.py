@@ -73,6 +73,8 @@ class TestV1CrudSmoke:
             {
                 "code": "POSE:PM",
                 "description": "Project management",
+                "start_date": "2026-01-01",
+                "end_date": "2026-06-30",
                 "allotted_hours": "40.00",
                 "is_active": True,
             },
@@ -80,9 +82,15 @@ class TestV1CrudSmoke:
         )
         assert r.status_code == 201, r.data
         code_id = r.data["id"]
+        assert r.data["start_date"] == "2026-01-01"
+        assert r.data["end_date"] == "2026-06-30"
         assert r.data["allotted_hours"] == "40.00"
 
         r = api_client.get("/api/v1/charge-codes/?code=POSE")
+        assert r.status_code == 200
+        assert any(item["id"] == code_id for item in r.data["results"])
+
+        r = api_client.get("/api/v1/charge-codes/?end_date_to=2026-06-30")
         assert r.status_code == 200
         assert any(item["id"] == code_id for item in r.data["results"])
 

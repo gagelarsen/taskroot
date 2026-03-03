@@ -261,6 +261,10 @@ class ChargeCodeFilter(django_filters.FilterSet):
     code = django_filters.CharFilter(field_name="code", lookup_expr="icontains")
     is_active = django_filters.BooleanFilter(field_name="is_active")
     deliverable_id = django_filters.NumberFilter(field_name="deliverable_id")
+    start_date_from = django_filters.DateFilter(field_name="start_date", lookup_expr="gte")
+    start_date_to = django_filters.DateFilter(field_name="start_date", lookup_expr="lte")
+    end_date_from = django_filters.DateFilter(field_name="end_date", lookup_expr="gte")
+    end_date_to = django_filters.DateFilter(field_name="end_date", lookup_expr="lte")
     allotted_hours_from = django_filters.NumberFilter(field_name="allotted_hours", lookup_expr="gte")
     allotted_hours_to = django_filters.NumberFilter(field_name="allotted_hours", lookup_expr="lte")
 
@@ -270,6 +274,10 @@ class ChargeCodeFilter(django_filters.FilterSet):
             "code",
             "is_active",
             "deliverable_id",
+            "start_date_from",
+            "start_date_to",
+            "end_date_from",
+            "end_date_to",
             "allotted_hours_from",
             "allotted_hours_to",
         ]

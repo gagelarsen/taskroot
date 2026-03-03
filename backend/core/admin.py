@@ -54,8 +54,18 @@ class UnmappedChargeCodeEntryInline(admin.TabularInline):
 
 @admin.register(ChargeCode)
 class ChargeCodeAdmin(admin.ModelAdmin):
-    list_display = ("id", "code", "description", "allotted_hours", "deliverable", "is_active", "updated_at")
-    list_filter = ("is_active",)
+    list_display = (
+        "id",
+        "code",
+        "description",
+        "start_date",
+        "end_date",
+        "allotted_hours",
+        "deliverable",
+        "is_active",
+        "updated_at",
+    )
+    list_filter = ("is_active", "start_date", "end_date")
     search_fields = ("code", "description", "deliverable__name")
     autocomplete_fields = ("deliverable",)
     inlines = (UnmappedChargeCodeEntryInline,)

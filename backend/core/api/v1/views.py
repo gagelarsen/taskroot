@@ -207,6 +207,10 @@ class StaffViewSet(ModelViewSet):
             OpenApiParameter("code", OpenApiTypes.STR, description="Filter by partial charge code"),
             OpenApiParameter("is_active", OpenApiTypes.BOOL, description="Filter by active status"),
             OpenApiParameter("deliverable_id", OpenApiTypes.INT, description="Filter by linked deliverable"),
+            OpenApiParameter("start_date_from", OpenApiTypes.DATE, description="Filter by start date on/after"),
+            OpenApiParameter("start_date_to", OpenApiTypes.DATE, description="Filter by start date on/before"),
+            OpenApiParameter("end_date_from", OpenApiTypes.DATE, description="Filter by end date on/after"),
+            OpenApiParameter("end_date_to", OpenApiTypes.DATE, description="Filter by end date on/before"),
             OpenApiParameter(
                 "allotted_hours_from", OpenApiTypes.NUMBER, description="Filter by minimum allotted hours"
             ),
@@ -228,7 +232,7 @@ class ChargeCodeViewSet(ModelViewSet):
     filterset_class = ChargeCodeFilter
 
     search_fields = ["code", "description", "deliverable__name"]
-    ordering_fields = ["code", "allotted_hours", "updated_at", "id"]
+    ordering_fields = ["code", "start_date", "end_date", "allotted_hours", "updated_at", "id"]
 
     def get_queryset(self):
         return ChargeCode.objects.select_related("deliverable").all().order_by("code")

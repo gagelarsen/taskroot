@@ -36,7 +36,10 @@ export function ChargeCodesPage() {
   const [saveMessage, setSaveMessage] = useState('');
   const [report, setReport] = useState<ChargeCodeUsageReport | null>(null);
   const [allottedDrafts, setAllottedDrafts] = useState<Record<number, string>>({});
+  const [chargeCodeStartDateDrafts, setChargeCodeStartDateDrafts] = useState<Record<number, string>>({});
+  const [chargeCodeEndDateDrafts, setChargeCodeEndDateDrafts] = useState<Record<number, string>>({});
   const [activeTab, setActiveTab] = useState<'plot' | 'allotted'>('plot');
+  const [allottedSearch, setAllottedSearch] = useState('');
 
   const [mode, setMode] = useState<'charge_code' | 'base_code'>('charge_code');
   const [selectedChargeCode, setSelectedChargeCode] = useState('');
@@ -49,11 +52,23 @@ export function ChargeCodesPage() {
     setError('');
 
     try {
-      const data: ChargeCode[] = await chargeCodesApi.list({ is_active: true, order_by: 'code', order_dir: 'asc' });
+      const data: ChargeCode[] = await chargeCodesApi.list({ order_by: 'code', order_dir: 'asc' });
       setChargeCodes(data);
       setAllottedDrafts(
         data.reduce((current: Record<number, string>, chargeCode: ChargeCode) => {
           current[chargeCode.id] = chargeCode.allotted_hours ?? '';
+          return current;
+        }, {})
+      );
+      setChargeCodeStartDateDrafts(
+        data.reduce((current: Record<number, string>, chargeCode: ChargeCode) => {
+          current[chargeCode.id] = chargeCode.start_date ?? '';
+          return current;
+        }, {})
+      );
+      setChargeCodeEndDateDrafts(
+        data.reduce((current: Record<number, string>, chargeCode: ChargeCode) => {
+          current[chargeCode.id] = chargeCode.end_date ?? '';
           return current;
         }, {})
       );
@@ -87,6 +102,20 @@ export function ChargeCodesPage() {
     }
   }, [baseCodeOptions, selectedBaseCode]);
 
+  useEffect(() => {
+    if (mode !== 'charge_code' || !selectedChargeCode) {
+      return;
+    }
+
+    const selectedCode = chargeCodes.find((chargeCode) => chargeCode.code === selectedChargeCode);
+    if (!selectedCode) {
+      return;
+    }
+
+    setStartDate(selectedCode.start_date ?? defaultStartDate());
+    setEndDate(selectedCode.end_date ?? '');
+  }, [chargeCodes, mode, selectedChargeCode]);
+
   const loadReport = useCallback(async () => {
     setLoadingReport(true);
     setError('');
@@ -94,8 +123,8 @@ export function ChargeCodesPage() {
 
     try {
       const params = {
-        start_date: startDate,
-        end_date: endDate,
+        ...(startDate ? { start_date: startDate } : {}),
+        ...(endDate ? { end_date: endDate } : {}),
         ...(mode === 'charge_code' ? { charge_code: selectedChargeCode } : { base_code: selectedBaseCode }),
       };
       const data = await reportsApi.getChargeCodeUsage(params);
@@ -114,16 +143,32 @@ export function ChargeCodesPage() {
     }
   }, [loadReport, loadingOptions, mode, selectedBaseCode, selectedChargeCode]);
 
-  const canRunReport = mode === 'charge_code' ? Boolean(selectedChargeCode) : Boolean(selectedBaseCode);
-
   const hasAllottedChanges = chargeCodes.some((chargeCode) => {
     const currentValue = (chargeCode.allotted_hours ?? '').trim();
     const draftValue = (allottedDrafts[chargeCode.id] ?? '').trim();
-    return currentValue !== draftValue;
+    const currentStartDate = (chargeCode.start_date ?? '').trim();
+    const draftStartDate = (chargeCodeStartDateDrafts[chargeCode.id] ?? '').trim();
+    const currentEndDate = (chargeCode.end_date ?? '').trim();
+    const draftEndDate = (chargeCodeEndDateDrafts[chargeCode.id] ?? '').trim();
+    return currentValue !== draftValue || currentStartDate !== draftStartDate || currentEndDate !== draftEndDate;
   });
+
+  const filteredChargeCodes = useMemo(() => {
+    const term = allottedSearch.trim().toLowerCase();
+    if (!term) {
+      return chargeCodes;
+    }
+    return chargeCodes.filter((chargeCode) => {
+      const description = (chargeCode.description || '').toLowerCase();
+      const code = chargeCode.code.toLowerCase();
+      return code.includes(term) || description.includes(term);
+    });
+  }, [allottedSearch, chargeCodes]);
 
   const handleSaveAllottedHours = async (chargeCode: ChargeCode) => {
     const draftValue = (allottedDrafts[chargeCode.id] ?? '').trim();
+    const draftStartDate = (chargeCodeStartDateDrafts[chargeCode.id] ?? '').trim();
+    const draftEndDate = (chargeCodeEndDateDrafts[chargeCode.id] ?? '').trim();
 
     if (draftValue && Number.isNaN(Number(draftValue))) {
       setError(`Allotted hours must be numeric for ${chargeCode.code}.`);
@@ -143,6 +188,8 @@ export function ChargeCodesPage() {
 
     try {
       await chargeCodesApi.update(chargeCode.id, {
+        start_date: draftStartDate || null,
+        end_date: draftEndDate || null,
         allotted_hours: draftValue === '' ? null : Number(draftValue).toFixed(2),
       });
       setSaveMessage(`Saved allotted hours for ${chargeCode.code}.`);
@@ -164,7 +211,11 @@ export function ChargeCodesPage() {
     const changedChargeCodes = chargeCodes.filter((chargeCode) => {
       const currentValue = (chargeCode.allotted_hours ?? '').trim();
       const draftValue = (allottedDrafts[chargeCode.id] ?? '').trim();
-      return currentValue !== draftValue;
+      const currentStartDate = (chargeCode.start_date ?? '').trim();
+      const draftStartDate = (chargeCodeStartDateDrafts[chargeCode.id] ?? '').trim();
+      const currentEndDate = (chargeCode.end_date ?? '').trim();
+      const draftEndDate = (chargeCodeEndDateDrafts[chargeCode.id] ?? '').trim();
+      return currentValue !== draftValue || currentStartDate !== draftStartDate || currentEndDate !== draftEndDate;
     });
 
     if (changedChargeCodes.length === 0) {
@@ -189,7 +240,11 @@ export function ChargeCodesPage() {
     try {
       for (const chargeCode of changedChargeCodes) {
         const draftValue = (allottedDrafts[chargeCode.id] ?? '').trim();
+        const draftStartDate = (chargeCodeStartDateDrafts[chargeCode.id] ?? '').trim();
+        const draftEndDate = (chargeCodeEndDateDrafts[chargeCode.id] ?? '').trim();
         await chargeCodesApi.update(chargeCode.id, {
+          start_date: draftStartDate || null,
+          end_date: draftEndDate || null,
           allotted_hours: draftValue === '' ? null : Number(draftValue).toFixed(2),
         });
       }
@@ -205,6 +260,9 @@ export function ChargeCodesPage() {
   };
 
   const chartXAxis = report?.buckets.map((bucket) => bucket.bucket) ?? [];
+  const weeklyActualSeries = report?.buckets.map((bucket) => Number(bucket.actual_hours)) ?? [];
+  const weeklyExpectedSeries =
+    report?.buckets.map((bucket) => (bucket.expected_hours ? Number(bucket.expected_hours) : null)) ?? [];
   const cumulativeActualSeries = report?.buckets.map((bucket) => Number(bucket.cumulative_actual)) ?? [];
   const cumulativeExpectedSeries =
     report?.buckets.map((bucket) => (bucket.cumulative_expected ? Number(bucket.cumulative_expected) : null)) ?? [];
@@ -298,9 +356,6 @@ export function ChargeCodesPage() {
                   InputLabelProps={{ shrink: true }}
                 />
 
-                <Button variant="contained" onClick={() => void loadReport()} disabled={!canRunReport || loadingReport}>
-                  Run Report
-                </Button>
               </Stack>
             </CardContent>
           </Card>
@@ -353,6 +408,23 @@ export function ChargeCodesPage() {
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
+                    Weekly Time Entries
+                  </Typography>
+                  <LineChart
+                    height={320}
+                    xAxis={[{ scaleType: 'point', data: chartXAxis }]}
+                    series={[
+                      { label: 'Weekly Actual', data: weeklyActualSeries },
+                      { label: 'Weekly Expected', data: weeklyExpectedSeries },
+                    ]}
+                    margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card sx={{ mb: 3 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
                     Cumulative Burn
                   </Typography>
                   <LineChart
@@ -392,10 +464,23 @@ export function ChargeCodesPage() {
                 Save All
               </Button>
             </Stack>
+            <TextField
+              label="Search Charge Codes"
+              value={allottedSearch}
+              onChange={(event) => setAllottedSearch(event.target.value)}
+              fullWidth
+              sx={{ mb: 2 }}
+              helperText="Filter by charge code or description"
+            />
             <Stack spacing={1.5}>
-              {chargeCodes.map((chargeCode) => {
+              {filteredChargeCodes.map((chargeCode) => {
                 const draftValue = allottedDrafts[chargeCode.id] ?? '';
-                const isDirty = (chargeCode.allotted_hours ?? '').trim() !== draftValue.trim();
+                const draftStartDate = chargeCodeStartDateDrafts[chargeCode.id] ?? '';
+                const draftEndDate = chargeCodeEndDateDrafts[chargeCode.id] ?? '';
+                const isDirty =
+                  (chargeCode.allotted_hours ?? '').trim() !== draftValue.trim() ||
+                  (chargeCode.start_date ?? '').trim() !== draftStartDate.trim() ||
+                  (chargeCode.end_date ?? '').trim() !== draftEndDate.trim();
                 return (
                   <Stack key={chargeCode.id} direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center">
                     <Box sx={{ flex: 1, width: '100%' }}>
@@ -416,6 +501,34 @@ export function ChargeCodesPage() {
                         }))
                       }
                       inputProps={{ min: 0, step: '0.01' }}
+                      sx={{ minWidth: 180 }}
+                    />
+                    <TextField
+                      label="Start Date"
+                      type="date"
+                      size="small"
+                      value={draftStartDate}
+                      onChange={(event) =>
+                        setChargeCodeStartDateDrafts((current) => ({
+                          ...current,
+                          [chargeCode.id]: event.target.value,
+                        }))
+                      }
+                      InputLabelProps={{ shrink: true }}
+                      sx={{ minWidth: 180 }}
+                    />
+                    <TextField
+                      label="End Date"
+                      type="date"
+                      size="small"
+                      value={draftEndDate}
+                      onChange={(event) =>
+                        setChargeCodeEndDateDrafts((current) => ({
+                          ...current,
+                          [chargeCode.id]: event.target.value,
+                        }))
+                      }
+                      InputLabelProps={{ shrink: true }}
                       sx={{ minWidth: 180 }}
                     />
                     <Button

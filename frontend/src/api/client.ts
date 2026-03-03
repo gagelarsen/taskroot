@@ -127,20 +127,45 @@ export const chargeCodesApi = {
     code?: string;
     is_active?: boolean;
     deliverable_id?: number;
+    start_date_from?: string;
+    start_date_to?: string;
+    end_date_from?: string;
+    end_date_to?: string;
     allotted_hours_from?: number;
     allotted_hours_to?: number;
+    page_size?: number;
     q?: string;
     order_by?: string;
     order_dir?: 'asc' | 'desc';
   }) => {
-    const response = await apiClient.get('/charge-codes/', { params });
-    return response.data.results || response.data;
+    const firstResponse = await apiClient.get('/charge-codes/', {
+      params: {
+        ...params,
+      },
+    });
+
+    if (!firstResponse.data?.results || !firstResponse.data?.next) {
+      return firstResponse.data.results || firstResponse.data;
+    }
+
+    const allResults = [...firstResponse.data.results];
+    let nextUrl: string | null = firstResponse.data.next;
+
+    while (nextUrl) {
+      const pageResponse = await apiClient.get(nextUrl);
+      allResults.push(...(pageResponse.data?.results || []));
+      nextUrl = pageResponse.data?.next || null;
+    }
+
+    return allResults;
   },
   update: async (
     id: number,
     data: {
       code?: string;
       description?: string;
+      start_date?: string | null;
+      end_date?: string | null;
       allotted_hours?: string | null;
       deliverable?: number | null;
       is_active?: boolean;
