@@ -2,17 +2,83 @@
 Bulk import API for uploading JSON data files.
 """
 
+import csv
+import io
 from decimal import Decimal
 
 from django.db import transaction
 from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.api.v1.permissions import IsAdmin
 from core.models import Contract, ContractInvoiceUpdate, Deliverable, DeliverableTimeEntry, Staff, Task
+
+
+def _build_time_entries_from_csv(file_content: str, fallback_entry_date: str) -> list[dict]:
+    reader = csv.DictReader(io.StringIO(file_content))
+    if not reader.fieldnames:
+        raise ValueError("CSV file appears to be empty")
+
+    header_map = {
+        field_name.strip().upper(): field_name for field_name in reader.fieldnames if field_name and field_name.strip()
+    }
+
+    if "CHARGE CODE" not in header_map or "HOURS" not in header_map:
+        raise ValueError("CSV must include CHARGE CODE and HOURS columns")
+
+    entries: list[dict] = []
+    for row in reader:
+        charge_code = (row.get(header_map["CHARGE CODE"], "") or "").strip()
+        if not charge_code:
+            continue
+
+        if "RESOURCE ID" in header_map:
+            resource_id = (row.get(header_map["RESOURCE ID"], "") or "").strip().lower()
+            if resource_id == "total":
+                continue
+
+        hours_raw = (row.get(header_map["HOURS"], "") or "").strip()
+        try:
+            hours = Decimal(hours_raw)
+        except Exception:
+            continue
+
+        if hours <= 0:
+            continue
+
+        entry_date = fallback_entry_date
+        if "ENTRY DATE" in header_map:
+            csv_entry_date = (row.get(header_map["ENTRY DATE"], "") or "").strip()
+            entry_date = csv_entry_date or fallback_entry_date
+
+        if not entry_date:
+            raise ValueError("entry_date is required for CSV imports when CSV does not contain ENTRY DATE values")
+
+        group = (row.get(header_map["GROUP"], "") or "").strip() if "GROUP" in header_map else ""
+        description = (
+            (row.get(header_map["CHARGE CODE DESCRIPTION"], "") or "").strip()
+            if "CHARGE CODE DESCRIPTION" in header_map
+            else ""
+        )
+        note_parts = [value for value in [group, description] if value]
+
+        entries.append(
+            {
+                "charge_code": charge_code,
+                "entry_date": entry_date,
+                "hours": str(hours),
+                "note": " - ".join(note_parts),
+            }
+        )
+
+    if not entries:
+        raise ValueError("No importable time entries found in CSV")
+
+    return entries
 
 
 @extend_schema(
@@ -199,9 +265,15 @@ def bulk_import_view(request: Request) -> Response:
 @extend_schema(
     summary="Bulk import time entries from JSON",
     description="""
-    Import time entries from a JSON file.
+    Import time entries from JSON or CSV.
 
     The JSON format should match the structure in backend/docs/aquaveo-time-entries-data.json.
+
+    For CSV uploads (`multipart/form-data`), provide:
+    - `file`: CSV file
+    - `entry_date` (optional): fallback date when CSV does not include an `ENTRY DATE` column/value
+
+    CSV must include `CHARGE CODE` and `HOURS` columns.
 
     Time entries are matched to deliverables by their charge_code field.
 
@@ -222,7 +294,15 @@ def bulk_import_view(request: Request) -> Response:
             "properties": {
                 "time_entries": {"type": "array"},
             },
-        }
+        },
+        "multipart/form-data": {
+            "type": "object",
+            "properties": {
+                "file": {"type": "string", "format": "binary"},
+                "entry_date": {"type": "string", "format": "date"},
+            },
+            "required": ["file"],
+        },
     },
     responses={
         200: {
@@ -254,7 +334,7 @@ def bulk_import_view(request: Request) -> Response:
     },
     examples=[
         OpenApiExample(
-            "Sample Time Entries Import",
+            "Sample Time Entries JSON Import",
             value={
                 "time_entries": [
                     {
@@ -265,11 +345,24 @@ def bulk_import_view(request: Request) -> Response:
                     }
                 ]
             },
-        )
+            request_only=True,
+            media_type="application/json",
+        ),
+        OpenApiExample(
+            "Sample Time Entries CSV Import",
+            value={
+                "entry_date": "2026-01-15",
+            },
+            description="Upload a CSV file in the `file` field. `entry_date` is used only when "
+            "CSV rows do not include ENTRY DATE.",
+            request_only=True,
+            media_type="multipart/form-data",
+        ),
     ],
 )
 @api_view(["POST"])
 @permission_classes([IsAdmin])
+@parser_classes([JSONParser, MultiPartParser, FormParser])
 def bulk_import_time_entries_view(request: Request) -> Response:
     """
     Bulk import time entries from JSON payload.
@@ -278,6 +371,28 @@ def bulk_import_time_entries_view(request: Request) -> Response:
     Does not fail the entire import if some entries have errors.
     """
     data = request.data
+
+    if "file" in request.FILES:
+        uploaded_file = request.FILES["file"]
+        fallback_entry_date = (data.get("entry_date", "") or "").strip()
+
+        try:
+            file_content = uploaded_file.read().decode("utf-8-sig")
+            data = {
+                "time_entries": _build_time_entries_from_csv(
+                    file_content=file_content, fallback_entry_date=fallback_entry_date
+                )
+            }
+        except UnicodeDecodeError:
+            return Response(
+                {"success": False, "error": "Unable to decode CSV file. Please use UTF-8 encoding."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ValueError as exc:
+            return Response(
+                {"success": False, "error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     stats = {
         "time_entries_created": 0,

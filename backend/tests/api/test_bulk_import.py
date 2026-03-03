@@ -5,6 +5,7 @@ Tests for bulk import endpoints.
 from decimal import Decimal
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from core.models import Contract, ContractInvoiceUpdate, Deliverable, DeliverableTimeEntry, Staff, Task
 
@@ -447,6 +448,165 @@ class TestBulkImportTimeEntries:
         assert response.data["stats"]["time_entries_created"] == 2
 
         assert DeliverableTimeEntry.objects.count() == 2
+
+    def test_import_time_entries_from_csv_success(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="CSV Project",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        deliverable = Deliverable.objects.create(
+            contract=contract,
+            name="CSV Deliverable",
+            charge_code="CSV_CODE",
+            status="in_progress",
+        )
+
+        csv_content = (
+            "GROUP,RESOURCE ID,CHARGE CODE,CHARGE CODE DESCRIPTION,HOURS\n"
+            "Administration,,CSV_CODE,Admin tasks,2.5\n"
+            "Administration,Total,CSV_CODE,Summary row,10.0\n"
+            "Administration,,CSV_CODE,Invalid value,not-a-number\n"
+            "Administration,,CSV_CODE,Zero hours,0\n"
+            ",,,Missing charge,5\n"
+        )
+        csv_file = SimpleUploadedFile("charge_codes.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-02-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["time_entries_created"] == 1
+        assert response.data["stats"]["time_entries_skipped"] == 0
+        assert response.data["stats"]["time_entries_failed"] == 0
+
+        entry = DeliverableTimeEntry.objects.get(deliverable=deliverable)
+        assert str(entry.entry_date) == "2026-02-01"
+        assert entry.hours == Decimal("2.5")
+        assert entry.note == "Administration - Admin tasks"
+
+    def test_import_time_entries_from_csv_uses_entry_date_column(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        contract = Contract.objects.create(
+            name="CSV Date Project",
+            start_date="2026-01-01",
+            end_date="2026-12-31",
+            budget_hours=1000,
+            status="active",
+        )
+        Deliverable.objects.create(
+            contract=contract,
+            name="CSV Date Deliverable",
+            charge_code="CSV_DATE_CODE",
+            status="in_progress",
+        )
+
+        csv_content = "CHARGE CODE,ENTRY DATE,HOURS\n" "CSV_DATE_CODE,2026-03-05,3.0\n"
+        csv_file = SimpleUploadedFile(
+            "charge_codes_with_dates.csv", csv_content.encode("utf-8"), content_type="text/csv"
+        )
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file},
+            format="multipart",
+        )
+
+        assert response.status_code == 200
+        assert response.data["success"] is True
+        assert response.data["stats"]["time_entries_created"] == 1
+        assert DeliverableTimeEntry.objects.filter(entry_date="2026-03-05", hours=Decimal("3.0")).exists()
+
+    def test_import_time_entries_from_csv_missing_required_columns(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        csv_content = "GROUP,RESOURCE ID,HOURS\nAdministration,,3.0\n"
+        csv_file = SimpleUploadedFile("invalid_columns.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-02-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "CHARGE CODE and HOURS" in response.data["error"]
+
+    def test_import_time_entries_from_csv_requires_entry_date_when_not_in_file(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        csv_content = "CHARGE CODE,HOURS\nCODE_A,2.0\n"
+        csv_file = SimpleUploadedFile("missing_entry_date.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file},
+            format="multipart",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "entry_date is required" in response.data["error"]
+
+    def test_import_time_entries_from_csv_rejects_invalid_encoding(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        csv_file = SimpleUploadedFile("bad_encoding.csv", b"\x80\x81\x82", content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-02-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "UTF-8" in response.data["error"]
+
+    def test_import_time_entries_from_csv_rejects_empty_file(self, auth_client, admin_user, admin_profile):
+        client = auth_client(admin_user)
+
+        csv_file = SimpleUploadedFile("empty.csv", b"", content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-02-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "empty" in response.data["error"].lower()
+
+    def test_import_time_entries_from_csv_rejects_when_no_rows_are_importable(
+        self, auth_client, admin_user, admin_profile
+    ):
+        client = auth_client(admin_user)
+
+        csv_content = "CHARGE CODE,HOURS\n" "CODE_A,0\n" "CODE_A,not-a-number\n"
+        csv_file = SimpleUploadedFile("no_importable_rows.csv", csv_content.encode("utf-8"), content_type="text/csv")
+
+        response = client.post(
+            "/api/v1/bulk-import/time-entries/",
+            {"file": csv_file, "entry_date": "2026-02-01"},
+            format="multipart",
+        )
+
+        assert response.status_code == 400
+        assert response.data["success"] is False
+        assert "No importable time entries" in response.data["error"]
 
 
 @pytest.mark.django_db

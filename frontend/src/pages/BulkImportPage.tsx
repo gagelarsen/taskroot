@@ -30,6 +30,7 @@ export function BulkImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'data' | 'time-entries' | 'invoices'>('data');
+  const [timeEntriesEntryDate, setTimeEntriesEntryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [exportError, setExportError] = useState('');
   const [exportingKey, setExportingKey] = useState<string | null>(null);
   const [contractBurnId, setContractBurnId] = useState('');
@@ -100,18 +101,35 @@ export function BulkImportPage() {
     setResult(null);
 
     try {
-      const fileContent = await selectedFile.text();
-      const jsonData = JSON.parse(fileContent);
+      if (importType === 'time-entries' && selectedFile.name.toLowerCase().endsWith('.csv')) {
+        if (!timeEntriesEntryDate) {
+          throw new Error('Entry date is required for time-entry CSV imports.');
+        }
 
-      const endpoint =
-        importType === 'time-entries'
-          ? '/bulk-import/time-entries/'
-          : importType === 'invoices'
-            ? '/bulk-import/invoices/'
-            : '/bulk-import/';
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('entry_date', timeEntriesEntryDate);
 
-      const response = await apiClient.post(endpoint, jsonData);
-      setResult(response.data);
+        const response = await apiClient.post('/bulk-import/time-entries/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        setResult(response.data);
+      } else {
+        const fileContent = await selectedFile.text();
+        const payload = JSON.parse(fileContent);
+
+        const endpoint =
+          importType === 'time-entries'
+            ? '/bulk-import/time-entries/'
+            : importType === 'invoices'
+              ? '/bulk-import/invoices/'
+              : '/bulk-import/';
+
+        const response = await apiClient.post(endpoint, payload);
+        setResult(response.data);
+      }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } }; message?: string };
       setResult({
@@ -130,7 +148,7 @@ export function BulkImportPage() {
       </Typography>
 
       <Typography variant="body1" color="text.secondary" paragraph>
-        Upload JSON files to import staff, contracts, deliverables, tasks, and time entries.
+        Upload JSON files (and time-entry CSV reports) to import staff, contracts, deliverables, tasks, and time entries.
       </Typography>
 
       <Stack spacing={3}>
@@ -278,16 +296,27 @@ export function BulkImportPage() {
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Upload JSON File
+              Upload Import File
             </Typography>
             <Stack spacing={2}>
               <input
-                accept=".json"
+                accept={importType === 'time-entries' ? '.json,.csv' : '.json'}
                 style={{ display: 'none' }}
                 id="file-upload"
                 type="file"
                 onChange={handleFileSelect}
               />
+              {importType === 'time-entries' && (
+                <TextField
+                  label="Entry Date for CSV Rows"
+                  type="date"
+                  value={timeEntriesEntryDate}
+                  onChange={(event) => setTimeEntriesEntryDate(event.target.value)}
+                  required
+                  InputLabelProps={{ shrink: true }}
+                  helperText="Used only for CSV uploads that do not include an entry date column."
+                />
+              )}
               <label htmlFor="file-upload">
                 <Button
                   variant="outlined"
@@ -511,7 +540,7 @@ export function BulkImportPage() {
 {`{
   "time_entries": [
     {
-      "deliverable_name": "Deliverable 1",
+      "charge_code": "RD_T_NSF:POSE",
       "entry_date": "2026-01-15",
       "hours": 8.5,
       "note": "Work completed on task"
@@ -519,6 +548,10 @@ export function BulkImportPage() {
   ]
 }`}
               </pre>
+              <Typography variant="body2" sx={{ mt: 1.5 }}>
+                You can also upload a CSV report with CHARGE CODE and HOURS columns (like your timekeeping export).
+                Summary rows are ignored, and the selected entry date is applied to each imported row.
+              </Typography>
 
                 <Typography variant="body2" paragraph sx={{ mt: 2 }}>
                   <strong>For Invoice Updates:</strong>
