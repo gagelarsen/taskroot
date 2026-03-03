@@ -14,7 +14,8 @@ import { ArrowBack, Save } from '@mui/icons-material';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { deliverablesApi, contractsApi } from '../api/client';
 import type { Deliverable, Contract } from '../types/api';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
+import { coerceToIsoDateOnly } from '../utils/dateHelpers';
 
 export function DeliverableEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,7 +54,7 @@ export function DeliverableEditPage() {
           if (targetDate && !targetDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
             const parsed = new Date(targetDate);
             if (!isNaN(parsed.getTime())) {
-              targetDate = parsed.toISOString().split('T')[0];
+              targetDate = coerceToIsoDateOnly(parsed);
             }
           }
 
@@ -63,11 +64,7 @@ export function DeliverableEditPage() {
           });
         }
       } catch (err) {
-        if (err instanceof AxiosError) {
-          setError(err.response?.data?.detail || 'Failed to load data');
-        } else {
-          setError('Failed to load data');
-        }
+        setError(getApiErrorMessage(err, 'Failed to load data'));
       } finally {
         setLoading(false);
       }
@@ -99,11 +96,7 @@ export function DeliverableEditPage() {
         navigate(`/deliverables/${id}`);
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to save deliverable');
-      } else {
-        setError('Failed to save deliverable');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save deliverable'));
     } finally {
       setSaving(false);
     }
@@ -208,8 +201,7 @@ export function DeliverableEditPage() {
                 // Ensure format is YYYY-MM-DD
                 if (date.match(/^\d{4}-\d{2}-\d{2}$/)) return date;
                 // Try to parse and convert
-                const parsed = new Date(date);
-                return !isNaN(parsed.getTime()) ? parsed.toISOString().split('T')[0] : '';
+                return coerceToIsoDateOnly(date);
               })()}
               onChange={(e) => setDeliverable({ ...deliverable, target_completion_date: e.target.value || null })}
               fullWidth

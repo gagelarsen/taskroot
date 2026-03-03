@@ -28,11 +28,11 @@ import { useNavigate } from 'react-router-dom';
 import { deliverablesApi, contractsApi } from '../api/client';
 import type { Deliverable, DeliverableFilters, Contract } from '../types/api';
 import { TargetDateBadge } from '../components/TargetDateBadge';
-import { AxiosError } from 'axios';
 import {
   formatDeliverableLifecycleStatusLabel,
   getDeliverableLifecycleStatusChipColor,
 } from '../utils/deliverableStatus';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function DeliverableListPage() {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
@@ -80,11 +80,7 @@ export function DeliverableListPage() {
       const data = await deliverablesApi.list(filters);
       setDeliverables(data);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load deliverables');
-      } else {
-        setError('Failed to load deliverables');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load deliverables'));
     } finally {
       setLoading(false);
     }
@@ -127,19 +123,7 @@ export function DeliverableListPage() {
       setDialogOpen(false);
       await loadDeliverables();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorData = err.response?.data;
-        if (typeof errorData === 'object' && errorData !== null) {
-          const messages = Object.entries(errorData)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          setError(messages || 'Failed to save deliverable');
-        } else {
-          setError(errorData?.detail || 'Failed to save deliverable');
-        }
-      } else {
-        setError('Failed to save deliverable');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save deliverable'));
     } finally {
       setSaving(false);
     }

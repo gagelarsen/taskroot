@@ -4,6 +4,27 @@
 
 export type TargetDateStatus = 'past_due' | 'this_month' | 'next_month' | 'future' | 'none';
 
+export function toIsoDateOnly(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+export function todayIsoDateOnly(): string {
+  return toIsoDateOnly(new Date());
+}
+
+export function coerceToIsoDateOnly(value: Date | string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+
+  return toIsoDateOnly(parsed);
+}
+
 /**
  * Determines the status of a target completion date relative to today
  */

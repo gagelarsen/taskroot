@@ -40,7 +40,50 @@ import {
   getContractStatusChipColor,
 } from '../utils/contractStatus';
 import { formatUsdAmount } from '../utils/currency';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
+
+type ContractSortKey =
+  | 'name'
+  | 'contract_number'
+  | 'client_name'
+  | 'contract_type'
+  | 'start_date'
+  | 'end_date'
+  | 'status'
+  | 'budget_hours'
+  | 'contract_amount'
+  | 'assigned_budget_hours_per_week'
+  | 'spent_hours_per_week'
+  | 'estimated_percent_complete'
+  | 'remaining_budget_hours';
+
+type ContractFormData = {
+  name: string;
+  client_name: string;
+  contract_number: string;
+  tags: string;
+  contract_type: Contract['contract_type'];
+  budget_hours: string;
+  contract_amount: string;
+  status: Contract['status'];
+  start_date: string;
+  end_date: string;
+};
+
+function createInitialContractFormData(): ContractFormData {
+  return {
+    name: '',
+    client_name: '',
+    contract_number: '',
+    tags: '',
+    contract_type: 'fixed_cost',
+    budget_hours: '0',
+    contract_amount: '',
+    status: 'draft',
+    start_date: '',
+    end_date: '',
+  };
+}
 
 export function ContractsListPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -54,35 +97,11 @@ export function ContractsListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [tableSort, setTableSort] = useState<{
-    key:
-      | 'name'
-      | 'contract_number'
-      | 'client_name'
-      | 'contract_type'
-      | 'start_date'
-      | 'end_date'
-      | 'status'
-      | 'budget_hours'
-      | 'contract_amount'
-      | 'assigned_budget_hours_per_week'
-      | 'spent_hours_per_week'
-      | 'estimated_percent_complete'
-      | 'remaining_budget_hours';
-    direction: 'asc' | 'desc';
-  }>({ key: 'start_date', direction: 'desc' });
-  const [formData, setFormData] = useState({
-    name: '',
-    client_name: '',
-    contract_number: '',
-    tags: '',
-    contract_type: 'fixed_cost' as Contract['contract_type'],
-    budget_hours: '0',
-    contract_amount: '',
-    status: 'draft' as Contract['status'],
-    start_date: '',
-    end_date: '',
+  const [tableSort, setTableSort] = useState<{ key: ContractSortKey; direction: 'asc' | 'desc' }>({
+    key: 'start_date',
+    direction: 'desc',
   });
+  const [formData, setFormData] = useState<ContractFormData>(createInitialContractFormData());
   const navigate = useNavigate();
 
   const loadContracts = useCallback(async () => {
@@ -95,11 +114,7 @@ export function ContractsListPage() {
       });
       setContracts(data);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load contracts');
-      } else {
-        setError('Failed to load contracts');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load contracts'));
     } finally {
       setLoading(false);
     }
@@ -167,22 +182,7 @@ export function ContractsListPage() {
     return sorted;
   }, [contracts, tableSort]);
 
-  const handleColumnSort = (
-    key:
-      | 'name'
-      | 'contract_number'
-      | 'client_name'
-      | 'contract_type'
-      | 'start_date'
-      | 'end_date'
-      | 'status'
-      | 'budget_hours'
-      | 'contract_amount'
-      | 'assigned_budget_hours_per_week'
-      | 'spent_hours_per_week'
-      | 'estimated_percent_complete'
-      | 'remaining_budget_hours'
-  ) => {
+  const handleColumnSort = (key: ContractSortKey) => {
     setTableSort((current) => {
       if (current.key === key) {
         return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
@@ -194,18 +194,7 @@ export function ContractsListPage() {
   const handleOpenCreateDialog = () => {
     setError('');
     setFormErrors({});
-    setFormData({
-      name: '',
-      client_name: '',
-      contract_number: '',
-      tags: '',
-      contract_type: 'fixed_cost',
-      budget_hours: '0',
-      contract_amount: '',
-      status: 'draft',
-      start_date: '',
-      end_date: '',
-    });
+    setFormData(createInitialContractFormData());
     setDialogOpen(true);
   };
 
@@ -250,31 +239,21 @@ export function ContractsListPage() {
       setDialogOpen(false);
       await loadContracts();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorData = err.response?.data;
-        if (typeof errorData === 'object' && errorData !== null) {
-          const fieldErrors: Record<string, string> = {};
-          for (const [field, value] of Object.entries(errorData as Record<string, unknown>)) {
-            if (Array.isArray(value) && typeof value[0] === 'string') {
-              fieldErrors[field] = value[0];
-            } else if (typeof value === 'string') {
-              fieldErrors[field] = value;
-            }
+      const errorData = (err as { response?: { data?: unknown } })?.response?.data;
+      if (typeof errorData === 'object' && errorData !== null && !Array.isArray(errorData)) {
+        const fieldErrors: Record<string, string> = {};
+        for (const [field, value] of Object.entries(errorData as Record<string, unknown>)) {
+          if (Array.isArray(value) && typeof value[0] === 'string') {
+            fieldErrors[field] = value[0];
+          } else if (typeof value === 'string') {
+            fieldErrors[field] = value;
           }
-          if (Object.keys(fieldErrors).length > 0) {
-            setFormErrors(fieldErrors);
-          }
-
-          const messages = Object.entries(errorData)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          setError(messages || 'Failed to save contract');
-        } else {
-          setError(errorData?.detail || 'Failed to save contract');
         }
-      } else {
-        setError('Failed to save contract');
+        if (Object.keys(fieldErrors).length > 0) {
+          setFormErrors(fieldErrors);
+        }
       }
+      setError(getApiErrorMessage(err, 'Failed to save contract'));
     } finally {
       setSaving(false);
     }

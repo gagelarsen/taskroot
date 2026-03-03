@@ -29,13 +29,13 @@ import {
 } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { AxiosError } from 'axios';
 import { assignmentsApi, contractsApi, deliverablesApi, initiativeWeeklyUpdatesApi, initiativesApi, staffApi, statusUpdatesApi, tasksApi } from '../api/client';
 import type { Contract, Deliverable, DeliverableStatusUpdate, Initiative, Staff, Task } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS, getContractTypeShortLabel } from '../utils/contractTypes';
 import { formatContractStatusLabel } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { todayIsoDateOnly } from '../utils/dateHelpers';
 
 type FlagFilter = 'all' | 'any' | 'over_budget' | 'overassigned' | 'over_expected';
 type SortDirection = 'asc' | 'desc';
@@ -156,7 +156,7 @@ export function DashboardPage() {
     status: DeliverableStatusUpdate['status'];
     summary: string;
   }>({
-    period_end: new Date().toISOString().split('T')[0],
+    period_end: todayIsoDateOnly(),
     status: 'on_track',
     summary: '',
   });
@@ -188,7 +188,7 @@ export function DashboardPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [initiativeQuickUpdateDialogInitiative, setInitiativeQuickUpdateDialogInitiative] = useState<Initiative | null>(null);
   const [initiativeQuickUpdate, setInitiativeQuickUpdate] = useState({
-    period_end: new Date().toISOString().split('T')[0],
+    period_end: todayIsoDateOnly(),
     percent_complete: '0',
     summary: '',
   });
@@ -221,11 +221,7 @@ export function DashboardPage() {
       const data = await contractsApi.list({ order_by: 'start_date', order_dir: 'desc' });
       setContracts(data);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load dashboard contracts');
-      } else {
-        setError('Failed to load dashboard contracts');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load dashboard contracts'));
     } finally {
       setLoading(false);
     }
@@ -309,7 +305,7 @@ export function DashboardPage() {
     setQuickAddDialogContractId(contractId);
     setQuickAddDialogDeliverable(deliverable);
     setQuickAddStatusUpdate({
-      period_end: new Date().toISOString().split('T')[0],
+      period_end: todayIsoDateOnly(),
       status: 'on_track',
       summary: '',
     });
@@ -645,7 +641,7 @@ export function DashboardPage() {
     setInitiativeQuickUpdateDialogInitiative(initiative);
     setInitiativeQuickUpdateError('');
     setInitiativeQuickUpdate({
-      period_end: new Date().toISOString().split('T')[0],
+      period_end: todayIsoDateOnly(),
       percent_complete: initiative.current_percent_complete || '0',
       summary: '',
     });

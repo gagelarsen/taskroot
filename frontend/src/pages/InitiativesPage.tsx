@@ -24,10 +24,11 @@ import {
   Typography,
 } from '@mui/material';
 import { Add, Edit } from '@mui/icons-material';
-import { AxiosError } from 'axios';
 import { initiativeWeeklyUpdatesApi, initiativesApi, staffApi } from '../api/client';
 import type { Initiative, Staff } from '../types/api';
 import { sortStaffByName } from '../utils/staffSort';
+import { getApiErrorMessage } from '../utils/apiErrors';
+import { todayIsoDateOnly } from '../utils/dateHelpers';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -63,7 +64,7 @@ export function InitiativesPage() {
   });
 
   const [quickUpdateInitiativeId, setQuickUpdateInitiativeId] = useState<number | null>(null);
-  const [quickUpdatePeriodEnd, setQuickUpdatePeriodEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [quickUpdatePeriodEnd, setQuickUpdatePeriodEnd] = useState(todayIsoDateOnly());
   const [quickUpdatePercent, setQuickUpdatePercent] = useState('0');
   const [quickUpdateSummary, setQuickUpdateSummary] = useState('');
   const [savingQuickUpdate, setSavingQuickUpdate] = useState(false);
@@ -80,11 +81,7 @@ export function InitiativesPage() {
       setInitiatives(initiativeData);
       setStaff(sortStaffByName(staffData));
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load initiatives');
-      } else {
-        setError('Failed to load initiatives');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load initiatives'));
     } finally {
       setLoading(false);
     }
@@ -184,11 +181,7 @@ export function InitiativesPage() {
       setFormData({ name: '', owner: '', status: 'active', tags: '', target_date: '', notes: '' });
       await loadData();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to save initiative');
-      } else {
-        setError('Failed to save initiative');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save initiative'));
     } finally {
       setSavingForm(false);
     }
@@ -196,7 +189,7 @@ export function InitiativesPage() {
 
   const openQuickUpdate = (initiative: Initiative) => {
     setQuickUpdateInitiativeId(initiative.id);
-    setQuickUpdatePeriodEnd(new Date().toISOString().split('T')[0]);
+    setQuickUpdatePeriodEnd(todayIsoDateOnly());
     setQuickUpdatePercent(initiative.current_percent_complete || '0');
     setQuickUpdateSummary('');
   };
@@ -218,24 +211,7 @@ export function InitiativesPage() {
       setQuickUpdateInitiativeId(null);
       await loadData();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const data = err.response?.data;
-        if (typeof data === 'object' && data) {
-          const values = Object.values(data as Record<string, unknown>);
-          const first = values.find((value) => typeof value === 'string' || (Array.isArray(value) && value.length));
-          if (typeof first === 'string') {
-            setError(first);
-          } else if (Array.isArray(first) && typeof first[0] === 'string') {
-            setError(first[0]);
-          } else {
-            setError('Failed to save weekly update');
-          }
-        } else {
-          setError('Failed to save weekly update');
-        }
-      } else {
-        setError('Failed to save weekly update');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save weekly update'));
     } finally {
       setSavingQuickUpdate(false);
     }
@@ -257,11 +233,7 @@ export function InitiativesPage() {
         )
       );
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to update initiative status');
-      } else {
-        setError('Failed to update initiative status');
-      }
+      setError(getApiErrorMessage(err, 'Failed to update initiative status'));
     } finally {
       setSavingStatusInitiativeId(null);
     }

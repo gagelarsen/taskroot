@@ -37,7 +37,6 @@ import { TargetDateBadge } from '../components/TargetDateBadge';
 import { BurnDownChart } from '../components/BurnDownChart';
 import { TimeMaterialsBurnCharts } from '../components/TimeMaterialsBurnCharts';
 import { getContractTypeShortLabel } from '../utils/contractTypes';
-import { AxiosError } from 'axios';
 import { formatContractStatusLabel, getContractStatusChipColor } from '../utils/contractStatus';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
 import {
@@ -45,6 +44,7 @@ import {
   getDeliverableLifecycleStatusChipColor,
 } from '../utils/deliverableStatus';
 import { formatUsdAmount } from '../utils/currency';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -80,11 +80,7 @@ export function ContractDetailPage() {
       setContract(contractData);
       setDeliverables(deliverablesData);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load contract');
-      } else {
-        setError('Failed to load contract');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load contract'));
     } finally {
       setLoading(false);
     }
@@ -165,11 +161,7 @@ export function ContractDetailPage() {
       setEditDialogOpen(false);
       setEditingDeliverable(null);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to save deliverable');
-      } else {
-        setError('Failed to save deliverable');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save deliverable'));
     } finally {
       setSavingDeliverable(false);
     }

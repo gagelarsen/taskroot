@@ -34,7 +34,6 @@ import type { Deliverable, TimeEntry, DeliverableStatusUpdate, Staff } from '../
 import { StatusBadge } from '../components/StatusBadge';
 import { TargetDateBadge } from '../components/TargetDateBadge';
 import { DeliverableBurnDownChart } from '../components/DeliverableBurnDownChart';
-import { AxiosError } from 'axios';
 import { formatDeliverableStatusLabel, getDeliverableStatusChipColor } from '../utils/statusUpdates';
 import {
   formatDeliverableLifecycleStatusLabel,
@@ -43,6 +42,31 @@ import {
 import { formatTaskStatusLabel, getTaskStatusChipColor } from '../utils/taskStatus';
 import { sortStaffByName } from '../utils/staffSort';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { todayIsoDateOnly } from '../utils/dateHelpers';
+
+function createDefaultStatusUpdateForm(): {
+  period_end: string;
+  status: DeliverableStatusUpdate['status'];
+  summary: string;
+} {
+  return {
+    period_end: todayIsoDateOnly(),
+    status: 'on_track',
+    summary: '',
+  };
+}
+
+function createDefaultTimeEntryForm(): {
+  entry_date: string;
+  hours: string;
+  note: string;
+} {
+  return {
+    entry_date: todayIsoDateOnly(),
+    hours: '',
+    note: '',
+  };
+}
 
 export function DeliverableDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -50,11 +74,7 @@ export function DeliverableDetailPage() {
   const [deliverable, setDeliverable] = useState<Deliverable | null>(null);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [statusUpdates, setStatusUpdates] = useState<DeliverableStatusUpdate[]>([]);
-  const [newStatusUpdate, setNewStatusUpdate] = useState({
-    period_end: new Date().toISOString().split('T')[0],
-    status: 'on_track' as DeliverableStatusUpdate['status'],
-    summary: '',
-  });
+  const [newStatusUpdate, setNewStatusUpdate] = useState(createDefaultStatusUpdateForm());
   const [savingStatusUpdate, setSavingStatusUpdate] = useState(false);
   const [statusUpdateCreateError, setStatusUpdateCreateError] = useState('');
   const [statusUpdateActionError, setStatusUpdateActionError] = useState('');
@@ -77,11 +97,7 @@ export function DeliverableDetailPage() {
   } | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [timeEntriesExpanded, setTimeEntriesExpanded] = useState(false);
-  const [newTimeEntry, setNewTimeEntry] = useState({
-    entry_date: new Date().toISOString().split('T')[0],
-    hours: '',
-    note: '',
-  });
+  const [newTimeEntry, setNewTimeEntry] = useState(createDefaultTimeEntryForm());
   const [savingTimeEntry, setSavingTimeEntry] = useState(false);
   const [timeEntryCreateError, setTimeEntryCreateError] = useState('');
   const [staffMembers, setStaffMembers] = useState<Staff[]>([]);
@@ -109,11 +125,7 @@ export function DeliverableDetailPage() {
       setTimeEntries(timeEntriesData);
       setStatusUpdates(statusUpdatesData);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load deliverable');
-      } else {
-        setError('Failed to load deliverable');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load deliverable'));
     } finally {
       setLoading(false);
     }
@@ -151,11 +163,7 @@ export function DeliverableDetailPage() {
         summary: newStatusUpdate.summary,
       });
 
-      setNewStatusUpdate({
-        period_end: new Date().toISOString().split('T')[0],
-        status: 'on_track',
-        summary: '',
-      });
+      setNewStatusUpdate(createDefaultStatusUpdateForm());
 
       await loadData();
     } catch (err) {
@@ -290,11 +298,7 @@ export function DeliverableDetailPage() {
         note: newTimeEntry.note,
       });
 
-      setNewTimeEntry({
-        entry_date: new Date().toISOString().split('T')[0],
-        hours: '',
-        note: '',
-      });
+      setNewTimeEntry(createDefaultTimeEntryForm());
 
       await loadData();
     } catch (err) {

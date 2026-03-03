@@ -29,6 +29,7 @@ import { futureWorkApi, staffApi } from '../api/client';
 import type { FutureWork, Staff } from '../types/api';
 import { sortStaffByName } from '../utils/staffSort';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { todayIsoDateOnly } from '../utils/dateHelpers';
 
 export function FutureWorkPage() {
   const navigate = useNavigate();
@@ -62,8 +63,8 @@ export function FutureWorkPage() {
   const [contractDialogItem, setContractDialogItem] = useState<FutureWork | null>(null);
   const [convertingContract, setConvertingContract] = useState(false);
   const [contractData, setContractData] = useState({
-    start_date: new Date().toISOString().split('T')[0],
-    end_date: new Date().toISOString().split('T')[0],
+    start_date: todayIsoDateOnly(),
+    end_date: todayIsoDateOnly(),
     budget_hours: '0',
     client_name: '',
     contract_type: 'fixed_cost',
@@ -191,8 +192,8 @@ export function FutureWorkPage() {
   const openConvertToContractDialog = (item: FutureWork) => {
     setContractDialogItem(item);
     setContractData({
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: new Date().toISOString().split('T')[0],
+      start_date: todayIsoDateOnly(),
+      end_date: todayIsoDateOnly(),
       budget_hours: '0',
       client_name: '',
       contract_type: 'fixed_cost',

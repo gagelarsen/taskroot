@@ -27,7 +27,7 @@ import { Add, Warning, CheckCircle, Error as ErrorIcon } from '@mui/icons-materi
 import { useNavigate } from 'react-router-dom';
 import { staffApi, assignmentsApi, deliverablesApi } from '../api/client';
 import type { Staff, DeliverableAssignment, Deliverable } from '../types/api';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 interface StaffFilters {
   q?: string;
@@ -117,11 +117,7 @@ export function StaffListPage() {
 
       setStaff(staffWithMetrics);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load staff');
-      } else {
-        setError('Failed to load staff');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load staff'));
     } finally {
       setLoading(false);
     }
@@ -164,19 +160,7 @@ export function StaffListPage() {
       setDialogOpen(false);
       await loadStaff();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorData = err.response?.data;
-        if (typeof errorData === 'object' && errorData !== null) {
-          const messages = Object.entries(errorData)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          setError(messages || 'Failed to save staff');
-        } else {
-          setError(errorData?.detail || 'Failed to save staff');
-        }
-      } else {
-        setError('Failed to save staff');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save staff'));
     } finally {
       setSaving(false);
     }

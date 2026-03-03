@@ -14,9 +14,9 @@ import {
   Typography,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { AxiosError } from 'axios';
 import { contractsApi, deliverablesApi, initiativesApi } from '../api/client';
 import type { Contract, Deliverable, Initiative } from '../types/api';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -58,11 +58,7 @@ export function MissingUpdatesPage() {
       setInitiatives(initiativeData.filter((initiative) => initiative.is_update_stale));
       setContracts(contractData);
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load missing updates');
-      } else {
-        setError('Failed to load missing updates');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load missing updates'));
     } finally {
       setLoading(false);
     }

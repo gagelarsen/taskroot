@@ -20,7 +20,7 @@ import { Edit, ArrowBack } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { staffApi, assignmentsApi } from '../api/client';
 import type { Staff, DeliverableAssignment } from '../types/api';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,11 +44,7 @@ export function StaffDetailPage() {
         setStaff(staffData);
         setAssignments(assignmentsData);
       } catch (err) {
-        if (err instanceof AxiosError) {
-          setError(err.response?.data?.detail || 'Failed to load staff details');
-        } else {
-          setError('Failed to load staff details');
-        }
+        setError(getApiErrorMessage(err, 'Failed to load staff details'));
       } finally {
         setLoading(false);
       }

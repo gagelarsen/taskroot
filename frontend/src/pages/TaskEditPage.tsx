@@ -14,9 +14,9 @@ import { ArrowBack, Save } from '@mui/icons-material';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { tasksApi, staffApi, deliverablesApi } from '../api/client';
 import type { Task, Staff, Deliverable } from '../types/api';
-import { AxiosError } from 'axios';
 import { TASK_STATUS_OPTIONS } from '../utils/taskStatus';
 import { sortStaffByName } from '../utils/staffSort';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function TaskEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -56,11 +56,7 @@ export function TaskEditPage() {
           setTask(taskData);
         }
       } catch (err) {
-        if (err instanceof AxiosError) {
-          setError(err.response?.data?.detail || 'Failed to load data');
-        } else {
-          setError('Failed to load data');
-        }
+        setError(getApiErrorMessage(err, 'Failed to load data'));
       } finally {
         setLoading(false);
       }
@@ -97,11 +93,7 @@ export function TaskEditPage() {
         navigate(-1);
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to save task');
-      } else {
-        setError('Failed to save task');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save task'));
     } finally {
       setSaving(false);
     }

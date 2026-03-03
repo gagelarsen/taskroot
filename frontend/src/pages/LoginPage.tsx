@@ -13,7 +13,7 @@ import {
 import { Login as LoginIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/client';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
@@ -33,11 +33,7 @@ export function LoginPage() {
       localStorage.setItem('refresh_token', data.refresh);
       navigate('/');
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
-      } else {
-        setError('Login failed. Please check your credentials.');
-      }
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }

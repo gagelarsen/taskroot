@@ -16,7 +16,7 @@ import { contractsApi } from '../api/client';
 import type { Contract } from '../types/api';
 import { CONTRACT_TYPE_OPTIONS } from '../utils/contractTypes';
 import { CONTRACT_STATUS_OPTIONS } from '../utils/contractStatus';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function ContractEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,11 +47,7 @@ export function ContractEditPage() {
           setContract(contractData);
           setTagsInput((contractData.tags || []).join(', '));
         } catch (err) {
-          if (err instanceof AxiosError) {
-            setError(err.response?.data?.detail || 'Failed to load contract');
-          } else {
-            setError('Failed to load contract');
-          }
+          setError(getApiErrorMessage(err, 'Failed to load contract'));
         } finally {
           setLoading(false);
         }
@@ -93,11 +89,7 @@ export function ContractEditPage() {
         navigate(`/contracts/${id}`);
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to save contract');
-      } else {
-        setError('Failed to save contract');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save contract'));
     } finally {
       setSaving(false);
     }

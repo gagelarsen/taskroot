@@ -24,7 +24,7 @@ import {
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { assignmentsApi, deliverablesApi, staffApi } from '../api/client';
 import type { DeliverableAssignment, Deliverable, Staff } from '../types/api';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
 import { sortStaffByName } from '../utils/staffSort';
 
 interface AssignmentFilters {
@@ -71,11 +71,7 @@ export function AssignmentsPage() {
       setDeliverables(deliverablesData);
       setStaff(sortStaffByName(staffData));
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to load assignments');
-      } else {
-        setError('Failed to load assignments');
-      }
+      setError(getApiErrorMessage(err, 'Failed to load assignments'));
     } finally {
       setLoading(false);
     }
@@ -125,19 +121,7 @@ export function AssignmentsPage() {
       handleCloseDialog();
       loadData();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorData = err.response?.data;
-        if (typeof errorData === 'object') {
-          const messages = Object.entries(errorData)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          setError(messages);
-        } else {
-          setError(errorData?.detail || 'Failed to save assignment');
-        }
-      } else {
-        setError('Failed to save assignment');
-      }
+      setError(getApiErrorMessage(err, 'Failed to save assignment'));
     } finally {
       setSaving(false);
     }
@@ -151,11 +135,7 @@ export function AssignmentsPage() {
       await assignmentsApi.delete(id);
       loadData();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(err.response?.data?.detail || 'Failed to delete assignment');
-      } else {
-        setError('Failed to delete assignment');
-      }
+      setError(getApiErrorMessage(err, 'Failed to delete assignment'));
     }
   };
 

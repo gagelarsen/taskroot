@@ -12,7 +12,7 @@ import {
 import { ArrowBack, Save } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { staffApi } from '../api/client';
-import { AxiosError } from 'axios';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 export function StaffEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,11 +48,7 @@ export function StaffEditPage() {
             expected_hours_per_week: parseFloat(data.expected_hours_per_week),
           });
         } catch (err) {
-          if (err instanceof AxiosError) {
-            setError(err.response?.data?.detail || 'Failed to load staff');
-          } else {
-            setError('Failed to load staff');
-          }
+          setError(getApiErrorMessage(err, 'Failed to load staff'));
         } finally {
           setLoading(false);
         }
@@ -80,18 +76,14 @@ export function StaffEditPage() {
         navigate(`/staff/${updated.id}`);
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        const errorData = err.response?.data;
-        if (typeof errorData === 'object') {
-          const messages = Object.entries(errorData)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-            .join('; ');
-          setError(messages);
-        } else {
-          setError(errorData?.detail || 'Failed to save staff');
-        }
+      const errorData = (err as { response?: { data?: unknown } })?.response?.data;
+      if (typeof errorData === 'object' && errorData !== null && !Array.isArray(errorData)) {
+        const messages = Object.entries(errorData as Record<string, unknown>)
+          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : String(errors)}`)
+          .join('; ');
+        setError(messages);
       } else {
-        setError('Failed to save staff');
+        setError(getApiErrorMessage(err, 'Failed to save staff'));
       }
     } finally {
       setSaving(false);

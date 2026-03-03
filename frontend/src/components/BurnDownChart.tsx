@@ -4,6 +4,7 @@ import { LineChart } from '@mui/x-charts/LineChart';
 import type { AxiosResponse } from 'axios';
 import { apiClient } from '../api/client';
 import type { Contract } from '../types/api';
+import { toIsoDateOnly } from '../utils/dateHelpers';
 
 interface TimeEntry {
   id: number;
@@ -135,7 +136,7 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
           const dataPoints: { x: number; y: number }[] = [];
 
           sortedDates.forEach((dateStr) => {
-            const dateIndex = dates.findIndex(d => d.toISOString().split('T')[0] === dateStr);
+            const dateIndex = dates.findIndex((date) => toIsoDateOnly(date) === dateStr);
             if (dateIndex >= 0) {
               dataPoints.push({
                 x: dates[dateIndex].getTime(),
@@ -157,7 +158,7 @@ export function BurnDownChart({ contract }: BurnDownChartProps) {
 
             // Start trend line from the last actual data point
             const lastDataPointIndex = dates.findIndex(
-              d => d.toISOString().split('T')[0] === sortedDates[sortedDates.length - 1]
+              (date) => toIsoDateOnly(date) === sortedDates[sortedDates.length - 1]
             );
 
             if (lastDataPointIndex >= 0) {
